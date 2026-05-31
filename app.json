@@ -3,7 +3,11 @@
     "name": "FireHealth App",
     "slug": "firehealth-app",
     "version": "1.0.0",
+<<<<<<< HEAD
     "orientation": "landscape",
+=======
+    "orientation": "default",
+>>>>>>> origin/main
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
