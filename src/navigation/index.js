@@ -83,19 +83,11 @@ function RoleNavigator({ role }) {
 export default function RootNavigator() {
   const { isAuthenticated, role } = useAuthStore();
 
-  const testMode = true;
-  const testRole = ROLES.ADMIN;
 
   return (
-    <NavigationContainer>
-      {testMode ? (
-        <RoleNavigator role={testRole} />
-      ) : isAuthenticated ? (
-        <RoleNavigator role={role} />
-      ) : (
-        <AuthStack />
-      )}
-    </NavigationContainer>
+  <NavigationContainer>
+    {isAuthenticated ? <RoleNavigator role={role} /> : <AuthStack />}
+  </NavigationContainer>
   );
 }
 
