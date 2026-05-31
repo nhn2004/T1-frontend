@@ -22,6 +22,10 @@ import ResearcherDashboard from '../screens/dashboard/ResearcherDashboard';
 // Temporary internal screens
 import PlaceholderScreen from '../screens/PlaceholderScreen';
 
+// Screens ya construidas
+import SessionsScreen      from '../screens/sessions/SessionsScreen';
+import SessionDetailScreen from '../screens/sessions/SessionDetailScreen';
+
 const Stack = createStackNavigator();
 
 function AuthStack() {
@@ -73,7 +77,8 @@ function RoleNavigator({ role }) {
       }}
     >
       <Stack.Screen name="Dashboard" component={DashboardWithLayout} />
-      <Stack.Screen name="Training" component={PlaceholderScreen} />
+      <Stack.Screen name="Training"        component={withMainLayout(SessionsScreen)} />
+      <Stack.Screen name="SessionDetail"   component={withMainLayout(SessionDetailScreen)} />
       <Stack.Screen name="Schedule" component={PlaceholderScreen} />
       <Stack.Screen name="Configuration" component={PlaceholderScreen} />
     </Stack.Navigator>
