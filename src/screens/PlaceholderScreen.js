@@ -2,6 +2,8 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import MainLayout from '../components/MainLayout';
 
+/* ESTO ES UNA PAGINA TEMPORAL */
+
 export default function PlaceholderScreen({ navigation, route }) {
   return (
     <MainLayout navigation={navigation} route={route}>
