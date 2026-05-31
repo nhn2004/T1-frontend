@@ -220,9 +220,21 @@ export const authService = {
 
 ```
 src/navigation/index.js          ← agregar el sidebar navigator
-src/components/Sidebar.js        ← CREAR este componente
+src/components/Sidebar.js        ← CREAR este componente  ← ES TUYO
 src/components/index.js          ← exportar Sidebar aquí
 ```
+
+> **Importante**: el Sidebar vive en `src/components/`, no dentro de ninguna carpeta de screen.
+> Los dashboards (Dev 3) tienen un slot reservado `{Sidebar && <Sidebar />}` esperándote.
+> Cuando termines tu componente, el navigator lo inyecta así:
+>
+> ```js
+> // En navigation/index.js — Dev 2 hace esto
+> import Sidebar from '../components/Sidebar';
+> <Stack.Screen name={ROUTES.DASHBOARD}>
+>   {(props) => <MedicalDashboard {...props} Sidebar={Sidebar} />}
+> </Stack.Screen>
+> ```
 
 **Diseño del Sidebar** (según prototipo):
 - Vertical, solo iconos (sin texto)
