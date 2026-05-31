@@ -1,31 +1,52 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 
 import { ROLES } from '../constants/roles';
 import { ROUTES } from '../constants/routes';
 import useAuthStore from '../store/authStore';
 
+import MainLayout from '../components/MainLayout';
+
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
-// Role dashboards (placeholders — each dev fills these in)
+// Role dashboards
 import SystemAdminDashboard from '../screens/dashboard/SystemAdminDashboard';
 import AdminDashboard from '../screens/dashboard/AdminDashboard';
 import TraineeDashboard from '../screens/dashboard/TraineeDashboard';
 import MedicalDashboard from '../screens/dashboard/MedicalDashboard';
 import ResearcherDashboard from '../screens/dashboard/ResearcherDashboard';
 
+// Temporary internal screens
+import PlaceholderScreen from '../screens/PlaceholderScreen';
+
 const Stack = createStackNavigator();
 
 function AuthStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animationEnabled: false,
+        cardStyleInterpolator: CardStyleInterpolators.forNoAnimation,
+      }}
+    >
       <Stack.Screen name={ROUTES.LOGIN} component={LoginScreen} />
       <Stack.Screen name={ROUTES.FORGOT_PASSWORD} component={ForgotPasswordScreen} />
     </Stack.Navigator>
   );
+}
+
+function withMainLayout(Component) {
+  return function WrappedScreen(props) {
+    return (
+      <MainLayout navigation={props.navigation} route={props.route}>
+        <Component {...props} />
+      </MainLayout>
+    );
+  };
 }
 
 function RoleNavigator({ role }) {
@@ -41,9 +62,20 @@ function RoleNavigator({ role }) {
 
   if (!Dashboard) return null;
 
+  const DashboardWithLayout = withMainLayout(Dashboard);
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name={ROUTES.DASHBOARD} component={Dashboard} />
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        animationEnabled: false,
+        cardStyleInterpolator: CardStyleInterpolators.forNoAnimation,
+      }}
+    >
+      <Stack.Screen name="Dashboard" component={DashboardWithLayout} />
+      <Stack.Screen name="Training" component={PlaceholderScreen} />
+      <Stack.Screen name="Schedule" component={PlaceholderScreen} />
+      <Stack.Screen name="Configuration" component={PlaceholderScreen} />
     </Stack.Navigator>
   );
 }
@@ -51,9 +83,24 @@ function RoleNavigator({ role }) {
 export default function RootNavigator() {
   const { isAuthenticated, role } = useAuthStore();
 
+  const testMode = true;
+  const testRole = ROLES.ADMIN;
+
   return (
     <NavigationContainer>
-      {isAuthenticated ? <RoleNavigator role={role} /> : <AuthStack />}
+      {testMode ? (
+        <RoleNavigator role={testRole} />
+      ) : isAuthenticated ? (
+        <RoleNavigator role={role} />
+      ) : (
+        <AuthStack />
+      )}
     </NavigationContainer>
   );
 }
+
+/* 
+cuando tengamos las pantallas reales, reemplazar los PlaceholderScreen por las pantallas correspondientes. Ejemplo:
+import ScheduleScreen from '../screens/sessions/ScheduleScreen';
+
+<Stack.Screen name="Schedule" component={ScheduleScreen} /> */
