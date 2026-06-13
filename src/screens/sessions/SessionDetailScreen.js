@@ -124,6 +124,7 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
                   {display.btnLabel}
                 </Text>
               </TouchableOpacity>
+
             </View>
 
           </View>
@@ -241,4 +242,5 @@ const styles = StyleSheet.create({
   actionBtnDisabled: { backgroundColor: '#E0E0E0' },
   actionBtnText: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
   actionBtnTextDisabled: { color: '#A8A8A8' },
+
 });
