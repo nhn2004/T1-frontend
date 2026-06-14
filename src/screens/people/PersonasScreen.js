@@ -444,11 +444,11 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 24,
+    columnGap: 24,
+    rowGap: 24,
   },
   card: {
     flexBasis: '47%',
-    flexGrow: 1,
     minWidth: 360,
     maxWidth: 520,
     backgroundColor: '#FFFFFF',
