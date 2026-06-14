@@ -1,3 +1,4 @@
+import useAuthStore from '../store/authStore'; // para el log out
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions, } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -33,6 +34,8 @@ const menuItems = [
 ];
 
 export default function Sidebar({ navigation, activeRoute }) {
+  const clearAuth = useAuthStore((state) => state.clearAuth); 
+
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 900;
 
@@ -125,15 +128,15 @@ export default function Sidebar({ navigation, activeRoute }) {
       <View style={styles.footer}>
         <View style={styles.divider} />
 
-        <Pressable style={styles.logoutButton}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="log-out-outline" size={30} color="#111" />
-          </View>
+      <Pressable style={styles.logoutButton} onPress={clearAuth}>
+        <View style={styles.iconContainer}>
+          <Ionicons name="log-out-outline" size={30} color="#111" />
+        </View>
 
-          <Animated.Text style={[styles.menuText, { opacity: textOpacity }]}>
-            {isOpen ? 'Log out' : ''}
-          </Animated.Text>
-        </Pressable>
+        <Animated.Text style={[styles.menuText, { opacity: textOpacity }]}>
+          {isOpen ? 'Log out' : ''}
+        </Animated.Text>
+      </Pressable>
       </View>
     </Animated.View>
   );
