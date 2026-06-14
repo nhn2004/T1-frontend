@@ -9,7 +9,7 @@ export default function ResearcherDashboard() {
   const { user } = useAuth();
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Researcher Dashboard</Text>
+      <Text style={styles.text}>ResearcherDashboard.js</Text>
       <Text style={styles.sub}>{user?.name}</Text>
     </View>
   );

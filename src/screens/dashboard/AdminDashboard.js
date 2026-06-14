@@ -9,7 +9,7 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Admin Dashboard</Text>
+      <Text style={styles.text}>AdminDashboard.js</Text>
       <Text style={styles.sub}>{user?.name}</Text>
     </View>
   );

@@ -13,7 +13,7 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
 // Role dashboards
-import SystemAdminDashboard from '../screens/dashboard/SystemAdminDashboard';
+import SystemDashboard from '../screens/dashboard/SystemDashboard';
 import AdminDashboard from '../screens/dashboard/AdminDashboard';
 import TraineeDashboard from '../screens/dashboard/TraineeDashboard';
 import MedicalDashboard from '../screens/dashboard/MedicalDashboard';
@@ -51,7 +51,7 @@ function withMainLayout(Component) {
 
 function RoleNavigator({ role }) {
   const dashboardMap = {
-    [ROLES.SYSTEM_ADMIN]: SystemAdminDashboard,
+    [ROLES.SYSTEM_ADMIN]: SystemDashboard,
     [ROLES.ADMIN]: AdminDashboard,
     [ROLES.FIREFIGHTER_TRAINEE]: TraineeDashboard,
     [ROLES.MEDICAL]: MedicalDashboard,
@@ -75,6 +75,9 @@ function RoleNavigator({ role }) {
       <Stack.Screen name="Dashboard" component={DashboardWithLayout} />
       <Stack.Screen name="Training" component={PlaceholderScreen} />
       <Stack.Screen name="Schedule" component={PlaceholderScreen} />
+      {role === ROLES.MEDICAL && (
+        <Stack.Screen name="Personas" component={PlaceholderScreen} />
+      )}
       <Stack.Screen name="Configuration" component={PlaceholderScreen} />
     </Stack.Navigator>
   );

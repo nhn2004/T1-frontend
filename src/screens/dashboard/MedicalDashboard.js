@@ -9,7 +9,7 @@ export default function MedicalDashboard() {
   const { user } = useAuth();
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Medical Dashboard</Text>
+      <Text style={styles.text}>MedicalDashboard.js</Text>
       <Text style={styles.sub}>{user?.name}</Text>
     </View>
   );

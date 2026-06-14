@@ -5,11 +5,11 @@ import { useAuth } from '../../hooks';
 
 // TODO Dev 3 (feature/dashboard): build System Admin dashboard
 // Shows: user management, audit log, global permissions panel
-export default function SystemAdminDashboard() {
+export default function SystemDashboard() {
   const { user } = useAuth();
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>System Admin Dashboard</Text>
+      <Text style={styles.text}>SystemDashboard.js</Text>
       <Text style={styles.sub}>{user?.name}</Text>
     </View>
   );
