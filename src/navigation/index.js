@@ -18,6 +18,8 @@ import AdminDashboard from '../screens/dashboard/AdminDashboard';
 import TraineeDashboard from '../screens/dashboard/TraineeDashboard';
 import MedicalDashboard from '../screens/dashboard/MedicalDashboard';
 import ResearcherDashboard from '../screens/dashboard/ResearcherDashboard';
+import PersonasScreen from '../screens/people/PersonasScreen';
+import PersonasSesionesScreen from '../screens/people/PersonasSesionesScreen';
 
 // Temporary internal screens
 import PlaceholderScreen from '../screens/PlaceholderScreen';
@@ -63,6 +65,8 @@ function RoleNavigator({ role }) {
   if (!Dashboard) return null;
 
   const DashboardWithLayout = withMainLayout(Dashboard);
+  const PersonasWithLayout = withMainLayout(PersonasScreen);
+  const PersonasSesionesWithLayout = withMainLayout(PersonasSesionesScreen);
 
   return (
     <Stack.Navigator
@@ -76,7 +80,10 @@ function RoleNavigator({ role }) {
       <Stack.Screen name="Training" component={PlaceholderScreen} />
       <Stack.Screen name="Schedule" component={PlaceholderScreen} />
       {role === ROLES.MEDICAL && (
-        <Stack.Screen name="Personas" component={PlaceholderScreen} />
+        <>
+          <Stack.Screen name="Personas" component={PersonasWithLayout} />
+          <Stack.Screen name="PersonasSesiones" component={PersonasSesionesWithLayout} />
+        </>
       )}
       <Stack.Screen name="Configuration" component={PlaceholderScreen} />
     </Stack.Navigator>
