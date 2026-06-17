@@ -29,6 +29,7 @@ import SessionsScreen                from '../screens/sessions/SessionsScreen';
 import SessionDetailScreen           from '../screens/sessions/SessionDetailScreen';
 import ResultadosIndividualesScreen  from '../screens/resultados/ResultadosIndividualesScreen';
 import EvaluacionBomberoScreen       from '../screens/resultados/EvaluacionBomberoScreen';
+import ResultadosBomberoScreen       from '../screens/resultados/ResultadosBomberoScreen';
 
 const Stack = createStackNavigator();
 
@@ -87,6 +88,7 @@ function RoleNavigator({ role }) {
       <Stack.Screen name="SessionDetail"          component={withMainLayout(SessionDetailScreen)} />
       <Stack.Screen name="ResultadosIndividuales" component={ResultadosIndividualesScreen} />
       <Stack.Screen name="EvaluacionBombero"     component={EvaluacionBomberoScreen} />
+      <Stack.Screen name="ResultadosBombero"     component={ResultadosBomberoScreen} />
       <Stack.Screen name="Schedule" component={PlaceholderScreen} />
       {role === ROLES.MEDICAL && (
         <>

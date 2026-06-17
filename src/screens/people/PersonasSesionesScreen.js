@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import ResultadosGeneralesView from '../resultados/ResultadosGeneralesView';
 
 const SESSION_PEOPLE = [
   {
@@ -136,6 +137,7 @@ export default function PersonasSesionesScreen({ navigation }) {
   const [query, setQuery] = React.useState('');
   const [selectedStatus, setSelectedStatus] = React.useState('Todos');
   const [isStatusMenuOpen, setIsStatusMenuOpen] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState('bomberos'); // 'bomberos' | 'generales'
   const isCompact = width < 920;
   const filteredPeople = SESSION_PEOPLE.filter((person) => {
     const matchesName = person.name
@@ -171,63 +173,87 @@ export default function PersonasSesionesScreen({ navigation }) {
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator
       >
-        <Text style={styles.title}>Bomberos en esta Capacitacion</Text>
-
-        <View style={styles.filtersRow}>
-          <View style={styles.searchBox}>
-            <Ionicons name="search" size={18} color="#111111" />
-            <TextInput
-              style={styles.searchInput}
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Buscar por nombre..."
-              placeholderTextColor="#5C6470"
-            />
-          </View>
-
-          <View style={styles.statusFilter}>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>
+            {activeTab === 'bomberos' ? 'Bomberos en esta Capacitación' : 'Resultados Generales'}
+          </Text>
+          
+          {/* Toggle Switch */}
+          <View style={styles.toggleContainer}>
             <Pressable
-              style={styles.statusFilterButton}
-              onPress={() => setIsStatusMenuOpen((value) => !value)}
+              style={[styles.toggleButton, activeTab === 'bomberos' && styles.toggleButtonActive]}
+              onPress={() => setActiveTab('bomberos')}
             >
-              <Text style={styles.statusFilterText}>{selectedStatus}</Text>
-              <Ionicons
-                name={isStatusMenuOpen ? 'chevron-up' : 'chevron-down'}
-                size={18}
-                color="#111111"
-              />
+              <Ionicons name="people-outline" size={16} color={activeTab === 'bomberos' ? '#111' : '#697282'} />
+              <Text style={[styles.toggleText, activeTab === 'bomberos' && styles.toggleTextActive]}>Bomberos</Text>
             </Pressable>
-
-            {isStatusMenuOpen && (
-              <View style={styles.statusMenu}>
-                {STATUS_FILTERS.map((status) => (
-                  <Pressable
-                    key={status}
-                    style={[
-                      styles.statusMenuItem,
-                      selectedStatus === status && styles.statusMenuItemActive,
-                    ]}
-                    onPress={() => {
-                      setSelectedStatus(status);
-                      setIsStatusMenuOpen(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.statusMenuItemText,
-                        selectedStatus === status && styles.statusMenuItemTextActive,
-                      ]}
-                    >
-                      {status}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
+            <Pressable
+              style={[styles.toggleButton, activeTab === 'generales' && styles.toggleButtonActive, { backgroundColor: activeTab === 'generales' ? '#E85D27' : 'transparent' }]}
+              onPress={() => setActiveTab('generales')}
+            >
+              <Ionicons name="bar-chart-outline" size={16} color={activeTab === 'generales' ? '#fff' : '#697282'} />
+              <Text style={[styles.toggleText, activeTab === 'generales' && { color: '#fff' }]}>Resultados Generales</Text>
+            </Pressable>
           </View>
         </View>
 
-        <View style={styles.grid}>
+        {activeTab === 'bomberos' ? (
+          <>
+            <View style={styles.filtersRow}>
+              <View style={styles.searchBox}>
+                <Ionicons name="search" size={18} color="#111111" />
+                <TextInput
+                  style={styles.searchInput}
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Buscar por nombre..."
+                  placeholderTextColor="#5C6470"
+                />
+              </View>
+
+              <View style={styles.statusFilter}>
+                <Pressable
+                  style={styles.statusFilterButton}
+                  onPress={() => setIsStatusMenuOpen((value) => !value)}
+                >
+                  <Text style={styles.statusFilterText}>{selectedStatus}</Text>
+                  <Ionicons
+                    name={isStatusMenuOpen ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color="#111111"
+                  />
+                </Pressable>
+
+                {isStatusMenuOpen && (
+                  <View style={styles.statusMenu}>
+                    {STATUS_FILTERS.map((status) => (
+                      <Pressable
+                        key={status}
+                        style={[
+                          styles.statusMenuItem,
+                          selectedStatus === status && styles.statusMenuItemActive,
+                        ]}
+                        onPress={() => {
+                          setSelectedStatus(status);
+                          setIsStatusMenuOpen(false);
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.statusMenuItemText,
+                            selectedStatus === status && styles.statusMenuItemTextActive,
+                          ]}
+                        >
+                          {status}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.grid}>
           {filteredPeople.map((person) => {
             const statusStyle = STATUS_STYLES[person.status];
             const hasResults = person.status === 'COMPLETADO';
@@ -283,7 +309,7 @@ export default function PersonasSesionesScreen({ navigation }) {
                       styles.resultsButton,
                       !hasResults && styles.resultsButtonDisabled,
                     ]}
-                    onPress={hasResults ? emptyLink : undefined}
+                    onPress={hasResults ? () => navigation.navigate('ResultadosBombero', { bomberoId: person.id, bomberoName: person.name }) : undefined}
                     disabled={!hasResults}
                   >
                     <Ionicons
@@ -305,6 +331,10 @@ export default function PersonasSesionesScreen({ navigation }) {
             );
           })}
         </View>
+          </>
+        ) : (
+          <ResultadosGeneralesView />
+        )}
       </ScrollView>
     </View>
   );
@@ -368,11 +398,47 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     paddingBottom: 32,
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   title: {
     color: '#2C323A',
     fontSize: 21,
     fontWeight: '500',
-    marginBottom: 12,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 4,
+    gap: 4,
+  },
+  toggleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  toggleButtonActive: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  toggleText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#697282',
+  },
+  toggleTextActive: {
+    color: '#111',
   },
   filtersRow: {
     flexDirection: 'row',
