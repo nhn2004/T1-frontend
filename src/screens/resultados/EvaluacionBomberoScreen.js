@@ -53,7 +53,8 @@ function verificarAptitud(form) {
 }
 
 // ── Pantalla principal ────────────────────────────────────────────────────────
-export default function EvaluacionBomberoScreen({ navigation }) {
+export default function EvaluacionBomberoScreen({ navigation, route }) {
+  const bomberoName = route?.params?.bomberoName ?? 'Bombero';
   const [stage,      setStage]      = useState(S.INITIAL);
   const [preForm,    setPreForm]    = useState(EMPTY_VITALS);
   const [t2Form,     setT2Form]     = useState(EMPTY_VITALS);
@@ -78,10 +79,12 @@ export default function EvaluacionBomberoScreen({ navigation }) {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>JR</Text>
+            <Text style={styles.avatarText}>
+              {bomberoName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
+            </Text>
           </View>
           <View>
-            <Text style={styles.bomberName}>Juan Rodríguez</Text>
+            <Text style={styles.bomberName}>{bomberoName}</Text>
             <Text style={styles.bomberSub}>Bombero voluntario · Casa de Fuego</Text>
           </View>
         </View>

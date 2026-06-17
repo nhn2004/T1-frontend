@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -20,8 +20,8 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
 
   const handleAction = useCallback(() => {
     if (display.btnDisabled) return;
-    Alert.alert(display.btnLabel, `Acción para sesión ${session.id}`);
-  }, [display, session.id]);
+    navigation?.navigate('PersonasSesiones', { sessionId: session.id });
+  }, [display, session.id, navigation]);
 
   const handleBack = useCallback(() => {
     if (onBack) {

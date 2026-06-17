@@ -159,7 +159,7 @@ export default function PersonasSesionesScreen({ navigation }) {
 
         <Pressable
           style={styles.backButton}
-          onPress={() => navigation.navigate('Training')}
+          onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back" size={18} color="#111111" />
           <Text style={styles.backButtonText}>Volver a Capacitacion</Text>
@@ -233,12 +233,10 @@ export default function PersonasSesionesScreen({ navigation }) {
             const hasResults = person.status === 'COMPLETADO';
 
             return (
-              <View
+              <Pressable
                 key={person.id}
-                style={[
-                  styles.card,
-                  isCompact && styles.cardCompact,
-                ]}
+                style={[styles.card, isCompact && styles.cardCompact]}
+                onPress={() => navigation.navigate('EvaluacionBombero', { bomberoId: person.id, bomberoName: person.name })}
               >
                 <View style={styles.photoBox} accessibilityLabel={person.photoUrl}>
                   <Image
@@ -303,7 +301,7 @@ export default function PersonasSesionesScreen({ navigation }) {
                     </Text>
                   </Pressable>
                 </View>
-              </View>
+              </Pressable>
             );
           })}
         </View>

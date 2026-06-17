@@ -296,13 +296,6 @@ export default function PersonasScreen({ navigation }) {
                   </View>
                 </View>
 
-                <Pressable
-                  style={styles.sessionsButton}
-                  onPress={() => navigation.navigate('PersonasSesiones')}
-                >
-                  <Ionicons name="bar-chart-outline" size={14} color="#FFFFFF" />
-                  <Text style={styles.sessionsButtonText}>Ver Sesiones</Text>
-                </Pressable>
               </View>
             );
           })}
@@ -565,20 +558,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '800',
-  },
-  sessionsButton: {
-    height: 34,
-    borderRadius: 8,
-    backgroundColor: '#F15A00',
-    marginTop: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  sessionsButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '500',
   },
 });
