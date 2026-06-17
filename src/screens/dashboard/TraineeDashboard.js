@@ -9,7 +9,7 @@ export default function TraineeDashboard() {
   const { user } = useAuth();
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Trainee Dashboard</Text>
+      <Text style={styles.text}>TraineeDashboard.js</Text>
       <Text style={styles.sub}>{user?.name}</Text>
     </View>
   );

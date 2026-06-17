@@ -1,11 +1,13 @@
+import useAuthStore from '../store/authStore'; // para el log out
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions, } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { ROLES } from '../constants/roles';
 
 const COLLAPSED_WIDTH = 88;
 const EXPANDED_WIDTH = 280;
 
-const menuItems = [
+const baseMenuItems = [
   {
     label: 'Dashboard',
     route: 'Dashboard',
@@ -32,7 +34,25 @@ const menuItems = [
   },
 ];
 
+const medicalMenuItem = {
+  label: 'Personas',
+  route: 'Personas',
+  iconLibrary: 'Ionicons',
+  iconName: 'people-outline',
+};
+
 export default function Sidebar({ navigation, activeRoute }) {
+  const clearAuth = useAuthStore((state) => state.clearAuth); 
+  const role = useAuthStore((state) => state.role);
+  const menuItems =
+    role === ROLES.MEDICAL
+      ? [
+          ...baseMenuItems.slice(0, -1),
+          medicalMenuItem,
+          baseMenuItems[baseMenuItems.length - 1],
+        ]
+      : baseMenuItems;
+
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 900;
 
@@ -125,15 +145,15 @@ export default function Sidebar({ navigation, activeRoute }) {
       <View style={styles.footer}>
         <View style={styles.divider} />
 
-        <Pressable style={styles.logoutButton}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="log-out-outline" size={30} color="#111" />
-          </View>
+      <Pressable style={styles.logoutButton} onPress={clearAuth}>
+        <View style={styles.iconContainer}>
+          <Ionicons name="log-out-outline" size={30} color="#111" />
+        </View>
 
-          <Animated.Text style={[styles.menuText, { opacity: textOpacity }]}>
-            {isOpen ? 'Log out' : ''}
-          </Animated.Text>
-        </Pressable>
+        <Animated.Text style={[styles.menuText, { opacity: textOpacity }]}>
+          {isOpen ? 'Log out' : ''}
+        </Animated.Text>
+      </Pressable>
       </View>
     </Animated.View>
   );
