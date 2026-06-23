@@ -1,42 +1,61 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import BodyDiagram2D from './components/BodyDiagram2D';
+import { getStatus } from './utils/vitalThresholds';
 
-// Mock data
-const MOCK_RESULTS = {
+// Mock data — status is derived from value via getStatus() (see
+// utils/vitalThresholds.js), so changing a value to test an alert is enough;
+// there's no separate "status" field to keep in sync by hand.
+const RAW_RESULTS = {
   'firefighter-002': {
     name: 'Juan Pérez',
     sessionName: 'Chequeo Rutinario',
     sessionDate: '2 Nov 2025 - 09:00 AM',
     metrics: {
-      frecuenciaCardiaca: { value: 82, status: 'Normal', color: '#E85D27', icon: 'heart-outline', unit: 'bpm', progress: 0.3 },
-      nivelOxigeno: { value: 98, status: 'Normal', color: '#27B8A1', icon: 'water-outline', unit: '%', progress: 0.9 },
-      frecuenciaRespiratoria: { value: 18, status: 'Normal', color: '#F18C00', icon: 'leaf-outline', unit: 'rpm', progress: 0.2 },
-      nivelCO: { value: 0.2, status: 'Seguro', color: '#D83B35', icon: 'cloud-outline', unit: 'CO%', progress: 0.1 },
-      temperatura: { value: 36.8, status: 'Normal', color: '#E85D27', icon: 'thermometer-outline', unit: '°C', progress: 0.4 },
+      frecuenciaCardiaca: { value: 145, color: '#E85D27', icon: 'heart-outline', unit: 'bpm', progress: 0.7 },
+      nivelOxigeno: { value: 85, color: '#27B8A1', icon: 'water-outline', unit: '%', progress: 0.9 },
+      frecuenciaRespiratoria: { value: 30, color: '#F18C00', icon: 'leaf-outline', unit: 'rpm', progress: 0.2 },
+      nivelCO: { value: 2.5, color: '#D83B35', icon: 'cloud-outline', unit: 'CO%', progress: 0.1 },
+      temperatura: { value: 40, color: '#E85D27', icon: 'thermometer-outline', unit: '°C', progress: 0.4 },
     },
-    image: require('../../assets/people/bombero.png')
   },
   'default': {
     name: 'Maria Espinoza',
     sessionName: 'Chequeo Rutinario',
     sessionDate: '2 Nov 2025 - 09:00 AM',
     metrics: {
-      frecuenciaCardiaca: { value: 78, status: 'Normal', color: '#E85D27', icon: 'heart-outline', unit: 'bpm', progress: 0.25 },
-      nivelOxigeno: { value: 99, status: 'Normal', color: '#27B8A1', icon: 'water-outline', unit: '%', progress: 0.95 },
-      frecuenciaRespiratoria: { value: 16, status: 'Normal', color: '#F18C00', icon: 'leaf-outline', unit: 'rpm', progress: 0.15 },
-      nivelCO: { value: 0.1, status: 'Seguro', color: '#D83B35', icon: 'cloud-outline', unit: 'CO%', progress: 0.05 },
-      temperatura: { value: 36.5, status: 'Normal', color: '#E85D27', icon: 'thermometer-outline', unit: '°C', progress: 0.35 },
+      frecuenciaCardiaca: { value: 78, color: '#E85D27', icon: 'heart-outline', unit: 'bpm', progress: 0.25 },
+      nivelOxigeno: { value: 99, color: '#27B8A1', icon: 'water-outline', unit: '%', progress: 0.95 },
+      frecuenciaRespiratoria: { value: 16, color: '#F18C00', icon: 'leaf-outline', unit: 'rpm', progress: 0.15 },
+      nivelCO: { value: 0.1, color: '#D83B35', icon: 'cloud-outline', unit: 'CO%', progress: 0.05 },
+      temperatura: { value: 36.5, color: '#E85D27', icon: 'thermometer-outline', unit: '°C', progress: 0.35 },
     },
-    image: require('../../assets/people/bombero.png')
   }
 };
+
+function withComputedStatus(result) {
+  const metrics = Object.fromEntries(
+    Object.entries(result.metrics).map(([key, metric]) => [
+      key,
+      { ...metric, status: getStatus(key, metric.value) },
+    ])
+  );
+  return { ...result, metrics };
+}
+
+const MOCK_RESULTS = Object.fromEntries(
+  Object.entries(RAW_RESULTS).map(([id, result]) => [id, withComputedStatus(result)])
+);
 
 export default function ResultadosBomberoScreen({ route, navigation }) {
   const { bomberoId, bomberoName } = route.params || {};
   const data = MOCK_RESULTS[bomberoId] || MOCK_RESULTS['default'];
   const nameToDisplay = bomberoName || data.name;
+  const [activeMetric, setActiveMetric] = useState(null);
+  const { width } = useWindowDimensions();
+  const isCompact = width < 900;
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -70,35 +89,58 @@ export default function ResultadosBomberoScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.contentRow}>
-          {/* Left Column: Human Body Mock */}
-          <View style={styles.humanBodyContainer}>
-            {/* Since we don't have the anatomical image, we use a placeholder or the provided image */}
-            <View style={styles.humanBodyPlaceholder}>
-               <Ionicons name="body-outline" size={200} color="#CBD5E1" />
-               <Text style={styles.humanBodyText}>Modelo Fisiológico</Text>
-            </View>
+        <View style={[styles.contentRow, isCompact && styles.contentRowCompact]}>
+          {/* Left Column: Clinical Body Diagram */}
+          <View style={[styles.humanBodyContainer, isCompact && styles.humanBodyContainerCompact]}>
+            <BodyDiagram2D
+              metrics={data.metrics}
+              activeMetric={activeMetric}
+              onSelectMetric={setActiveMetric}
+            />
+            {!activeMetric && (
+              <Text style={styles.humanBodyHint}>Toca una parte del cuerpo para ver su métrica</Text>
+            )}
           </View>
 
           {/* Right Column: Metrics Grid */}
           <View style={styles.metricsContainer}>
             <Text style={styles.metricsTitle}>Métricas Detalladas</Text>
             <View style={styles.metricsGrid}>
-              
-              {/* Heart Rate */}
-              <MetricCard metric={data.metrics.frecuenciaCardiaca} title="Frecuencia Cardíaca" />
-              
-              {/* Oxygen */}
-              <MetricCard metric={data.metrics.nivelOxigeno} title="Nivel de Oxígeno SpO₂" />
-              
-              {/* Respiratory Rate */}
-              <MetricCard metric={data.metrics.frecuenciaRespiratoria} title="Frecuencia Respiratoria" />
-              
-              {/* CO Level */}
-              <MetricCard metric={data.metrics.nivelCO} title="Nivel de CO" />
-              
-              {/* Temperature */}
-              <MetricCard metric={data.metrics.temperatura} title="Temperatura Corporal" />
+
+              <MetricCard
+                metricKey="frecuenciaCardiaca"
+                activeMetric={activeMetric}
+                metric={data.metrics.frecuenciaCardiaca}
+                title="Frecuencia Cardíaca"
+              />
+
+              <MetricCard
+                metricKey="nivelOxigeno"
+                activeMetric={activeMetric}
+                metric={data.metrics.nivelOxigeno}
+                title="Nivel de Oxígeno SpO₂"
+              />
+
+              <MetricCard
+                metricKey="frecuenciaRespiratoria"
+                activeMetric={activeMetric}
+                metric={data.metrics.frecuenciaRespiratoria}
+                title="Frecuencia Respiratoria"
+              />
+
+              <MetricCard
+                metricKey="nivelCO"
+                activeMetric={activeMetric}
+                metric={data.metrics.nivelCO}
+                title="Nivel de CO"
+              />
+
+              <MetricCard
+                metricKey="temperatura"
+                activeMetric={activeMetric}
+                metric={data.metrics.temperatura}
+                title="Temperatura Corporal"
+              />
 
             </View>
           </View>
@@ -108,9 +150,11 @@ export default function ResultadosBomberoScreen({ route, navigation }) {
   );
 }
 
-function MetricCard({ metric, title }) {
+function MetricCard({ metric, title, metricKey, activeMetric }) {
+  const isActive = metricKey === activeMetric;
+
   return (
-    <View style={styles.metricCard}>
+    <View style={[styles.metricCard, isActive && styles.metricCardActive]}>
       <View style={styles.metricHeader}>
         <View style={styles.metricTitleRow}>
           <Ionicons name={metric.icon} size={18} color={metric.color} />
@@ -186,22 +230,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 40,
   },
+  contentRowCompact: {
+    flexDirection: 'column',
+  },
   humanBodyContainer: {
     width: 300,
     alignItems: 'center',
   },
-  humanBodyPlaceholder: {
-    width: 250,
-    height: 500,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+  humanBodyContainerCompact: {
+    width: '100%',
+    maxWidth: 300,
+    alignSelf: 'center',
   },
-  humanBodyText: {
-    marginTop: 20,
+  humanBodyHint: {
+    marginTop: 12,
     color: '#64748B',
-    fontWeight: '500',
+    fontSize: 12,
+    textAlign: 'center',
   },
   
   metricsContainer: {
@@ -223,12 +268,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 20,
+    borderWidth: 2,
+    borderColor: 'transparent',
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 10,
     elevation: 2,
     marginBottom: 8,
+  },
+  metricCardActive: {
+    borderColor: '#F15A00',
+    shadowOpacity: 0.12,
   },
   metricHeader: {
     flexDirection: 'row',

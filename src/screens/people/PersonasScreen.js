@@ -238,7 +238,11 @@ export default function PersonasScreen({ navigation }) {
         <View style={styles.grid}>
           {filteredStaff.map((person) => {
             return (
-              <View key={person.id} style={[styles.card, isCompact && styles.cardCompact]}>
+              <Pressable
+                key={person.id}
+                style={[styles.card, isCompact && styles.cardCompact]}
+                onPress={() => navigation.navigate('PersonasSesiones', { personId: person.id, personName: person.name })}
+              >
                 <View style={styles.personRow}>
                   <View
                     style={styles.avatarPlaceholder}
@@ -296,7 +300,7 @@ export default function PersonasScreen({ navigation }) {
                   </View>
                 </View>
 
-              </View>
+              </Pressable>
             );
           })}
         </View>
