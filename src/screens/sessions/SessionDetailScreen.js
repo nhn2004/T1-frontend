@@ -7,6 +7,9 @@ import { COLORS } from '../../constants';
 import AgendaTimeline from './components/AgendaTimeline';
 import TrainingCenterSidebar from './components/TrainingCenterSidebar';
 
+import { useAuth } from '../../hooks';
+import { ROLES } from '../../constants';
+
 import {
   SESSIONS_DETAIL_MAP,
   STATUS_DISPLAY,
@@ -17,6 +20,13 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
   const id = sessionId ?? route?.params?.id ?? 's1';
   const session = SESSIONS_DETAIL_MAP[id] ?? SESSIONS_DETAIL_MAP['s1'];
   const display = STATUS_DISPLAY[session.status] ?? STATUS_DISPLAY.PLANNED;
+
+  const { role } = useAuth();
+  const isTrainee = role === ROLES.FIREFIGHTER_TRAINEE;
+  let btnLabel = display.btnLabel;
+  if (session.status === 'COMPLETED') {
+    btnLabel = isTrainee ? 'Ver Resultados' : 'Ver Reportes';
+  }
 
   const handleAction = useCallback(() => {
     if (display.btnDisabled) return;
@@ -121,7 +131,7 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
                   styles.actionBtnText,
                   display.btnDisabled && styles.actionBtnTextDisabled,
                 ]}>
-                  {display.btnLabel}
+                  {btnLabel}
                 </Text>
               </TouchableOpacity>
 
