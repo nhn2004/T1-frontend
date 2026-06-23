@@ -15,6 +15,7 @@ const DEMO_USERS = [
   { token: 'trainee-001',  password: '1234', role: 'FIREFIGHTER_TRAINEE', name: 'Carlos Ruiz'    },
   { token: 'research-001', password: '1234', role: 'RESEARCHER',          name: 'Ana Torres'     },
   { token: 'sysadmin-001', password: '1234', role: 'SYSTEM_ADMIN',        name: 'Admin Sistema'  },
+  { token: 'capacitator-001', password: '1234', role: 'CAPACITATOR',      name: 'Capacitador'    },
 ];
 
 export default function LoginScreen({ navigation }) {

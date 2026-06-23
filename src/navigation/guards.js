@@ -8,9 +8,9 @@ export function hasRole(userRole, allowedRoles) {
 // Role permission maps — extend as features are built
 export const PERMISSIONS = {
   // Session management
-  createSession: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
-  manageInvitations: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
-  viewAllSessions: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.MEDICAL, ROLES.RESEARCHER],
+  createSession: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR],
+  manageInvitations: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR],
+  viewAllSessions: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.MEDICAL, ROLES.RESEARCHER],
   viewOwnSessions: [ROLES.FIREFIGHTER_TRAINEE],
 
   // Medical records
@@ -24,7 +24,7 @@ export const PERMISSIONS = {
 
   // Research / exports
   exportAnonymizedData: [ROLES.RESEARCHER, ROLES.SYSTEM_ADMIN],
-  generateReports: [ROLES.RESEARCHER, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
+  generateReports: [ROLES.RESEARCHER, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR],
 };
 
 export function can(userRole, permission) {
