@@ -127,39 +127,41 @@ export const ALL_SESSIONS = [
 // ── Filter helpers ─────────────────────────────────────────────────────────────
 
 export const FILTER_KEYS = {
-  ALL:       'ALL',
-  PENDING:   'PENDING',
-  COMPLETED: 'COMPLETED',
-  CANCELLED: 'CANCELLED',
+  ALL:         'ALL',
+  IN_PROGRESS: 'IN_PROGRESS',
+  PENDING:     'PENDING',
+  COMPLETED:   'COMPLETED',
+  CANCELLED:   'CANCELLED',
 };
 
 export const FILTERS = [
-  { key: FILTER_KEYS.ALL,       label: 'Todas'      },
-  { key: FILTER_KEYS.PENDING,   label: 'Pendientes' },
-  { key: FILTER_KEYS.COMPLETED, label: 'Realizadas' },
-  { key: FILTER_KEYS.CANCELLED, label: 'Canceladas' },
+  { key: FILTER_KEYS.ALL,         label: 'Todas',     icon: null,           activeColor: '#E85D27' },
+  { key: FILTER_KEYS.IN_PROGRESS, label: 'En Curso',  icon: 'play',         activeColor: '#1E88E5' },
+  { key: FILTER_KEYS.PENDING,     label: 'Pendiente', icon: 'time-outline', activeColor: '#8F949B' },
+  { key: FILTER_KEYS.COMPLETED,   label: 'Realizadas',icon: 'checkmark',    activeColor: '#08C65A' },
+  { key: FILTER_KEYS.CANCELLED,   label: 'Canceladas',icon: 'close',        activeColor: '#D83B35' },
 ];
+
+const STATUS_SORT = { ACTIVE: 0, PLANNED: 1, COMPLETED: 2, CANCELLED: 3 };
 
 export function applyFilter(sessions, filterKey) {
   switch (filterKey) {
-    case FILTER_KEYS.PENDING:
-      return sessions.filter(
-        (s) => s.status === SESSION_STATUS.PLANNED || s.status === SESSION_STATUS.ACTIVE
-      );
-    case FILTER_KEYS.COMPLETED:
-      return sessions.filter((s) => s.status === SESSION_STATUS.COMPLETED);
-    case FILTER_KEYS.CANCELLED:
-      return sessions.filter((s) => s.status === SESSION_STATUS.CANCELLED);
-    default:
-      return sessions;
+    case FILTER_KEYS.IN_PROGRESS: return sessions.filter(s => s.status === SESSION_STATUS.ACTIVE);
+    case FILTER_KEYS.PENDING:     return sessions.filter(s => s.status === SESSION_STATUS.PLANNED);
+    case FILTER_KEYS.COMPLETED:   return sessions.filter(s => s.status === SESSION_STATUS.COMPLETED);
+    case FILTER_KEYS.CANCELLED:   return sessions.filter(s => s.status === SESSION_STATUS.CANCELLED);
+    default: return [...sessions].sort((a, b) =>
+      (STATUS_SORT[a.status] ?? 99) - (STATUS_SORT[b.status] ?? 99)
+    );
   }
 }
 
 export function filterTitle(filterKey) {
   switch (filterKey) {
-    case FILTER_KEYS.PENDING:   return 'Capacitaciones Pendientes';
-    case FILTER_KEYS.COMPLETED: return 'Capacitaciones Realizadas';
-    case FILTER_KEYS.CANCELLED: return 'Capacitaciones Canceladas';
-    default:                    return 'Todas las Capacitaciones';
+    case FILTER_KEYS.IN_PROGRESS: return 'Capacitaciones En Curso';
+    case FILTER_KEYS.PENDING:     return 'Capacitaciones Pendientes';
+    case FILTER_KEYS.COMPLETED:   return 'Capacitaciones Realizadas';
+    case FILTER_KEYS.CANCELLED:   return 'Capacitaciones Canceladas';
+    default:                      return 'Todas las Capacitaciones';
   }
 }

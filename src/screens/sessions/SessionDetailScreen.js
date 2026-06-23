@@ -20,7 +20,7 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
 
   const handleAction = useCallback(() => {
     if (display.btnDisabled) return;
-    navigation?.navigate('PersonasSesiones', { sessionId: session.id });
+    navigation?.navigate('PersonasSesiones', { sessionId: session.id, sessionName: session.title });
   }, [display, session.id, navigation]);
 
   const handleBack = useCallback(() => {
@@ -161,7 +161,7 @@ function StatItem({ icon, label, value }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, flexDirection: 'row', backgroundColor: '#F4F6F8' },
-  content: { flex: 1, padding: 14, paddingLeft: 74, gap: 12 },
+  content: { flex: 1, padding: 14, gap: 12 },
 
   // Header
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

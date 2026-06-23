@@ -5,32 +5,30 @@ import { SESSION_STATUS } from '../__mocks__/sessionsData';
 
 const STATUS_CONFIG = {
   [SESSION_STATUS.PLANNED]: {
-    badges:      [{ label: 'Pendiente',   bg: '#F57C00' }],
-    btnBg:       '#E85D27',
-    btnOpacity:  1,
+    badge: { label: 'Pendiente', bg: '#8F949B', icon: 'time-outline' },
+    btnBg: '#E85D27',
+    btnOpacity: 1,
   },
   [SESSION_STATUS.ACTIVE]: {
-    badges:      [
-      { label: 'Pendiente',   bg: '#F57C00' },
-      { label: 'En Progreso', bg: '#2E7D32' },
-    ],
-    btnBg:       '#E85D27',
-    btnOpacity:  1,
+    badge: { label: 'En Curso', bg: '#1E88E5', icon: 'play' },
+    btnBg: '#E85D27',
+    btnOpacity: 1,
   },
   [SESSION_STATUS.COMPLETED]: {
-    badges:      [{ label: 'Realizado',  bg: '#2E7D32' }],
-    btnBg:       '#2E7D32',
-    btnOpacity:  1,
+    badge: { label: 'Realizado', bg: '#08C65A', icon: 'checkmark' },
+    btnBg: '#08C65A',
+    btnOpacity: 1,
   },
   [SESSION_STATUS.CANCELLED]: {
-    badges:      [{ label: 'Cancelado',  bg: '#9E9E9E' }],
-    btnBg:       '#9E9E9E',
-    btnOpacity:  0.6,
+    badge: { label: 'Cancelado', bg: '#D83B35', icon: 'close' },
+    btnBg: '#9E9E9E',
+    btnOpacity: 0.6,
   },
 };
 
 export default function SessionCard({ session, onViewDetails, cardWidth, cardHeight }) {
   const cfg = STATUS_CONFIG[session.status] ?? STATUS_CONFIG[SESSION_STATUS.PLANNED];
+  const { badge } = cfg;
 
   return (
     <View style={[
@@ -45,23 +43,22 @@ export default function SessionCard({ session, onViewDetails, cardWidth, cardHei
           <Text style={styles.title} numberOfLines={1}>{session.title}</Text>
           <Text style={styles.applicants}>{session.applicants} Aspirantes</Text>
         </View>
-        <View style={styles.badgeStack}>
-          {cfg.badges.map((b) => (
-            <View key={b.label} style={[styles.badge, { backgroundColor: b.bg }]}>
-              <Text style={styles.badgeText}>{b.label}</Text>
-            </View>
-          ))}
+
+        {/* Badge estilo bombero */}
+        <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+          <Ionicons name={badge.icon} size={10} color="#FFFFFF" />
+          <Text style={styles.badgeText}>{badge.label}</Text>
         </View>
       </View>
 
-      {/* Details — flex:1 para que empujen el botón hacia abajo */}
+      {/* Details */}
       <View style={styles.details}>
         <DetailRow icon="calendar-outline"  label={session.date} />
         <DetailRow icon="time-outline"      label={session.time} />
         <DetailRow icon="clipboard-outline" label={session.type} />
       </View>
 
-      {/* Botón siempre al fondo de la card */}
+      {/* Botón */}
       <TouchableOpacity
         style={[styles.btn, { backgroundColor: cfg.btnBg, opacity: cfg.btnOpacity }]}
         onPress={() => onViewDetails(session.id)}
@@ -86,19 +83,19 @@ function DetailRow({ icon, label }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFDF9',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#F57C00',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
     paddingTop: '1%',
     paddingHorizontal: '3%',
     paddingBottom: '4%',
     gap: 4,
-    shadowColor: '#F57C00',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
     overflow: 'hidden',
   },
 
@@ -107,7 +104,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  titleBlock: { flex: 1, marginRight: 4 },
+  titleBlock: { flex: 1, marginRight: 6 },
   title: {
     fontSize: 13,
     fontWeight: '700',
@@ -115,18 +112,17 @@ const styles = StyleSheet.create({
   },
   applicants: {
     fontSize: 11,
-    color: '#F57C00',
-    fontWeight: '600',
+    color: '#9AA3B0',
+    fontWeight: '500',
     marginTop: 2,
   },
-  badgeStack: {
-    gap: 3,
-    alignItems: 'flex-end',
-  },
   badge: {
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   badgeText: {
     color: '#fff',
@@ -136,7 +132,7 @@ const styles = StyleSheet.create({
 
   details: {
     borderTopWidth: 1,
-    borderTopColor: '#FFD6A7',
+    borderTopColor: '#F0F0F0',
     paddingTop: '1.5%',
     gap: 3,
   },

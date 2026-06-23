@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SessionCard from './SessionCard';
@@ -12,6 +12,10 @@ export default function CarouselGrid({ sessions, onViewDetails }) {
   const perPage         = COLS * ROWS;
   const totalPages      = Math.ceil(sessions.length / perPage);
   const [page, setPage] = useState(0);
+
+  // Reset to page 0 whenever the session list changes (filter/search change)
+  const firstId = sessions[0]?.id;
+  React.useEffect(() => { setPage(0); }, [firstId, sessions.length]);
 
   const hasPrev    = page > 0;
   const hasNext    = page < totalPages - 1;
@@ -62,7 +66,7 @@ export default function CarouselGrid({ sessions, onViewDetails }) {
           {/* Grid */}
           <Animated.View style={[styles.grid, { gap: rowGap, opacity: fadeAnim }]}>
             {gridRows.map((rowCards, ri) => (
-              <View key={ri} style={[styles.gridRow, { gap: colGap }]}>
+              <View key={ri} style={[styles.gridRow, { gap: colGap, height: cardH }]}>
                 {rowCards.map((s) => (
                   <SessionCard
                     key={s.id}
@@ -138,7 +142,6 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   gridRow: {
-    flex: 1,
     flexDirection: 'row',
   },
 });

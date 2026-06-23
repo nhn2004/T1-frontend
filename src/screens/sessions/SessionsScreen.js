@@ -16,23 +16,32 @@ import {
 export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
   const insets = useSafeAreaInsets();
   const [activeFilter, setActiveFilter] = useState(FILTER_KEYS.ALL);
+  const [query, setQuery] = useState('');
+  const [searchExpanded, setSearchExpanded] = useState(false);
 
-  const filteredSessions = useMemo(
-    () => applyFilter(ALL_SESSIONS, activeFilter),
-    [activeFilter]
-  );
+  const filteredSessions = useMemo(() => {
+    const byFilter = applyFilter(ALL_SESSIONS, activeFilter);
+    if (!query.trim()) return byFilter;
+    return byFilter.filter(s => s.title.toLowerCase().includes(query.trim().toLowerCase()));
+  }, [activeFilter, query]);
 
   const counts = useMemo(() => ({
-    [FILTER_KEYS.ALL]:       ALL_SESSIONS.length,
-    [FILTER_KEYS.PENDING]:   applyFilter(ALL_SESSIONS, FILTER_KEYS.PENDING).length,
-    [FILTER_KEYS.COMPLETED]: applyFilter(ALL_SESSIONS, FILTER_KEYS.COMPLETED).length,
-    [FILTER_KEYS.CANCELLED]: applyFilter(ALL_SESSIONS, FILTER_KEYS.CANCELLED).length,
+    [FILTER_KEYS.ALL]:         ALL_SESSIONS.length,
+    [FILTER_KEYS.IN_PROGRESS]: applyFilter(ALL_SESSIONS, FILTER_KEYS.IN_PROGRESS).length,
+    [FILTER_KEYS.PENDING]:     applyFilter(ALL_SESSIONS, FILTER_KEYS.PENDING).length,
+    [FILTER_KEYS.COMPLETED]:   applyFilter(ALL_SESSIONS, FILTER_KEYS.COMPLETED).length,
+    [FILTER_KEYS.CANCELLED]:   applyFilter(ALL_SESSIONS, FILTER_KEYS.CANCELLED).length,
   }), []);
 
   const handleViewDetails = useCallback((id) => {
     if (onViewDetails) onViewDetails(id);
     else navigation?.navigate('SessionDetail', { id });
   }, [onViewDetails, navigation]);
+
+  const toggleSearch = useCallback(() => {
+    if (searchExpanded) setQuery('');
+    setSearchExpanded(v => !v);
+  }, [searchExpanded]);
 
   return (
     <SafeAreaView style={styles.root}>
@@ -45,6 +54,10 @@ export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
           activeFilter={activeFilter}
           counts={counts}
           onSelect={setActiveFilter}
+          searchExpanded={searchExpanded}
+          onSearchToggle={toggleSearch}
+          query={query}
+          onQueryChange={setQuery}
         />
 
         {filteredSessions.length > 0 ? (
@@ -69,7 +82,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: '2%',
+    paddingHorizontal: 8,
     paddingTop: '1%',
     paddingBottom: '1%',
     gap: 8,

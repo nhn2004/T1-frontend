@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
+  View, Text, TouchableOpacity, StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Step1SignosVitales from './components/Step1SignosVitales';
-import { SINTOMAS_LIST, SEVERIDAD_OPTIONS } from './__mocks__/resultadosData';
+import { SINTOMAS_LIST } from './__mocks__/resultadosData';
 
-// ── Etapas del flujo ──────────────────────────────────────────────────────────
+// ── Etapas ───────────────────────────────────────────────────────────────────
 const S = {
   INITIAL:        'initial',
   PRE_FORM:       'pre_form',
@@ -27,18 +27,20 @@ const EMPTY_VITALS = {
   temperatura: '', presionArterial: '',
   frecuenciaCardiaca: '', nivelOxigeno: '',
   nivelCO: '', tiempoTranscurrido: '',
-};
-
-const EMPTY_FINAL = {
   sintomasSeleccionados: [],
-  severidad: 'Leve',
-  comentarios: '',
-  peso: '',
-  grasaCorporal: '',
-  hidratacion: '',
 };
 
-// Umbrales médicos de aptitud
+function vitalsComplete(form) {
+  return !!(form.temperatura && form.presionArterial && form.frecuenciaCardiaca && form.nivelOxigeno && form.nivelCO);
+}
+
+function secsToDisplay(secs) {
+  const mm = Math.floor(secs / 60).toString().padStart(2, '0');
+  const ss = (secs % 60).toString().padStart(2, '0');
+  return `${mm}:${ss}`;
+}
+
+// Umbrales de aptitud
 function verificarAptitud(form) {
   const spo2  = parseFloat(form.nivelOxigeno);
   const temp  = parseFloat(form.temperatura);
@@ -52,26 +54,36 @@ function verificarAptitud(form) {
   return { apto: razones.length === 0, razones };
 }
 
-// ── Pantalla principal ────────────────────────────────────────────────────────
+// ── Pantalla ──────────────────────────────────────────────────────────────────
 export default function EvaluacionBomberoScreen({ navigation, route }) {
   const bomberoName = route?.params?.bomberoName ?? 'Bombero';
-  const [stage,      setStage]      = useState(S.INITIAL);
-  const [preForm,    setPreForm]    = useState(EMPTY_VITALS);
-  const [t2Form,     setT2Form]     = useState(EMPTY_VITALS);
-  const [t3Form,     setT3Form]     = useState(EMPTY_VITALS);
-  const [finalForm,  setFinalForm]  = useState(EMPTY_FINAL);
-  const [aptitud,    setAptitud]    = useState(null);
+  const [stage,     setStage]     = React.useState(S.INITIAL);
+  const [preForm,   setPreForm]   = React.useState(EMPTY_VITALS);
+  const [t2Form,    setT2Form]    = React.useState(EMPTY_VITALS);
+  const [t3Form,    setT3Form]    = React.useState(EMPTY_VITALS);
+  const [finalSintomas, setFinalSintomas] = React.useState([]);
+  const [aptitud,   setAptitud]   = React.useState(null);
 
-  const updatePre   = (f, v) => setPreForm(p  => ({ ...p,  [f]: v }));
-  const updateT2    = (f, v) => setT2Form(p   => ({ ...p,  [f]: v }));
-  const updateT3    = (f, v) => setT3Form(p   => ({ ...p,  [f]: v }));
-  const updateFinal = (f, v) => setFinalForm(p => ({ ...p, [f]: v }));
+  const updatePre = (f, v) => setPreForm(p => ({ ...p, [f]: v }));
+  const updateT2  = (f, v) => setT2Form(p  => ({ ...p, [f]: v }));
+  const updateT3  = (f, v) => setT3Form(p  => ({ ...p, [f]: v }));
+
+  function toggleSintoma(form, setForm, sintoma) {
+    setForm(p => {
+      const prev = p.sintomasSeleccionados || [];
+      const next = prev.includes(sintoma) ? prev.filter(s => s !== sintoma) : [...prev, sintoma];
+      return { ...p, sintomasSeleccionados: next };
+    });
+  }
 
   function handleEvaluarPre() {
     const result = verificarAptitud(preForm);
     setAptitud(result);
     setStage(result.apto ? S.APTO : S.NO_APTO);
   }
+
+  // Pre-prueba: "Ahora Fin" habilitado cuando horaInicio llenado + todos los vitales
+  const preFinEnabled = !!preForm.horaInicio && vitalsComplete(preForm);
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -103,16 +115,17 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
             <InitialPanel onStart={() => setStage(S.PRE_FORM)} />
           )}
 
+          {/* PRE-PRUEBA: Ahora Fin auto-evalúa; sin botón extra */}
           {stage === S.PRE_FORM && (
             <FormPanel
               titulo="Pre-Prueba — Signos Vitales"
               formData={preForm}
               updateField={updatePre}
-              momento="T1"
               showTiempo={false}
-              btnLabel="Evaluar Aptitud"
-              btnColor="#E85D27"
-              onGuardar={handleEvaluarPre}
+              finEnabled={preFinEnabled}
+              onHoraFinCapture={handleEvaluarPre}
+              onToggleSintoma={s => toggleSintoma(preForm, setPreForm, s)}
+              showFooter={false}
             />
           )}
 
@@ -131,24 +144,31 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
             />
           )}
 
+          {/* 1er TIEMPO — cronómetro */}
           {stage === S.PRIMER_TIEMPO && (
             <TiempoActivoPanel
               label="1er Tiempo"
               color="#E85D27"
-              onFinalizar={() => setStage(S.T2_FORM)}
               btnLabel="Finalizar 1er Tiempo"
+              onFinalizar={(secs) => {
+                setT2Form(f => ({ ...f, tiempoTranscurrido: secsToDisplay(secs) }));
+                setStage(S.T2_FORM);
+              }}
             />
           )}
 
+          {/* REGISTRO T2 */}
           {stage === S.T2_FORM && (
             <FormPanel
               titulo="Registro — Después del 1er Tiempo"
               formData={t2Form}
               updateField={updateT2}
-              momento="T2"
               showTiempo
+              onToggleSintoma={s => toggleSintoma(t2Form, setT2Form, s)}
+              showFooter
               btnLabel="Guardar T2"
               btnColor="#E85D27"
+              btnEnabled={vitalsComplete(t2Form)}
               onGuardar={() => setStage(S.ENTRE_TIEMPOS)}
             />
           )}
@@ -160,32 +180,39 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
             />
           )}
 
+          {/* 2do TIEMPO — cronómetro */}
           {stage === S.SEGUNDO_TIEMPO && (
             <TiempoActivoPanel
               label="2do Tiempo"
               color="#C62828"
-              onFinalizar={() => setStage(S.T3_FORM)}
               btnLabel="Finalizar 2do Tiempo"
+              onFinalizar={(secs) => {
+                setT3Form(f => ({ ...f, tiempoTranscurrido: secsToDisplay(secs) }));
+                setStage(S.T3_FORM);
+              }}
             />
           )}
 
+          {/* REGISTRO T3 */}
           {stage === S.T3_FORM && (
             <FormPanel
-              titulo="2do Registro — Después del 2do Tiempo"
+              titulo="Registro — Después del 2do Tiempo"
               formData={t3Form}
               updateField={updateT3}
-              momento="T3"
               showTiempo
+              onToggleSintoma={s => toggleSintoma(t3Form, setT3Form, s)}
+              showFooter
               btnLabel="Guardar T3"
               btnColor="#C62828"
+              btnEnabled={vitalsComplete(t3Form)}
               onGuardar={() => setStage(S.EVAL_FINAL)}
             />
           )}
 
           {stage === S.EVAL_FINAL && (
             <EvaluacionFinalPanel
-              formData={finalForm}
-              updateField={updateFinal}
+              sintomas={finalSintomas}
+              onToggle={s => setFinalSintomas(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s])}
               onGuardar={() => setStage(S.LISTO)}
             />
           )}
@@ -220,13 +247,13 @@ function TimelineBar({ stage }) {
 
   return (
     <View style={tl.bar}>
-      {pasos.map((p, i) => {
-        const pasoIdx  = ORDER.indexOf(p.stages[0]);
-        const isDone   = pasoIdx < currentIdx && !p.stages.includes(stage);
-        const isActive = p.stages.includes(stage);
+      {pasos.map((paso, i) => {
+        const pasoIdx  = ORDER.indexOf(paso.stages[0]);
+        const isDone   = pasoIdx < currentIdx && !paso.stages.includes(stage);
+        const isActive = paso.stages.includes(stage);
         const isLast   = i === pasos.length - 1;
         return (
-          <View key={p.key} style={tl.stepWrap}>
+          <View key={paso.key} style={tl.stepWrap}>
             <View style={[tl.dot, isDone && tl.dotDone, isActive && tl.dotActive]}>
               {isDone
                 ? <Ionicons name="checkmark" size={10} color="#fff" />
@@ -234,7 +261,7 @@ function TimelineBar({ stage }) {
               }
             </View>
             <Text style={[tl.label, isActive && tl.labelActive, isDone && tl.labelDone]}>
-              {p.label}
+              {paso.label}
             </Text>
             {!isLast && <View style={[tl.line, isDone && tl.lineDone]} />}
           </View>
@@ -265,37 +292,48 @@ function InitialPanel({ onStart }) {
   );
 }
 
-function FormPanel({ titulo, formData, updateField, momento, showTiempo, btnLabel, btnColor, onGuardar }) {
+function FormPanel({
+  titulo, formData, updateField, showTiempo,
+  finEnabled, onHoraFinCapture, onToggleSintoma,
+  showFooter, btnLabel, btnColor, btnEnabled = true, onGuardar,
+}) {
   return (
     <View style={{ flex: 1 }}>
       <View style={p.formHeader}>
         <Text style={p.formTitle}>{titulo}</Text>
       </View>
+
       <View style={{ flex: 1 }}>
         <Step1SignosVitales
           formData={formData}
           updateField={updateField}
-          momento={momento}
           showTiempo={showTiempo}
+          finEnabled={finEnabled}
+          onHoraFinCapture={onHoraFinCapture}
+          sintomas={SINTOMAS_LIST}
+          onToggleSintoma={onToggleSintoma}
         />
       </View>
-      <View style={p.formFooter}>
-        <TouchableOpacity
-          style={[p.footerBtn, { backgroundColor: btnColor }]}
-          onPress={onGuardar}
-          activeOpacity={0.8}
-        >
-          <Text style={p.footerBtnText}>{btnLabel}</Text>
-          <Ionicons name="arrow-forward" size={14} color="#fff" />
-        </TouchableOpacity>
-      </View>
+
+      {showFooter && (
+        <View style={p.formFooter}>
+          <TouchableOpacity
+            style={[p.footerBtn, { backgroundColor: btnColor }, !btnEnabled && p.footerBtnDisabled]}
+            onPress={btnEnabled ? onGuardar : undefined}
+            activeOpacity={btnEnabled ? 0.8 : 1}
+          >
+            <Text style={p.footerBtnText}>{btnLabel}</Text>
+            <Ionicons name="arrow-forward" size={14} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
 
 function NoAptoPanel({ razones, onTerminar, onReintentar }) {
   return (
-    <ScrollView contentContainerStyle={p.noAptoWrap}>
+    <View style={[p.center, { padding: 40, gap: 16 }]}>
       <View style={p.noAptoIconBox}>
         <Ionicons name="close-circle" size={64} color="#C62828" />
       </View>
@@ -322,7 +360,7 @@ function NoAptoPanel({ razones, onTerminar, onReintentar }) {
           <Text style={p.terminarText}>Terminar prueba</Text>
         </TouchableOpacity>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -357,7 +395,24 @@ function AptoPanel({ formData, onIniciar }) {
   );
 }
 
-function TiempoActivoPanel({ label, color, onFinalizar, btnLabel }) {
+// Cronómetro en vivo — muestra tiempo alrededor del ícono de fuego
+function TiempoActivoPanel({ label, color, btnLabel, onFinalizar }) {
+  const [secs, setSecs] = React.useState(0);
+  const timerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    timerRef.current = setInterval(() => setSecs(s => s + 1), 1000);
+    return () => clearInterval(timerRef.current);
+  }, []);
+
+  const mm = Math.floor(secs / 60).toString().padStart(2, '0');
+  const ss = (secs % 60).toString().padStart(2, '0');
+
+  function handleFinalizar() {
+    clearInterval(timerRef.current);
+    onFinalizar(secs);
+  }
+
   return (
     <View style={p.center}>
       <View style={[p.pulseRing, { borderColor: color }]}>
@@ -365,12 +420,13 @@ function TiempoActivoPanel({ label, color, onFinalizar, btnLabel }) {
           <Ionicons name="flame" size={52} color={color} />
         </View>
       </View>
+      <Text style={[p.timerDisplay, { color }]}>{mm}:{ss}</Text>
       <Text style={[p.bigTitle, { color }]}>{label} en progreso</Text>
       <Text style={p.bigSub}>
         El bombero está en el área de entrenamiento.{'\n'}
         Cuando finalice, presiona el botón para registrar la medición.
       </Text>
-      <TouchableOpacity style={[p.bigBtn, { backgroundColor: color }]} onPress={onFinalizar}>
+      <TouchableOpacity style={[p.bigBtn, { backgroundColor: color }]} onPress={handleFinalizar}>
         <Ionicons name="stop-circle-outline" size={20} color="#fff" />
         <Text style={p.bigBtnText}>{btnLabel}</Text>
       </TouchableOpacity>
@@ -400,125 +456,36 @@ function EntrePanel({ onSegundoTiempo, onGuardar }) {
   );
 }
 
-// ── Panel Final: dos columnas fijas, sin scroll ───────────────────────────────
-
-function EvaluacionFinalPanel({ formData, updateField, onGuardar }) {
-  function toggleSintoma(sintoma) {
-    const prev = formData.sintomasSeleccionados;
-    const next = prev.includes(sintoma)
-      ? prev.filter(s => s !== sintoma)
-      : [...prev, sintoma];
-    updateField('sintomasSeleccionados', next);
-  }
-
-  function calcularHidratacion() {
-    const peso = parseFloat(formData.peso);
-    if (!isNaN(peso) && peso > 0) {
-      updateField('hidratacion', (peso * 0.035).toFixed(1));
-    }
-  }
-
+function EvaluacionFinalPanel({ sintomas, onToggle, onGuardar }) {
   return (
     <View style={{ flex: 1 }}>
       <View style={p.formHeader}>
-        <View style={ef.titleRow}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <Ionicons name="clipboard-outline" size={16} color="#2E7D32" />
           <Text style={p.formTitle}>Final de la Prueba</Text>
         </View>
-        <Text style={ef.subtitle}>Registra los datos finales del bombero</Text>
+        <Text style={{ fontSize: 12, color: '#697282', marginTop: 2 }}>
+          Registra los síntomas finales del bombero
+        </Text>
       </View>
 
       <View style={ef.body}>
-
-        <View style={ef.col}>
-          <Text style={ef.colTitle}>Datos Nutricionales</Text>
-
-          <View style={ef.fieldGroup}>
-            <Text style={ef.fieldLabel}>Peso (kg)</Text>
-            <TextInput
-              style={ef.input}
-              value={formData.peso}
-              onChangeText={v => updateField('peso', v)}
-              keyboardType="decimal-pad"
-              placeholder="75.0"
-              placeholderTextColor="#B0B7C3"
-            />
-          </View>
-
-          <View style={ef.fieldGroup}>
-            <Text style={ef.fieldLabel}>Grasa Corporal (%)</Text>
-            <TextInput
-              style={ef.input}
-              value={formData.grasaCorporal}
-              onChangeText={v => updateField('grasaCorporal', v)}
-              keyboardType="decimal-pad"
-              placeholder="18.5"
-              placeholderTextColor="#B0B7C3"
-            />
-          </View>
-
-          <View style={ef.fieldGroup}>
-            <Text style={ef.fieldLabel}>Hidratación Recomendada (L/día)</Text>
-            <View style={ef.hidRow}>
-              <TextInput
-                style={[ef.input, { flex: 1 }]}
-                value={formData.hidratacion}
-                onChangeText={v => updateField('hidratacion', v)}
-                keyboardType="decimal-pad"
-                placeholder="2.5"
-                placeholderTextColor="#B0B7C3"
-              />
-              <TouchableOpacity style={ef.calcBtn} onPress={calcularHidratacion}>
-                <Text style={ef.calcBtnText}>Calcular</Text>
+        <Text style={ef.colTitle}>Registrar síntomas finales:</Text>
+        <View style={ef.chips}>
+          {SINTOMAS_LIST.map(sint => {
+            const sel = sintomas.includes(sint);
+            return (
+              <TouchableOpacity
+                key={sint}
+                style={[ef.chip, sel && ef.chipOn]}
+                onPress={() => onToggle(sint)}
+                activeOpacity={0.7}
+              >
+                <Text style={[ef.chipText, sel && ef.chipTextOn]}>{sint}</Text>
               </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={ef.infoBox}>
-            <Ionicons name="information-circle-outline" size={13} color="#E65100" />
-            <Text style={ef.infoText}>Fórmula: 35 ml × peso (kg)</Text>
-          </View>
+            );
+          })}
         </View>
-
-        <View style={ef.vDivider} />
-
-        <View style={ef.col}>
-          <Text style={ef.colTitle}>Registrar síntomas:</Text>
-
-          <View style={ef.chips}>
-            {SINTOMAS_LIST.map(sintoma => {
-              const selected = formData.sintomasSeleccionados.includes(sintoma);
-              return (
-                <TouchableOpacity
-                  key={sintoma}
-                  style={[ef.chip, selected && ef.chipActive]}
-                  onPress={() => toggleSintoma(sintoma)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[ef.chipText, selected && ef.chipTextActive]}>{sintoma}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <Text style={[ef.fieldLabel, { marginTop: 8 }]}>Nivel de Severidad</Text>
-          <View style={ef.severityRow}>
-            {SEVERIDAD_OPTIONS.map(opt => {
-              const active = formData.severidad === opt;
-              return (
-                <TouchableOpacity
-                  key={opt}
-                  style={[ef.severityBtn, active && ef.severityBtnActive]}
-                  onPress={() => updateField('severidad', opt)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[ef.severityText, active && ef.severityTextActive]}>{opt}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
       </View>
 
       <View style={p.formFooter}>
@@ -553,7 +520,7 @@ function ListoPanel({ onVolver }) {
   );
 }
 
-// ── Estilos principales ───────────────────────────────────────────────────────
+// ── Estilos ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F0F2F5' },
@@ -626,6 +593,10 @@ const p = StyleSheet.create({
     padding: 8, borderRadius: 62,
     borderWidth: 2, borderStyle: 'dashed',
   },
+  timerDisplay: {
+    fontSize: 40, fontWeight: '800', letterSpacing: 2,
+    fontVariant: ['tabular-nums'],
+  },
   bigTitle: { fontSize: 24, fontWeight: '800', color: '#1A1A1A', textAlign: 'center' },
   bigSub: { fontSize: 14, color: '#697282', textAlign: 'center', lineHeight: 22, maxWidth: 500 },
   bigBtn: {
@@ -642,7 +613,6 @@ const p = StyleSheet.create({
   valorLabel: { fontSize: 10, fontWeight: '700', color: '#9AA3B0', letterSpacing: 0.5 },
   valorValue: { fontSize: 14, fontWeight: '800', color: '#1A1A1A' },
 
-  noAptoWrap: { alignItems: 'center', padding: 40, gap: 16 },
   noAptoIconBox: { marginBottom: 4 },
   noAptoTitle: { fontSize: 24, fontWeight: '800', color: '#C62828', textAlign: 'center' },
   noAptoSub:   { fontSize: 14, color: '#697282', textAlign: 'center' },
@@ -673,14 +643,13 @@ const p = StyleSheet.create({
   entreRow: { flexDirection: 'row', gap: 16, marginTop: 8 },
   entreBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12,
-    borderWidth: 1.5,
+    paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, borderWidth: 1.5,
   },
   entreBtnText: { fontSize: 14, fontWeight: '700' },
 
   formHeader: {
     paddingHorizontal: 24, paddingTop: 18, paddingBottom: 12,
-    borderBottomWidth: 1, borderBottomColor: '#F0F0F0', gap: 2,
+    borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
   },
   formTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
   formFooter: {
@@ -692,63 +661,22 @@ const p = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 20, paddingVertical: 11, borderRadius: 10,
   },
+  footerBtnDisabled: { opacity: 0.4 },
   footerBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });
 
 const ef = StyleSheet.create({
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  subtitle:  { fontSize: 12, color: '#697282' },
-
   body: {
-    flex: 1,
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    gap: 0,
+    flex: 1, paddingHorizontal: 24, paddingVertical: 18, gap: 16,
   },
-  col: { flex: 1, gap: 14, paddingHorizontal: 10 },
-  vDivider: { width: 1, backgroundColor: '#F0F0F0', marginHorizontal: 6 },
-
-  colTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', marginBottom: 2 },
-  fieldGroup: { gap: 6 },
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: '#495565' },
-
-  input: {
-    backgroundColor: '#F3F3F5', borderRadius: 8,
-    paddingHorizontal: 14, paddingVertical: 11,
-    fontSize: 14, color: '#2E2E2E',
-  },
-  hidRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  calcBtn: {
-    backgroundColor: '#E85D27', borderRadius: 8,
-    paddingHorizontal: 16, paddingVertical: 11,
-  },
-  calcBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  infoBox: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#FFF3E0', borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 8,
-    borderWidth: 1, borderColor: '#FFB74D',
-  },
-  infoText: { fontSize: 12, color: '#E65100', fontWeight: '600' },
-
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  colTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   chip: {
-    paddingHorizontal: 12, paddingVertical: 7,
+    paddingHorizontal: 14, paddingVertical: 8,
     borderRadius: 8, borderWidth: 1,
     borderColor: '#D0D5DD', backgroundColor: '#F9FAFB',
   },
-  chipActive: { backgroundColor: '#E85D27', borderColor: '#E85D27' },
-  chipText: { fontSize: 12, fontWeight: '500', color: '#495565' },
-  chipTextActive: { color: '#fff', fontWeight: '600' },
-
-  severityRow: { flexDirection: 'row', gap: 10 },
-  severityBtn: {
-    flex: 1, paddingVertical: 11, borderRadius: 10,
-    borderWidth: 1.5, borderColor: '#E0E0E0',
-    alignItems: 'center', backgroundColor: '#fff',
-  },
-  severityBtnActive: { backgroundColor: '#2E7D32', borderColor: '#2E7D32' },
-  severityText: { fontSize: 13, fontWeight: '600', color: '#495565' },
-  severityTextActive: { color: '#fff' },
+  chipOn:     { backgroundColor: '#E85D27', borderColor: '#E85D27' },
+  chipText:   { fontSize: 13, fontWeight: '500', color: '#495565' },
+  chipTextOn: { color: '#fff', fontWeight: '600' },
 });
