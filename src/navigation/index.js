@@ -16,6 +16,7 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import SystemDashboard from '../screens/dashboard/SystemDashboard';
 import AdminDashboard from '../screens/dashboard/AdminDashboard';
 import TraineeDashboard from '../screens/dashboard/TraineeDashboard';
+import CapacitatorDashboard from '../screens/dashboard/CapacitatorDashboard';
 import MedicalDashboard from '../screens/dashboard/MedicalDashboard';
 import ResearcherDashboard from '../screens/dashboard/ResearcherDashboard';
 import PersonasScreen from '../screens/people/PersonasScreen';
@@ -63,6 +64,7 @@ function RoleNavigator({ role }) {
     [ROLES.SYSTEM_ADMIN]: SystemDashboard,
     [ROLES.ADMIN]: AdminDashboard,
     [ROLES.FIREFIGHTER_TRAINEE]: TraineeDashboard,
+    [ROLES.CAPACITATOR]: CapacitatorDashboard,
     [ROLES.MEDICAL]: MedicalDashboard,
     [ROLES.RESEARCHER]: ResearcherDashboard,
   };
@@ -77,6 +79,7 @@ function RoleNavigator({ role }) {
 
   return (
     <Stack.Navigator
+      initialRouteName={role === ROLES.FIREFIGHTER_TRAINEE ? 'Training' : 'Dashboard'}
       screenOptions={{
         headerShown: false,
         animationEnabled: false,
@@ -84,13 +87,16 @@ function RoleNavigator({ role }) {
       }}
     >
       <Stack.Screen name="Dashboard" component={DashboardWithLayout} />
-      <Stack.Screen name="Training"        component={withMainLayout(SessionsScreen)} />
+      <Stack.Screen 
+        name="Training"        
+        component={role === ROLES.FIREFIGHTER_TRAINEE ? withMainLayout(TraineeDashboard) : withMainLayout(SessionsScreen)} 
+      />
       <Stack.Screen name="SessionDetail"          component={withMainLayout(SessionDetailScreen)} />
       <Stack.Screen name="ResultadosIndividuales" component={ResultadosIndividualesScreen} />
       <Stack.Screen name="EvaluacionBombero"     component={EvaluacionBomberoScreen} />
       <Stack.Screen name="ResultadosBombero"     component={ResultadosBomberoScreen} />
       <Stack.Screen name="Schedule" component={PlaceholderScreen} />
-      {role === ROLES.MEDICAL && (
+      {(role === ROLES.MEDICAL || role === ROLES.CAPACITATOR) && (
         <>
           <Stack.Screen name="Personas" component={PersonasWithLayout} />
           <Stack.Screen name="PersonasSesiones" component={PersonasSesionesWithLayout} />

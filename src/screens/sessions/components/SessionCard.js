@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SESSION_STATUS } from '../__mocks__/sessionsData';
+import { useAuth } from '../../../hooks';
+import { ROLES } from '../../../constants';
 
 const STATUS_CONFIG = {
   [SESSION_STATUS.PLANNED]: {
@@ -29,6 +31,18 @@ const STATUS_CONFIG = {
 export default function SessionCard({ session, onViewDetails, cardWidth, cardHeight }) {
   const cfg = STATUS_CONFIG[session.status] ?? STATUS_CONFIG[SESSION_STATUS.PLANNED];
   const { badge } = cfg;
+  const { role } = useAuth();
+  const isTrainee = role === ROLES.FIREFIGHTER_TRAINEE;
+  const isBtnDisabled = isTrainee && (
+    session.status === SESSION_STATUS.PLANNED ||
+    session.status === SESSION_STATUS.CANCELLED
+  );
+
+  const btnLabel = isTrainee
+    ? 'Ver Resultados'
+    : session.status === SESSION_STATUS.COMPLETED
+      ? 'Ver Reportes'
+      : 'Ver Detalles';
 
   return (
     <View style={[
@@ -44,7 +58,7 @@ export default function SessionCard({ session, onViewDetails, cardWidth, cardHei
           <Text style={styles.applicants}>{session.applicants} Aspirantes</Text>
         </View>
 
-        {/* Badge estilo bombero */}
+        {/* Badge estilo pill con icono */}
         <View style={[styles.badge, { backgroundColor: badge.bg }]}>
           <Ionicons name={badge.icon} size={10} color="#FFFFFF" />
           <Text style={styles.badgeText}>{badge.label}</Text>
@@ -60,12 +74,20 @@ export default function SessionCard({ session, onViewDetails, cardWidth, cardHei
 
       {/* Botón */}
       <TouchableOpacity
-        style={[styles.btn, { backgroundColor: cfg.btnBg, opacity: cfg.btnOpacity }]}
+        style={[
+          styles.btn,
+          isBtnDisabled
+            ? { backgroundColor: '#F4F5F7', borderWidth: 1, borderColor: '#D6DADF' }
+            : { backgroundColor: cfg.btnBg, opacity: cfg.btnOpacity },
+        ]}
         onPress={() => onViewDetails(session.id)}
-        activeOpacity={0.8}
+        activeOpacity={isBtnDisabled ? 1 : 0.8}
+        disabled={isBtnDisabled}
       >
-        <Text style={styles.btnText}>Ver Detalles</Text>
-        <Ionicons name="arrow-forward" size={12} color="#fff" />
+        <Text style={[styles.btnText, isBtnDisabled && { color: '#8E9399' }]}>
+          {btnLabel}
+        </Text>
+        <Ionicons name="arrow-forward" size={12} color={isBtnDisabled ? '#8E9399' : '#fff'} />
       </TouchableOpacity>
 
     </View>
