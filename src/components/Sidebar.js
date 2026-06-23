@@ -44,14 +44,19 @@ const medicalMenuItem = {
 export default function Sidebar({ navigation, activeRoute }) {
   const clearAuth = useAuthStore((state) => state.clearAuth); 
   const role = useAuthStore((state) => state.role);
-  const menuItems =
-    role === ROLES.MEDICAL
-      ? [
-          ...baseMenuItems.slice(0, -1),
-          medicalMenuItem,
-          baseMenuItems[baseMenuItems.length - 1],
-        ]
-      : baseMenuItems;
+  const menuItems = (() => {
+    if (role === ROLES.MEDICAL) {
+      return [
+        ...baseMenuItems.slice(0, -1),
+        medicalMenuItem,
+        baseMenuItems[baseMenuItems.length - 1],
+      ];
+    }
+    if (role === ROLES.FIREFIGHTER_TRAINEE) {
+      return baseMenuItems.filter(item => item.route !== 'Dashboard');
+    }
+    return baseMenuItems;
+  })();
 
   const { width } = useWindowDimensions();
   const isLargeScreen = width >= 900;
