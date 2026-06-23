@@ -29,8 +29,15 @@ const STATUS_CONFIG = {
   },
 };
 
+import { useAuth } from '../../../hooks';
+import { ROLES } from '../../../constants';
+
 export default function SessionCard({ session, onViewDetails, cardWidth, cardHeight }) {
   const cfg = STATUS_CONFIG[session.status] ?? STATUS_CONFIG[SESSION_STATUS.PLANNED];
+  const { role } = useAuth();
+  const isTrainee = role === ROLES.FIREFIGHTER_TRAINEE;
+
+  const isBtnDisabled = isTrainee && (session.status === SESSION_STATUS.PLANNED || session.status === SESSION_STATUS.CANCELLED);
 
   return (
     <View style={[
@@ -63,12 +70,15 @@ export default function SessionCard({ session, onViewDetails, cardWidth, cardHei
 
       {/* Botón siempre al fondo de la card */}
       <TouchableOpacity
-        style={[styles.btn, { backgroundColor: cfg.btnBg, opacity: cfg.btnOpacity }]}
+        style={[styles.btn, { backgroundColor: isBtnDisabled ? '#F4F5F7' : cfg.btnBg, opacity: isBtnDisabled ? 1 : cfg.btnOpacity, borderColor: isBtnDisabled ? '#D6DADF' : 'transparent', borderWidth: isBtnDisabled ? 1 : 0 }]}
         onPress={() => onViewDetails(session.id)}
         activeOpacity={0.8}
+        disabled={isBtnDisabled}
       >
-        <Text style={styles.btnText}>Ver Detalles</Text>
-        <Ionicons name="arrow-forward" size={12} color="#fff" />
+        <Text style={[styles.btnText, isBtnDisabled && { color: '#8E9399' }]}>
+          {isTrainee ? 'Ver Resultados' : (session.status === SESSION_STATUS.COMPLETED ? 'Ver Reportes' : 'Ver Detalles')}
+        </Text>
+        <Ionicons name="arrow-forward" size={12} color={isBtnDisabled ? "#8E9399" : "#fff"} />
       </TouchableOpacity>
 
     </View>
