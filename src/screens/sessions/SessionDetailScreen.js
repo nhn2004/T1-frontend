@@ -4,11 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { COLORS } from '../../constants';
-import AgendaTimeline        from './components/AgendaTimeline';
+import AgendaTimeline from './components/AgendaTimeline';
 import TrainingCenterSidebar from './components/TrainingCenterSidebar';
-
-import { useAuth } from '../../hooks';
-import { ROLES } from '../../constants';
 
 import {
   SESSIONS_DETAIL_MAP,
@@ -17,17 +14,9 @@ import {
 
 export default function SessionDetailScreen({ navigation, route, Sidebar, sessionId, onBack }) {
   // Busca la sesión por id — en producción esto viene del API
-  const id      = sessionId ?? route?.params?.id ?? 's1';
+  const id = sessionId ?? route?.params?.id ?? 's1';
   const session = SESSIONS_DETAIL_MAP[id] ?? SESSIONS_DETAIL_MAP['s1'];
   const display = STATUS_DISPLAY[session.status] ?? STATUS_DISPLAY.PLANNED;
-
-  const { role } = useAuth();
-  const isTrainee = role === ROLES.FIREFIGHTER_TRAINEE;
-
-  let btnLabel = display.btnLabel;
-  if (session.status === 'COMPLETED') {
-    btnLabel = isTrainee ? 'Ver Resultados' : 'Ver Reportes';
-  }
 
   const handleAction = useCallback(() => {
     if (display.btnDisabled) return;
@@ -71,9 +60,9 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
               <Text style={styles.sessionTitle}>{session.title}</Text>
               <Text style={styles.sessionDesc}>{session.description}</Text>
               <View style={styles.statsRow}>
-                <StatItem icon="calendar-outline" label="FECHA"     value={session.date}     />
-                <StatItem icon="time-outline"     label="HORA"      value={session.time}     />
-                <StatItem icon="people-outline"   label="CAPACIDAD" value={session.capacity} />
+                <StatItem icon="calendar-outline" label="FECHA" value={session.date} />
+                <StatItem icon="time-outline" label="HORA" value={session.time} />
+                <StatItem icon="people-outline" label="CAPACIDAD" value={session.capacity} />
               </View>
             </View>
 
@@ -132,7 +121,7 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
                   styles.actionBtnText,
                   display.btnDisabled && styles.actionBtnTextDisabled,
                 ]}>
-                  {btnLabel}
+                  {display.btnLabel}
                 </Text>
               </TouchableOpacity>
 

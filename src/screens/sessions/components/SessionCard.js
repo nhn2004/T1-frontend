@@ -5,39 +5,32 @@ import { SESSION_STATUS } from '../__mocks__/sessionsData';
 
 const STATUS_CONFIG = {
   [SESSION_STATUS.PLANNED]: {
-    badges:      [{ label: 'Pendiente',   bg: '#F57C00' }],
-    btnBg:       '#E85D27',
-    btnOpacity:  1,
+    badges: [{ label: 'Pendiente', bg: '#F57C00' }],
+    btnBg: '#E85D27',
+    btnOpacity: 1,
   },
   [SESSION_STATUS.ACTIVE]: {
-    badges:      [
-      { label: 'Pendiente',   bg: '#F57C00' },
+    badges: [
+      { label: 'Pendiente', bg: '#F57C00' },
       { label: 'En Progreso', bg: '#2E7D32' },
     ],
-    btnBg:       '#E85D27',
-    btnOpacity:  1,
+    btnBg: '#E85D27',
+    btnOpacity: 1,
   },
   [SESSION_STATUS.COMPLETED]: {
-    badges:      [{ label: 'Realizado',  bg: '#2E7D32' }],
-    btnBg:       '#2E7D32',
-    btnOpacity:  1,
+    badges: [{ label: 'Realizado', bg: '#2E7D32' }],
+    btnBg: '#2E7D32',
+    btnOpacity: 1,
   },
   [SESSION_STATUS.CANCELLED]: {
-    badges:      [{ label: 'Cancelado',  bg: '#9E9E9E' }],
-    btnBg:       '#9E9E9E',
-    btnOpacity:  0.6,
+    badges: [{ label: 'Cancelado', bg: '#9E9E9E' }],
+    btnBg: '#9E9E9E',
+    btnOpacity: 0.6,
   },
 };
 
-import { useAuth } from '../../../hooks';
-import { ROLES } from '../../../constants';
-
 export default function SessionCard({ session, onViewDetails, cardWidth, cardHeight }) {
   const cfg = STATUS_CONFIG[session.status] ?? STATUS_CONFIG[SESSION_STATUS.PLANNED];
-  const { role } = useAuth();
-  const isTrainee = role === ROLES.FIREFIGHTER_TRAINEE;
-
-  const isBtnDisabled = isTrainee && (session.status === SESSION_STATUS.PLANNED || session.status === SESSION_STATUS.CANCELLED);
 
   return (
     <View style={[
@@ -63,22 +56,19 @@ export default function SessionCard({ session, onViewDetails, cardWidth, cardHei
 
       {/* Details — flex:1 para que empujen el botón hacia abajo */}
       <View style={styles.details}>
-        <DetailRow icon="calendar-outline"  label={session.date} />
-        <DetailRow icon="time-outline"      label={session.time} />
+        <DetailRow icon="calendar-outline" label={session.date} />
+        <DetailRow icon="time-outline" label={session.time} />
         <DetailRow icon="clipboard-outline" label={session.type} />
       </View>
 
       {/* Botón siempre al fondo de la card */}
       <TouchableOpacity
-        style={[styles.btn, { backgroundColor: isBtnDisabled ? '#F4F5F7' : cfg.btnBg, opacity: isBtnDisabled ? 1 : cfg.btnOpacity, borderColor: isBtnDisabled ? '#D6DADF' : 'transparent', borderWidth: isBtnDisabled ? 1 : 0 }]}
+        style={[styles.btn, { backgroundColor: cfg.btnBg, opacity: cfg.btnOpacity }]}
         onPress={() => onViewDetails(session.id)}
         activeOpacity={0.8}
-        disabled={isBtnDisabled}
       >
-        <Text style={[styles.btnText, isBtnDisabled && { color: '#8E9399' }]}>
-          {isTrainee ? 'Ver Resultados' : (session.status === SESSION_STATUS.COMPLETED ? 'Ver Reportes' : 'Ver Detalles')}
-        </Text>
-        <Ionicons name="arrow-forward" size={12} color={isBtnDisabled ? "#8E9399" : "#fff"} />
+        <Text style={styles.btnText}>Ver Detalles</Text>
+        <Ionicons name="arrow-forward" size={12} color="#fff" />
       </TouchableOpacity>
 
     </View>

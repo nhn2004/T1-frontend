@@ -1,18 +1,22 @@
 import React from 'react';
-import SessionsScreen from '../sessions/SessionsScreen';
+import { View, Text, StyleSheet } from 'react-native';
+import { COLORS } from '../../constants/colors';
+import { useAuth } from '../../hooks';
 
-export default function TraineeDashboard({ navigation }) {
-  // Cuando el bombero hace clic en 'Ver Resultados' en una capacitación,
-  // va directamente a su vista de resultados individuales.
-  const handleViewDetails = (sessionId) => {
-    navigation.navigate('ResultadosBombero', { bomberoId: 'firefighter-002', bomberoName: 'Mi Perfil' });
-  };
-
+// TODO Dev 3 (feature/dashboard): build Firefighter Trainee dashboard
+// Shows: pending session invitations, own session history, personal stats
+export default function TraineeDashboard() {
+  const { user } = useAuth();
   return (
-    <SessionsScreen
-      navigation={navigation}
-      onViewDetails={handleViewDetails}
-    />
+    <View style={styles.container}>
+      <Text style={styles.text}>TraineeDashboard.js</Text>
+      <Text style={styles.sub}>{user?.name}</Text>
+    </View>
   );
 }
 
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' },
+  text: { color: COLORS.primary, fontSize: 20, fontWeight: 'bold' },
+  sub: { color: COLORS.textSecondary, marginTop: 8 },
+});
