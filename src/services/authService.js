@@ -10,6 +10,7 @@ export const authService = {
         email:     raw.email,
         firstName: raw.firstName,
         lastName:  raw.lastName,
+        name:      `${raw.firstName} ${raw.lastName}`.trim(),
       },
       roles:     raw.roles,
       token:     raw.token,
