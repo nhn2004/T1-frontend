@@ -63,11 +63,10 @@ export default function CarouselGrid({ sessions = [], onViewDetails }) {
   const cardH = box.h > 0 ? (box.h - rowGap  * (ROWS - 1)) / ROWS         : 0;
 
   function animateTo(next) {
-    Animated.sequence([
-      Animated.timing(fadeAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
-    ]).start();
-    setPage(next);
+    Animated.timing(fadeAnim, { toValue: 0, duration: 80, useNativeDriver: true }).start(() => {
+      setPage(next);
+      Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+    });
   }
 
   const pageCards = sessions.slice(page * perPage, page * perPage + perPage);

@@ -13,22 +13,233 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks';
 import { COLORS } from '../../constants';
 import { usePersonas } from './hooks/usePersonas';
+import { ROLES } from '../../constants/roles';
+
+const STAFF = [
+  {
+    id: 'person-001',
+    name: 'Lic. Carlos Mendez',
+    role: 'Enfermero',
+    photoUrl: 'src/assets/people/enfermero.jpeg',
+    photoSource: require('../../assets/people/enfermero.jpeg'),
+    email: 'carlos.mendez@firehealth.com',
+    phone: '+1 555-0101',
+    pendingSessions: [
+      { id: 'pending-001', name: 'Control cardiovascular', date: '2026-06-18' },
+    ],
+    completedSessions: [
+      { id: 'completed-001', name: 'Evaluacion inicial', date: '2026-05-21' },
+      { id: 'completed-002', name: 'Seguimiento respiratorio', date: '2026-06-02' },
+    ],
+  },
+  {
+    id: 'person-002',
+    name: 'Dra. Valeria Castro',
+    role: 'Medico',
+    photoUrl: 'src/assets/people/medico.jpeg',
+    photoSource: require('../../assets/people/medico.jpeg'),
+    email: 'valeria.castro@firehealth.com',
+    phone: '+1 555-0102',
+    pendingSessions: [
+      { id: 'pending-002', name: 'Revision medica general', date: '2026-06-16' },
+      { id: 'pending-003', name: 'Prueba de esfuerzo', date: '2026-06-20' },
+      { id: 'pending-004', name: 'Control de signos vitales', date: '2026-06-25' },
+    ],
+    completedSessions: [
+      { id: 'completed-003', name: 'Ingreso clinico', date: '2026-04-12' },
+      { id: 'completed-004', name: 'Monitoreo en campo', date: '2026-04-28' },
+      { id: 'completed-005', name: 'Seguimiento post entrenamiento', date: '2026-05-09' },
+      { id: 'completed-006', name: 'Evaluacion cardiovascular', date: '2026-05-18' },
+      { id: 'completed-007', name: 'Control mensual', date: '2026-05-30' },
+      { id: 'completed-008', name: 'Revision de alertas', date: '2026-06-04' },
+      { id: 'completed-009', name: 'Cierre de protocolo', date: '2026-06-10' },
+    ],
+  },
+  {
+    id: 'person-003',
+    name: 'Nut. Andrea Rivas',
+    role: 'Nutricionista',
+    photoUrl: 'src/assets/people/nutricionista.jpeg',
+    photoSource: require('../../assets/people/nutricionista.jpeg'),
+    email: 'andrea.rivas@firehealth.com',
+    phone: '+1 555-0103',
+    pendingSessions: [
+      { id: 'pending-005', name: 'Plan nutricional', date: '2026-06-17' },
+      { id: 'pending-006', name: 'Control de hidratacion', date: '2026-06-24' },
+    ],
+    completedSessions: [
+      { id: 'completed-010', name: 'Evaluacion antropometrica', date: '2026-05-01' },
+      { id: 'completed-011', name: 'Encuesta alimentaria', date: '2026-05-12' },
+      { id: 'completed-012', name: 'Plan de recuperacion', date: '2026-05-26' },
+      { id: 'completed-013', name: 'Seguimiento calorico', date: '2026-06-03' },
+      { id: 'completed-014', name: 'Reporte nutricional', date: '2026-06-11' },
+    ],
+  },
+  {
+    id: 'person-004',
+    name: 'Lic. Mateo Vargas',
+    role: 'Enfermero',
+    photoUrl: 'src/assets/people/enfermero.jpeg',
+    photoSource: require('../../assets/people/enfermero.jpeg'),
+    email: 'mateo.vargas@firehealth.com',
+    phone: '+1 555-0104',
+    pendingSessions: [
+      { id: 'pending-007', name: 'Toma de bioimpedancia', date: '2026-06-19' },
+    ],
+    completedSessions: [
+      { id: 'completed-015', name: 'Signos vitales basales', date: '2026-05-08' },
+      { id: 'completed-016', name: 'Registro de recuperacion', date: '2026-05-22' },
+      { id: 'completed-017', name: 'Control respiratorio', date: '2026-06-01' },
+      { id: 'completed-018', name: 'Reporte de enfermeria', date: '2026-06-09' },
+    ],
+  },
+  {
+    id: 'person-005',
+    name: 'Dr. Daniel Ortega',
+    role: 'Medico',
+    photoUrl: 'src/assets/people/medico.jpeg',
+    photoSource: require('../../assets/people/medico.jpeg'),
+    email: 'daniel.ortega@firehealth.com',
+    phone: '+1 555-0105',
+    pendingSessions: [
+      { id: 'pending-008', name: 'Evaluacion de aptitud fisica', date: '2026-06-21' },
+      { id: 'pending-009', name: 'Revision de signos de alerta', date: '2026-06-27' },
+    ],
+    completedSessions: [
+      { id: 'completed-019', name: 'Consulta de ingreso', date: '2026-05-06' },
+      { id: 'completed-020', name: 'Control cardiaco', date: '2026-05-19' },
+      { id: 'completed-021', name: 'Seguimiento medico', date: '2026-06-06' },
+    ],
+  },
+  {
+    id: 'person-006',
+    name: 'Nut. Sofia Almeida',
+    role: 'Nutricionista',
+    photoUrl: 'src/assets/people/nutricionista.jpeg',
+    photoSource: require('../../assets/people/nutricionista.jpeg'),
+    email: 'sofia.almeida@firehealth.com',
+    phone: '+1 555-0106',
+    pendingSessions: [
+      { id: 'pending-010', name: 'Revision de plan alimentario', date: '2026-06-22' },
+    ],
+    completedSessions: [
+      { id: 'completed-022', name: 'Evaluacion nutricional', date: '2026-05-10' },
+      { id: 'completed-023', name: 'Control de hidratacion', date: '2026-05-25' },
+      { id: 'completed-024', name: 'Reporte de composicion corporal', date: '2026-06-08' },
+      { id: 'completed-025', name: 'Seguimiento nutricional', date: '2026-06-12' },
+    ],
+  },
+  {
+    id: 'person-007',
+    name: 'Lic. Gabriela Molina',
+    role: 'Enfermero',
+    photoUrl: 'src/assets/people/enfermero.jpeg',
+    photoSource: require('../../assets/people/enfermero.jpeg'),
+    email: 'gabriela.molina@firehealth.com',
+    phone: '+1 555-0107',
+    pendingSessions: [
+      { id: 'pending-011', name: 'Control de recuperacion', date: '2026-06-23' },
+      { id: 'pending-012', name: 'Registro de constantes vitales', date: '2026-06-29' },
+    ],
+    completedSessions: [
+      { id: 'completed-026', name: 'Toma de signos vitales', date: '2026-05-14' },
+      { id: 'completed-027', name: 'Monitoreo post sesion', date: '2026-05-29' },
+    ],
+  },
+];
+
+const FILTERS = [
+  { label: 'Todos', value: 'Todos' },
+  { label: 'Enfermeros', value: 'Enfermero' },
+  { label: 'Nutricionistas', value: 'Nutricionista' },
+  { label: 'Medicos', value: 'Medico' },
+];
+>>>>>>> origin/main
+
+// ── Datos para Jefe de Bomberos ────────────────────────────────────────────
+const CHIEF_STAFF = [
+  {
+    id: 'cap-001', name: 'Cap. Fernando Reyes', role: 'Capacitador',
+    email: 'fernando.reyes@firehealth.com', phone: '+593 99-001-0001',
+    pendingSessions: [{ id: 'cp-001', name: 'Entrenamiento físico G5', date: '2026-06-25' }],
+    completedSessions: [
+      { id: 'cc-001', name: 'Capacitación G4', date: '2026-05-10' },
+      { id: 'cc-002', name: 'Simulacro incendio', date: '2026-05-28' },
+    ],
+  },
+  {
+    id: 'cap-002', name: 'Cap. Lorena Ibáñez', role: 'Capacitador',
+    email: 'lorena.ibanez@firehealth.com', phone: '+593 99-001-0002',
+    pendingSessions: [
+      { id: 'cp-002', name: 'Técnicas de rescate', date: '2026-06-28' },
+      { id: 'cp-003', name: 'Manejo de HAZMAT', date: '2026-07-05' },
+    ],
+    completedSessions: [
+      { id: 'cc-003', name: 'Entrenamiento G3', date: '2026-04-15' },
+    ],
+  },
+  {
+    id: 'bom-001', name: 'Bombero Marco Torres', role: 'Bombero',
+    email: 'marco.torres@bomberos.gob.ec', phone: '+593 98-201-0001',
+    pendingSessions: [{ id: 'bp-001', name: 'Evaluación física G5', date: '2026-06-26' }],
+    completedSessions: [
+      { id: 'bc-001', name: 'Chequeo médico anual', date: '2026-03-20' },
+      { id: 'bc-002', name: 'Simulacro G4', date: '2026-05-02' },
+      { id: 'bc-003', name: 'Control de aptitud', date: '2026-05-30' },
+    ],
+  },
+  {
+    id: 'bom-002', name: 'Bombero Sara Vega', role: 'Bombero',
+    email: 'sara.vega@bomberos.gob.ec', phone: '+593 98-201-0002',
+    pendingSessions: [],
+    completedSessions: [
+      { id: 'bc-004', name: 'Evaluación respiratoria', date: '2026-04-10' },
+      { id: 'bc-005', name: 'Chequeo cardiovascular', date: '2026-05-14' },
+    ],
+  },
+  {
+    id: 'bom-003', name: 'Bombero Luis Paredes', role: 'Bombero',
+    email: 'luis.paredes@bomberos.gob.ec', phone: '+593 98-201-0003',
+    pendingSessions: [{ id: 'bp-002', name: 'Prueba de esfuerzo G5', date: '2026-06-27' }],
+    completedSessions: [
+      { id: 'bc-006', name: 'Control médico ingreso', date: '2026-02-18' },
+    ],
+  },
+  {
+    id: 'bom-004', name: 'Bombero Diego Carrillo', role: 'Bombero',
+    email: 'diego.carrillo@bomberos.gob.ec', phone: '+593 98-201-0004',
+    pendingSessions: [{ id: 'bp-003', name: 'Evaluación G5', date: '2026-06-26' }],
+    completedSessions: [
+      { id: 'bc-007', name: 'Chequeo semestral', date: '2026-04-05' },
+      { id: 'bc-008', name: 'Monitoreo en campo', date: '2026-05-22' },
+    ],
+  },
+];
+
+const CHIEF_FILTERS = [
+  { label: 'Todos', value: 'Todos' },
+  { label: 'Capacitadores', value: 'Capacitador' },
+  { label: 'Bomberos', value: 'Bombero' },
+];
 
 const emptyLink = () => {};
 
 export default function PersonasScreen({ navigation }) {
   const { role } = useAuth();
+  const isFireChief = role === ROLES.FIRE_CHIEF;
   const { width } = useWindowDimensions();
   const [query, setQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('Todos');
 
+  const activeStaff   = isFireChief ? CHIEF_STAFF   : STAFF;
+  const activeFilters = isFireChief ? CHIEF_FILTERS  : FILTERS;
+  const subtitle      = isFireChief
+    ? 'Administra capacitadores y bomberos'
+    : 'Administra medicos, enfermeros y nutricionistas';
+
   const isCompact = width < 980;
 
   const { personas, filters, loading, error } = usePersonas(role);
-
-  const subtitle = role === 'FIRE_CHIEF'
-    ? 'Administra bomberos aspirantes'
-    : 'Administra médicos, enfermeros y nutricionistas';
 
   const filteredPersonas = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();

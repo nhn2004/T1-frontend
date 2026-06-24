@@ -47,7 +47,6 @@ function PulsingRing() {
 
 function Hotspot({ style, alert, selected, onPress }) {
   if (!alert) {
-    // Not in alert: not interactive, nothing rendered — just inert space.
     return <View style={[styles.hotspot, style]} pointerEvents="none" />;
   }
 

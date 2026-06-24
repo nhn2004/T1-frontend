@@ -1,4 +1,4 @@
-import useAuthStore from '../store/authStore'; // para el log out
+import useAuthStore from '../store/authStore';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions, } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -20,8 +20,6 @@ function buildBaseMenuItems(t) {
   ];
 }
 
-// Inserta un item justo antes del último (Configuración siempre se queda al fondo,
-// sin importar cuántos items por rol se agreguen delante).
 function insertBeforeLast(items, item) {
   return [...items.slice(0, -1), item, items[items.length - 1]];
 }
@@ -140,21 +138,21 @@ export default function Sidebar({ navigation, activeRoute }) {
               accessibilityRole="button"
               accessibilityLabel={item.label}
             >
-                <View style={styles.iconContainer}>
-                    {item.iconLibrary === 'Ionicons' ? (
-                        <Ionicons
-                        name={item.iconName}
-                        size={28}
-                        color={isActive ? '#E84A1A' : theme.sidebarIcon}
-                        />
-                    ) : (
-                        <MaterialCommunityIcons
-                        name={item.iconName}
-                        size={30}
-                        color={isActive ? '#E84A1A' : theme.sidebarIcon}
-                        />
-                    )}
-                </View>
+              <View style={styles.iconContainer}>
+                {item.iconLibrary === 'Ionicons' ? (
+                  <Ionicons
+                    name={item.iconName}
+                    size={28}
+                    color={isActive ? '#E84A1A' : theme.sidebarIcon}
+                  />
+                ) : (
+                  <MaterialCommunityIcons
+                    name={item.iconName}
+                    size={30}
+                    color={isActive ? '#E84A1A' : theme.sidebarIcon}
+                  />
+                )}
+              </View>
 
               <Animated.Text
                 numberOfLines={1}
@@ -262,17 +260,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginBottom: 10,
   },
-
-    menuItemClosed: {
-        justifyContent: 'center',
-        paddingHorizontal: 0,
-    },
-    iconContainer: {
-        width: 44,
-        height: 44,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+  menuItemClosed: {
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+  },
+  menuItemActive: {},
+  iconContainer: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   menuText: {
     fontSize: 18,
     color: '#111',
@@ -282,7 +280,7 @@ const styles = StyleSheet.create({
   menuTextActive: {
     fontWeight: '700',
     color: '#E84A1A',
-},
+  },
   footer: {
     paddingBottom: 22,
   },

@@ -26,7 +26,7 @@ export const PERMISSIONS = {
   exportAnonymizedData: [ROLES.RESEARCHER, ROLES.SYSTEM_ADMIN],
   generateReports: [ROLES.RESEARCHER, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.FIRE_CHIEF],
 
-  // Fire chief specific
+  // Gestión de personal (Jefe de Bomberos)
   manageFirefighters: [ROLES.FIRE_CHIEF, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
   manageCapacitators: [ROLES.FIRE_CHIEF, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
 };

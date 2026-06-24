@@ -105,7 +105,9 @@ function RoleNavigator({ role }) {
         <>
           <Stack.Screen name="Personas" component={PersonasWithLayout} />
           <Stack.Screen name="PersonasSesiones" component={PersonasSesionesWithLayout} />
-          <Stack.Screen name="ValidationQueue" component={withMainLayout(ValidationQueueScreen)} />
+          {role === ROLES.MEDICAL && (
+            <Stack.Screen name="ValidationQueue" component={withMainLayout(ValidationQueueScreen)} />
+          )}
         </>
       )}
       {role === ROLES.FIRE_CHIEF && (
@@ -127,8 +129,3 @@ export default function RootNavigator() {
   );
 }
 
-/* 
-cuando tengamos las pantallas reales, reemplazar los PlaceholderScreen por las pantallas correspondientes. Ejemplo:
-import ScheduleScreen from '../screens/sessions/ScheduleScreen';
-
-<Stack.Screen name="Schedule" component={ScheduleScreen} /> */
