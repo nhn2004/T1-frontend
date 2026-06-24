@@ -7,35 +7,26 @@ import useTranslation from '../../../hooks/useTranslation';
 import { useAuth } from '../../../hooks';
 import { ROLES } from '../../../constants';
 
-// "labelKey" se resuelve contra t.common.status — el texto del badge es chrome
-// de interfaz, así que responde al idioma elegido en Configuración.
 const STATUS_CONFIG = {
   [SESSION_STATUS.PLANNED]: {
-    badges:      [{ labelKey: 'pending',   bg: '#F57C00' }],
-    btnBg:       '#E85D27',
-    accent:      '#F57C00',
-    btnOpacity:  1,
+    badge: { label: 'Pendiente', bg: '#8F949B', icon: 'time-outline' },
+    btnBg: '#E85D27',
+    btnOpacity: 1,
   },
   [SESSION_STATUS.ACTIVE]: {
-    badges:      [
-      { labelKey: 'pending',   bg: '#F57C00' },
-      { labelKey: 'inProgress', bg: '#2E7D32' },
-    ],
-    btnBg:       '#E85D27',
-    accent:      '#2E7D32',
-    btnOpacity:  1,
+    badge: { label: 'En Curso', bg: '#1E88E5', icon: 'play' },
+    btnBg: '#E85D27',
+    btnOpacity: 1,
   },
   [SESSION_STATUS.COMPLETED]: {
-    badges:      [{ labelKey: 'completed',  bg: '#2E7D32' }],
-    btnBg:       '#2E7D32',
-    accent:      '#2E7D32',
-    btnOpacity:  1,
+    badge: { label: 'Realizado', bg: '#08C65A', icon: 'checkmark' },
+    btnBg: '#08C65A',
+    btnOpacity: 1,
   },
   [SESSION_STATUS.CANCELLED]: {
-    badges:      [{ labelKey: 'cancelled',  bg: '#9E9E9E' }],
-    btnBg:       '#9E9E9E',
-    accent:      '#9E9E9E',
-    btnOpacity:  0.6,
+    badge: { label: 'Cancelado', bg: '#D83B35', icon: 'close' },
+    btnBg: '#9E9E9E',
+    btnOpacity: 0.6,
   },
 };
 
@@ -55,12 +46,12 @@ export default function SessionCard({ session, onViewDetails, cardWidth, cardHei
     ? 'Ver Resultados'
     : session.status === SESSION_STATUS.COMPLETED
       ? 'Ver Reportes'
-      : 'Ver Detalles';
+      : t.sessions.viewDetails;
 
   return (
     <View style={[
       styles.card,
-      { backgroundColor: theme.card, borderColor: cfg.accent, shadowColor: cfg.accent },
+      { backgroundColor: theme.card },
       { width: cardWidth },
       cardHeight ? { height: cardHeight } : null,
     ]}>
@@ -69,19 +60,18 @@ export default function SessionCard({ session, onViewDetails, cardWidth, cardHei
       <View style={styles.header}>
         <View style={styles.titleBlock}>
           <Text style={[styles.title, { color: theme.textPrimary }]} numberOfLines={1}>{session.title}</Text>
-          <Text style={[styles.applicants, { color: cfg.accent }]}>{session.applicants} {t.sessions.applicants}</Text>
+          <Text style={styles.applicants}>{session.applicants} {t.sessions.applicants}</Text>
         </View>
-        <View style={styles.badgeStack}>
-          {cfg.badges.map((b) => (
-            <View key={b.labelKey} style={[styles.badge, { backgroundColor: b.bg }]}>
-              <Text style={styles.badgeText}>{t.common.status[b.labelKey]}</Text>
-            </View>
-          ))}
+
+        {/* Badge estilo pill con icono */}
+        <View style={[styles.badge, { backgroundColor: badge.bg }]}>
+          <Ionicons name={badge.icon} size={10} color="#FFFFFF" />
+          <Text style={styles.badgeText}>{badge.label}</Text>
         </View>
       </View>
 
-      {/* Details — flex:1 para que empujen el botón hacia abajo */}
-      <View style={[styles.details, { borderTopColor: theme.divider }]}>
+      {/* Details */}
+      <View style={[styles.details, { borderTopColor: theme.divider ?? '#F0F0F0' }]}>
         <DetailRow icon="calendar-outline"  label={session.date} color={theme.textSecondary} />
         <DetailRow icon="time-outline"      label={session.time} color={theme.textSecondary} />
         <DetailRow icon="clipboard-outline" label={session.type} color={theme.textSecondary} />
@@ -96,12 +86,15 @@ export default function SessionCard({ session, onViewDetails, cardWidth, cardHei
             : { backgroundColor: cfg.btnBg, opacity: cfg.btnOpacity },
         ]}
         onPress={() => onViewDetails(session.id)}
-        activeOpacity={0.8}
+        activeOpacity={isBtnDisabled ? 1 : 0.8}
+        disabled={isBtnDisabled}
         accessibilityRole="button"
-        accessibilityLabel={`${t.sessions.viewDetails} — ${session.title}`}
+        accessibilityLabel={`${btnLabel} — ${session.title}`}
       >
-        <Text style={styles.btnText}>{t.sessions.viewDetails}</Text>
-        <Ionicons name="arrow-forward" size={12} color="#fff" />
+        <Text style={[styles.btnText, isBtnDisabled && { color: '#8E9399' }]}>
+          {btnLabel}
+        </Text>
+        <Ionicons name="arrow-forward" size={12} color={isBtnDisabled ? '#8E9399' : '#fff'} />
       </TouchableOpacity>
 
     </View>
@@ -111,8 +104,8 @@ export default function SessionCard({ session, onViewDetails, cardWidth, cardHei
 function DetailRow({ icon, label, color }) {
   return (
     <View style={styles.detailRow}>
-      <Ionicons name={icon} size={12} color={color} />
-      <Text style={[styles.detailText, { color }]} numberOfLines={1}>{label}</Text>
+      <Ionicons name={icon} size={12} color={color ?? '#697282'} />
+      <Text style={[styles.detailText, { color: color ?? '#495565' }]} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
@@ -120,11 +113,13 @@ function DetailRow({ icon, label, color }) {
 const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
-    borderWidth: 1.5,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
     paddingTop: '1%',
     paddingHorizontal: '3%',
     paddingBottom: '4%',
     gap: 4,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
@@ -141,7 +136,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#2E2E2E',
   },
   applicants: {
     fontSize: 11,
@@ -165,7 +159,6 @@ const styles = StyleSheet.create({
 
   details: {
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
     paddingTop: '1.5%',
     gap: 3,
   },
@@ -176,7 +169,6 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 11,
-    color: '#495565',
     flex: 1,
   },
 
