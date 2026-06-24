@@ -1,25 +1,32 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { FILTERS } from '../__mocks__/sessionsData';
+import { FILTER_ORDER } from '../__mocks__/sessionsData';
 import { COLORS } from '../../../constants';
+import useTheme from '../../../hooks/useTheme';
+import useTranslation from '../../../hooks/useTranslation';
 
-export default function FilterTabs({ activeFilter, counts, onSelect }) {
+export default function FilterTabs({ activeFilter, counts = {}, onSelect = () => {}, searchExpanded, onSearchToggle, query, onQueryChange }) {
+  const theme = useTheme();
+  const { t } = useTranslation();
+
+  const filters = FILTER_ORDER.map((key) => ({ key, label: t.sessions.filterTabs[key] ?? key }));
+
   return (
     <View style={styles.container}>
-      {FILTERS.map((filter) => {
+      {filters.map((filter) => {
         const isActive = activeFilter === filter.key;
         const count = counts[filter.key] ?? 0;
 
         return (
           <TouchableOpacity
             key={filter.key}
-            style={[styles.tab, isActive && styles.tabActive]}
+            style={[styles.tab, isActive && styles.tabActive, { borderColor: theme.border }]}
             onPress={() => onSelect(filter.key)}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityState={{ selected: isActive }}
           >
-            <Text style={[styles.label, isActive && styles.labelActive]}>
+            <Text style={[styles.label, isActive && styles.labelActive, { color: isActive ? '#FFFFFF' : theme.textPrimary }]}>
               {filter.label}
             </Text>
             <View style={[
