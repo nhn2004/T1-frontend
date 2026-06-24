@@ -167,7 +167,7 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
               <View style={styles.statusRow}>
                 <Ionicons name="layers-outline" size={16} color={theme.textPrimary} />
                 <Text style={[styles.statusLabel, { color: theme.textPrimary }]}>{t.sessionDetail.status}</Text>
-                {display.badges.map((b) => (
+                {(display.badges || []).map((b) => (
                   <View key={b.labelKey} style={[styles.badge, { backgroundColor: b.bg }]}>
                     <Text style={styles.badgeText}>{t.common.status[b.labelKey]}</Text>
                   </View>

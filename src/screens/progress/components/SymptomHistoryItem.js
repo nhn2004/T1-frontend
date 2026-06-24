@@ -11,7 +11,7 @@ import { SEVERITY_BADGE_KEY } from '../__mocks__/progressData';
 export default function SymptomHistoryItem({ entry, onViewSession, viewLabel, noneLabel }) {
   const theme = useTheme();
   const { t } = useTranslation();
-  const hasSymptoms = entry.sintomas.length > 0;
+  const hasSymptoms = (entry.sintomas || []).length > 0;
   const badge = hasSymptoms ? theme.badge[SEVERITY_BADGE_KEY[entry.severidad]] : theme.badge.success;
 
   return (
@@ -27,7 +27,7 @@ export default function SymptomHistoryItem({ entry, onViewSession, viewLabel, no
         {hasSymptoms ? (
           <>
             <View style={styles.chipsRow}>
-              {entry.sintomas.map((s) => (
+              {(entry.sintomas || []).map((s) => (
                 <View key={s} style={[styles.chip, { backgroundColor: theme.pill }]}>
                   <Text style={[styles.chipText, { color: theme.textSecondary }]}>{t.progress.symptoms[s] ?? s}</Text>
                 </View>

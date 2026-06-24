@@ -9,7 +9,7 @@ import useTranslation from '../../../hooks/useTranslation';
 // la app usa para progreso (PerformanceStatCard), sin SVG ni dependencias.
 // `item.label` es la clave en español (se usa para filtrar/comparar); el
 // texto que se muestra pasa por t.progress.symptoms para traducirse.
-export default function SymptomFrequencyChart({ items, selected, onSelect, emptyLabel }) {
+export default function SymptomFrequencyChart({ items = [], selected, onSelect, emptyLabel = '' }) {
   const theme = useTheme();
   const { t } = useTranslation();
 

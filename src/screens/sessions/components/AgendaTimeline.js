@@ -6,7 +6,7 @@ import useTranslation from '../../../hooks/useTranslation';
 
 // Renders the vertical timeline agenda. Purely presentational.
 
-export default function AgendaTimeline({ items }) {
+export default function AgendaTimeline({ items = [] }) {
   const theme = useTheme();
   const { t } = useTranslation();
 

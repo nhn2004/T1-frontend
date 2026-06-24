@@ -6,7 +6,7 @@ import useTranslation from '../../../hooks/useTranslation';
 
 // "This Week" panel: upcoming agenda items, distinct from the full Agenda timeline used in sessions.
 
-export default function WeekScheduleCard({ items, compact, onViewDetails }) {
+export default function WeekScheduleCard({ items = [], compact, onViewDetails }) {
   const theme = useTheme();
   const { t } = useTranslation();
   const statusLabel = { CONFIRMED: t.common.status.confirmed, PENDING: t.common.status.pending };

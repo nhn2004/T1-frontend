@@ -5,7 +5,7 @@ import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
 import { fullDateLabel } from '../utils/calendarUtils';
 
-export default function DayAgendaPanel({ selectedDate, events, onViewDetails, compact }) {
+export default function DayAgendaPanel({ selectedDate, events = [], onViewDetails, compact }) {
   const theme = useTheme();
   const { t, language } = useTranslation();
 

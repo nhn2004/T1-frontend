@@ -103,7 +103,7 @@ export default function ProgressHistoryScreen({ navigation }) {
   const symptomFrequency = useMemo(() => {
     const counts = {};
     filteredEntries.forEach((e) => {
-      e.sintomas.forEach((s) => { counts[s] = (counts[s] ?? 0) + 1; });
+      (e.sintomas || []).forEach((s) => { counts[s] = (counts[s] ?? 0) + 1; });
     });
     return Object.entries(counts)
       .map(([label, count]) => ({ label, count }))
@@ -112,7 +112,7 @@ export default function ProgressHistoryScreen({ navigation }) {
   }, [filteredEntries]);
 
   const visibleSymptomEntries = symptomFilter
-    ? symptomEntries.filter((e) => e.sintomas.includes(symptomFilter))
+    ? symptomEntries.filter((e) => (e.sintomas || []).includes(symptomFilter))
     : symptomEntries;
 
   return (

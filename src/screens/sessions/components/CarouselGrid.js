@@ -24,7 +24,7 @@ function rowsForHeight(h) {
   return Math.max(1, Math.floor(h / MIN_CARD_HEIGHT));
 }
 
-export default function CarouselGrid({ sessions, onViewDetails }) {
+export default function CarouselGrid({ sessions = [], onViewDetails }) {
   const theme = useTheme();
   const { t } = useTranslation();
   const [box, setBox]   = useState({ w: 0, h: 0 });
@@ -33,7 +33,7 @@ export default function CarouselGrid({ sessions, onViewDetails }) {
   const ROWS            = useMemo(() => rowsForHeight(box.h), [box.h]);
   const isSingleColumn  = COLS === 1;
   const perPage         = COLS * ROWS;
-  const totalPages      = Math.ceil(sessions.length / perPage);
+  const totalPages      = Math.ceil((sessions?.length || 0) / perPage);
   const [page, setPage] = useState(0);
 
   // Si cambia el filtro/lista o el número de columnas reduce el total de páginas,

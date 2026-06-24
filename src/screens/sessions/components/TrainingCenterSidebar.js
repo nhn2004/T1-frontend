@@ -10,12 +10,13 @@ import useTranslation from '../../../hooks/useTranslation';
 // Right sidebar: training center card + instructor list.
 // Purely presentational — receives data as props.
 
-export default function TrainingCenterSidebar({ trainingCenter, instructors, fullWidth }) {
+export default function TrainingCenterSidebar({ trainingCenter = {}, instructors = [], fullWidth }) {
   const theme = useTheme();
   const { t } = useTranslation();
 
   const handleDirections = () => {
-    const query = encodeURIComponent(trainingCenter.address);
+    const query = encodeURIComponent(trainingCenter?.address ?? '');
+    if (!trainingCenter?.address) return;
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`).catch(() => {});
   };
 
@@ -62,7 +63,7 @@ export default function TrainingCenterSidebar({ trainingCenter, instructors, ful
       {/* ── Lead instructors ── */}
       <View style={[styles.instructorsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <Text style={[styles.instructorsLabel, { color: theme.textMuted }]}>{t.sessionDetail.leadInstructor}</Text>
-        {instructors.map((inst) => (
+        {(instructors || []).map((inst) => (
           <InstructorRow key={inst.id} instructor={inst} theme={theme} t={t} />
         ))}
       </View>

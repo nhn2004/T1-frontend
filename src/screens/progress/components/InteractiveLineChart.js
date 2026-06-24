@@ -19,7 +19,7 @@ const RIGHT_INSET = 16;
 // la leyenda permite ocultar/mostrar series — si no caben todos los puntos
 // en el ancho disponible, el área entera scrollea horizontalmente en vez de
 // aplastar los puntos hasta volverlos ilegibles.
-export default function InteractiveLineChart({ series, points, emptyLabel }) {
+export default function InteractiveLineChart({ series = [], points = [], emptyLabel = '' }) {
   const theme = useTheme();
   const [hidden, setHidden] = useState(() => new Set());
   const [selected, setSelected] = useState(null); // { pointIndex, seriesKey }

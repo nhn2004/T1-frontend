@@ -37,7 +37,7 @@ const RAW_RESULTS = {
 
 function withComputedStatus(result) {
   const metrics = Object.fromEntries(
-    Object.entries(result.metrics).map(([key, metric]) => [
+    Object.entries(result.metrics || {}).map(([key, metric]) => [
       key,
       { ...metric, status: getStatus(key, metric.value) },
     ])
