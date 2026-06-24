@@ -5,7 +5,7 @@
 
 // Base detail info shared by all sessions (agenda, location, instructors).
 // In production each session would have its own agenda/location/instructors.
-const BASE_DETAIL = {
+export const BASE_DETAIL = {
   description:
     'Intensive hands-on session focused on interior fire operations, hose advancement, search procedures, and ventilation tactics in live-fire or simulated fire house environments.',
   time: '08:00 AM – 12:00 PM',

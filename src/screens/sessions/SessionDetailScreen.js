@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -9,16 +9,36 @@ import TrainingCenterSidebar from './components/TrainingCenterSidebar';
 
 import { useAuth } from '../../hooks';
 import { ROLES } from '../../constants';
+import { sessionService } from '../../services';
 
 import {
-  SESSIONS_DETAIL_MAP,
+  BASE_DETAIL,
   STATUS_DISPLAY,
 } from './__mocks__/sessionDetailData';
 
 export default function SessionDetailScreen({ navigation, route, Sidebar, sessionId, onBack }) {
-  // Busca la sesión por id — en producción esto viene del API
-  const id = sessionId ?? route?.params?.id ?? 's1';
-  const session = SESSIONS_DETAIL_MAP[id] ?? SESSIONS_DETAIL_MAP['s1'];
+  const id = sessionId ?? route?.params?.id;
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) { setLoading(false); return; }
+    sessionService.getById(id)
+      .then(data => setSession({ ...BASE_DETAIL, ...data }))
+      .catch(() => setSession({ ...BASE_DETAIL, title: 'Sesión', status: 'PLANNED', date: '—', time: '—' }))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  if (loading || !session) {
+    return (
+      <SafeAreaView style={styles.root}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const display = STATUS_DISPLAY[session.status] ?? STATUS_DISPLAY.PLANNED;
 
   const { role } = useAuth();

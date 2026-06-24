@@ -1,17 +1,13 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { COLORS } from '../../constants';
 import FilterTabs   from './components/FilterTabs';
 import CarouselGrid from './components/CarouselGrid';
+import { useSessions } from './hooks/useSessions';
 
-import {
-  ALL_SESSIONS,
-  FILTER_KEYS,
-  applyFilter,
-  filterTitle,
-} from './__mocks__/sessionsData';
+import { FILTER_KEYS, applyFilter, filterTitle } from './__mocks__/sessionsData';
 
 export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
   const insets = useSafeAreaInsets();
@@ -19,19 +15,21 @@ export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
   const [query, setQuery] = useState('');
   const [searchExpanded, setSearchExpanded] = useState(false);
 
+  const { sessions, loading, error } = useSessions();
+
   const filteredSessions = useMemo(() => {
-    const byFilter = applyFilter(ALL_SESSIONS, activeFilter);
+    const byFilter = applyFilter(sessions, activeFilter);
     if (!query.trim()) return byFilter;
     return byFilter.filter(s => s.title.toLowerCase().includes(query.trim().toLowerCase()));
-  }, [activeFilter, query]);
+  }, [sessions, activeFilter, query]);
 
   const counts = useMemo(() => ({
-    [FILTER_KEYS.ALL]:         ALL_SESSIONS.length,
-    [FILTER_KEYS.IN_PROGRESS]: applyFilter(ALL_SESSIONS, FILTER_KEYS.IN_PROGRESS).length,
-    [FILTER_KEYS.PENDING]:     applyFilter(ALL_SESSIONS, FILTER_KEYS.PENDING).length,
-    [FILTER_KEYS.COMPLETED]:   applyFilter(ALL_SESSIONS, FILTER_KEYS.COMPLETED).length,
-    [FILTER_KEYS.CANCELLED]:   applyFilter(ALL_SESSIONS, FILTER_KEYS.CANCELLED).length,
-  }), []);
+    [FILTER_KEYS.ALL]:         sessions.length,
+    [FILTER_KEYS.IN_PROGRESS]: applyFilter(sessions, FILTER_KEYS.IN_PROGRESS).length,
+    [FILTER_KEYS.PENDING]:     applyFilter(sessions, FILTER_KEYS.PENDING).length,
+    [FILTER_KEYS.COMPLETED]:   applyFilter(sessions, FILTER_KEYS.COMPLETED).length,
+    [FILTER_KEYS.CANCELLED]:   applyFilter(sessions, FILTER_KEYS.CANCELLED).length,
+  }), [sessions]);
 
   const handleViewDetails = useCallback((id) => {
     if (onViewDetails) onViewDetails(id);
@@ -60,7 +58,15 @@ export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
           onQueryChange={setQuery}
         />
 
-        {filteredSessions.length > 0 ? (
+        {loading ? (
+          <View style={styles.emptyBox}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        ) : error ? (
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyText}>{error}</Text>
+          </View>
+        ) : filteredSessions.length > 0 ? (
           <CarouselGrid
             sessions={filteredSessions}
             onViewDetails={handleViewDetails}
