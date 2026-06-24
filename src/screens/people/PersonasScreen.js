@@ -10,6 +10,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useAuth } from '../../hooks';
+import { ROLES } from '../../constants/roles';
 
 const STAFF = [
   {
@@ -151,19 +153,96 @@ const FILTERS = [
   { label: 'Medicos', value: 'Medico' },
 ];
 
+// ── Datos para Jefe de Bomberos ────────────────────────────────────────────
+const CHIEF_STAFF = [
+  {
+    id: 'cap-001', name: 'Cap. Fernando Reyes', role: 'Capacitador',
+    email: 'fernando.reyes@firehealth.com', phone: '+593 99-001-0001',
+    pendingSessions: [{ id: 'cp-001', name: 'Entrenamiento físico G5', date: '2026-06-25' }],
+    completedSessions: [
+      { id: 'cc-001', name: 'Capacitación G4', date: '2026-05-10' },
+      { id: 'cc-002', name: 'Simulacro incendio', date: '2026-05-28' },
+    ],
+  },
+  {
+    id: 'cap-002', name: 'Cap. Lorena Ibáñez', role: 'Capacitador',
+    email: 'lorena.ibanez@firehealth.com', phone: '+593 99-001-0002',
+    pendingSessions: [
+      { id: 'cp-002', name: 'Técnicas de rescate', date: '2026-06-28' },
+      { id: 'cp-003', name: 'Manejo de HAZMAT', date: '2026-07-05' },
+    ],
+    completedSessions: [
+      { id: 'cc-003', name: 'Entrenamiento G3', date: '2026-04-15' },
+    ],
+  },
+  {
+    id: 'bom-001', name: 'Bombero Marco Torres', role: 'Bombero',
+    email: 'marco.torres@bomberos.gob.ec', phone: '+593 98-201-0001',
+    pendingSessions: [{ id: 'bp-001', name: 'Evaluación física G5', date: '2026-06-26' }],
+    completedSessions: [
+      { id: 'bc-001', name: 'Chequeo médico anual', date: '2026-03-20' },
+      { id: 'bc-002', name: 'Simulacro G4', date: '2026-05-02' },
+      { id: 'bc-003', name: 'Control de aptitud', date: '2026-05-30' },
+    ],
+  },
+  {
+    id: 'bom-002', name: 'Bombero Sara Vega', role: 'Bombero',
+    email: 'sara.vega@bomberos.gob.ec', phone: '+593 98-201-0002',
+    pendingSessions: [],
+    completedSessions: [
+      { id: 'bc-004', name: 'Evaluación respiratoria', date: '2026-04-10' },
+      { id: 'bc-005', name: 'Chequeo cardiovascular', date: '2026-05-14' },
+    ],
+  },
+  {
+    id: 'bom-003', name: 'Bombero Luis Paredes', role: 'Bombero',
+    email: 'luis.paredes@bomberos.gob.ec', phone: '+593 98-201-0003',
+    pendingSessions: [
+      { id: 'bp-002', name: 'Prueba de esfuerzo G5', date: '2026-06-27' },
+    ],
+    completedSessions: [
+      { id: 'bc-006', name: 'Control médico ingreso', date: '2026-02-18' },
+    ],
+  },
+  {
+    id: 'bom-004', name: 'Bombero Diego Carrillo', role: 'Bombero',
+    email: 'diego.carrillo@bomberos.gob.ec', phone: '+593 98-201-0004',
+    pendingSessions: [{ id: 'bp-003', name: 'Evaluación G5', date: '2026-06-26' }],
+    completedSessions: [
+      { id: 'bc-007', name: 'Chequeo semestral', date: '2026-04-05' },
+      { id: 'bc-008', name: 'Monitoreo en campo', date: '2026-05-22' },
+    ],
+  },
+];
+
+const CHIEF_FILTERS = [
+  { label: 'Todos', value: 'Todos' },
+  { label: 'Capacitadores', value: 'Capacitador' },
+  { label: 'Bomberos', value: 'Bombero' },
+];
+
 const emptyLink = () => {};
 
 export default function PersonasScreen({ navigation }) {
+  const { role } = useAuth();
+  const isFireChief = role === ROLES.FIRE_CHIEF;
+
   const { width } = useWindowDimensions();
   const [query, setQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('Todos');
 
   const isCompact = width < 980;
 
+  const activeStaff   = isFireChief ? CHIEF_STAFF   : STAFF;
+  const activeFilters = isFireChief ? CHIEF_FILTERS  : FILTERS;
+  const subtitle      = isFireChief
+    ? 'Administra capacitadores y bomberos'
+    : 'Administra medicos, enfermeros y nutricionistas';
+
   const filteredStaff = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return STAFF.filter((person) => {
+    return activeStaff.filter((person) => {
       const matchesFilter =
         selectedFilter === 'Todos' || person.role === selectedFilter;
       const matchesQuery =
@@ -173,7 +252,7 @@ export default function PersonasScreen({ navigation }) {
 
       return matchesFilter && matchesQuery;
     });
-  }, [query, selectedFilter]);
+  }, [query, selectedFilter, activeStaff]);
 
   return (
     <View style={styles.screen}>
@@ -190,9 +269,7 @@ export default function PersonasScreen({ navigation }) {
         showsVerticalScrollIndicator
       >
         <View style={styles.topRow}>
-          <Text style={styles.subtitle}>
-            Administra medicos, enfermeros y nutricionistas
-          </Text>
+          <Text style={styles.subtitle}>{subtitle}</Text>
 
           <Pressable style={styles.addButton} onPress={emptyLink}>
             <Text style={styles.addButtonText}>+ Agregar Personal</Text>
@@ -212,7 +289,7 @@ export default function PersonasScreen({ navigation }) {
           </View>
 
           <View style={styles.filters}>
-            {FILTERS.map((filter) => {
+            {activeFilters.map((filter) => {
               const isActive = selectedFilter === filter.value;
 
               return (
@@ -238,7 +315,11 @@ export default function PersonasScreen({ navigation }) {
         <View style={styles.grid}>
           {filteredStaff.map((person) => {
             return (
-              <View key={person.id} style={[styles.card, isCompact && styles.cardCompact]}>
+              <Pressable
+                key={person.id}
+                style={[styles.card, isCompact && styles.cardCompact]}
+                onPress={() => navigation.navigate('PersonasSesiones', { personId: person.id, personName: person.name })}
+              >
                 <View style={styles.personRow}>
                   <View
                     style={styles.avatarPlaceholder}
@@ -296,7 +377,7 @@ export default function PersonasScreen({ navigation }) {
                   </View>
                 </View>
 
-              </View>
+              </Pressable>
             );
           })}
         </View>

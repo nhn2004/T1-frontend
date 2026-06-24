@@ -1,21 +1,46 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SessionCard from './SessionCard';
+import useTheme from '../../../hooks/useTheme';
+import useTranslation from '../../../hooks/useTranslation';
 
-const COLS = 3;
-const ROWS = 3;
+// Alto mínimo para que una SessionCard quepa completa (título+badge, 3 filas de
+// detalle y el botón) sin que "overflow: hidden" recorte el botón al fondo.
+const MIN_CARD_HEIGHT = 190;
 
-export default function CarouselGrid({ sessions, onViewDetails }) {
+// Columnas según el ancho real del contenedor (no el de la ventana), para que el
+// grid se acomode igual aunque el sidebar esté colapsado o expandido.
+function columnsForWidth(w) {
+  if (w < 420) return 1;
+  if (w < 760) return 2;
+  return 3;
+}
+
+// Filas según el alto real del contenedor — si la ventana del navegador es más
+// baja, se muestran menos filas por página (con flechas para paginar) en vez de
+// aplastar cada tarjeta hasta recortar el botón "Ver Detalles".
+function rowsForHeight(h) {
+  return Math.max(1, Math.floor(h / MIN_CARD_HEIGHT));
+}
+
+export default function CarouselGrid({ sessions = [], onViewDetails }) {
+  const theme = useTheme();
+  const { t } = useTranslation();
   const [box, setBox]   = useState({ w: 0, h: 0 });
   const fadeAnim        = useRef(new Animated.Value(1)).current;
+  const COLS            = useMemo(() => columnsForWidth(box.w), [box.w]);
+  const ROWS            = useMemo(() => rowsForHeight(box.h), [box.h]);
+  const isSingleColumn  = COLS === 1;
   const perPage         = COLS * ROWS;
-  const totalPages      = Math.ceil(sessions.length / perPage);
+  const totalPages      = Math.ceil((sessions?.length || 0) / perPage);
   const [page, setPage] = useState(0);
 
-  // Reset to page 0 whenever the session list changes (filter/search change)
-  const firstId = sessions[0]?.id;
-  React.useEffect(() => { setPage(0); }, [firstId, sessions.length]);
+  // Si cambia el filtro/lista o el número de columnas reduce el total de páginas,
+  // evita quedar "atascado" en una página vacía fuera de rango.
+  useEffect(() => {
+    setPage((current) => Math.min(current, Math.max(totalPages - 1, 0)));
+  }, [totalPages]);
 
   const hasPrev    = page > 0;
   const hasNext    = page < totalPages - 1;
@@ -52,6 +77,30 @@ export default function CarouselGrid({ sessions, onViewDetails }) {
     if (row.length > 0) gridRows.push(row);
   }
 
+  // En una sola columna (teléfono) no tiene sentido forzar la altura de cada
+  // tarjeta a "alto disponible / filas": con pocas filas eso deja muchísimo
+  // espacio vacío entre el contenido y el botón. En ese caso se vuelve una
+  // lista vertical normal, con scroll, donde cada tarjeta mide según su
+  // contenido — sin paginar ni forzar alto.
+  if (isSingleColumn) {
+    return (
+      <View style={styles.outer} onLayout={onLayout}>
+        {box.w > 0 && (
+          <ScrollView style={styles.singleColumnScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.singleColumnList}>
+            {sessions.map((s) => (
+              <SessionCard
+                key={s.id}
+                session={s}
+                onViewDetails={onViewDetails}
+                cardWidth={box.w}
+              />
+            ))}
+          </ScrollView>
+        )}
+      </View>
+    );
+  }
+
   return (
     <View style={styles.outer} onLayout={onLayout}>
       {box.w > 0 && (
@@ -60,7 +109,7 @@ export default function CarouselGrid({ sessions, onViewDetails }) {
           {/* Flecha izquierda — solo si hace falta */}
           {needArrows && (
             <Arrow direction="left" visible={hasPrev} size={arrowSize}
-              onPress={() => animateTo(page - 1)} />
+              onPress={() => animateTo(page - 1)} cardColor={theme.card} label={t.sessions.pagePrev} />
           )}
 
           {/* Grid */}
@@ -87,7 +136,7 @@ export default function CarouselGrid({ sessions, onViewDetails }) {
           {/* Flecha derecha */}
           {needArrows && (
             <Arrow direction="right" visible={hasNext} size={arrowSize}
-              onPress={() => animateTo(page + 1)} />
+              onPress={() => animateTo(page + 1)} cardColor={theme.card} label={t.sessions.pageNext} />
           )}
 
         </View>
@@ -96,13 +145,15 @@ export default function CarouselGrid({ sessions, onViewDetails }) {
   );
 }
 
-function Arrow({ direction, visible, size, onPress }) {
+function Arrow({ direction, visible, size, onPress, cardColor, label }) {
   return (
     <View style={[styles.arrowWrap, { width: size }]}>
       {visible ? (
         <TouchableOpacity
-          style={[styles.arrow, { width: size, height: size, borderRadius: size / 2 }]}
+          style={[styles.arrow, { width: size, height: size, borderRadius: size / 2, backgroundColor: cardColor }]}
           onPress={onPress} activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={label}
         >
           <Ionicons
             name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
@@ -119,6 +170,8 @@ function Arrow({ direction, visible, size, onPress }) {
 
 const styles = StyleSheet.create({
   outer: { flex: 1 },
+  singleColumnScroll: { flex: 1 },
+  singleColumnList: { gap: 12, paddingBottom: 12 },
   row: {
     flex: 1,
     flexDirection: 'row',

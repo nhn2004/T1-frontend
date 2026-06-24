@@ -1,16 +1,25 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 import { COLORS } from '../../constants';
+import { ROLES } from '../../constants/roles';
+import { useAuth } from '../../hooks';
+import useTheme from '../../hooks/useTheme';
+import useTranslation from '../../hooks/useTranslation';
 import FilterTabs   from './components/FilterTabs';
 import CarouselGrid from './components/CarouselGrid';
 import { useSessions } from './hooks/useSessions';
 
-import { FILTER_KEYS, applyFilter, filterTitle } from './__mocks__/sessionsData';
+import { FILTER_KEYS, applyFilter } from './__mocks__/sessionsData';
 
 export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
+  const theme = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { role } = useAuth();
+  const isFireChief = role === ROLES.FIRE_CHIEF;
   const [activeFilter, setActiveFilter] = useState(FILTER_KEYS.ALL);
   const [query, setQuery] = useState('');
   const [searchExpanded, setSearchExpanded] = useState(false);
@@ -40,13 +49,26 @@ export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
     if (searchExpanded) setQuery('');
     setSearchExpanded(v => !v);
   }, [searchExpanded]);
+  const emptyMessage = t.sessions.emptyMessage[activeFilter];
 
   return (
-    <SafeAreaView style={styles.root}>
+    <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
       {Sidebar && <Sidebar />}
 
       <View style={[styles.content, { paddingTop: Math.max(insets.top, 12) }]}>
-        <Text style={styles.pageTitle}>{filterTitle(activeFilter)}</Text>
+        <View style={styles.titleRow}>
+          <Text style={[styles.pageTitle, { color: theme.textPrimary }]}>{t.sessions.pageTitle[activeFilter]}</Text>
+          {isFireChief && (
+            <TouchableOpacity
+              style={styles.crearBtn}
+              onPress={() => navigation?.navigate('CrearSesion')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="add-circle-outline" size={16} color="#fff" />
+              <Text style={styles.crearBtnText}>Crear Sesión</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         <FilterTabs
           activeFilter={activeFilter}
@@ -73,7 +95,8 @@ export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
           />
         ) : (
           <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>No hay capacitaciones.</Text>
+            <Ionicons name="file-tray-outline" size={32} color={theme.textMuted} />
+            <Text style={[styles.emptyText, { color: theme.textMuted }]}>{emptyMessage}</Text>
           </View>
         )}
       </View>
@@ -84,7 +107,6 @@ export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F4F6F8',
   },
   content: {
     flex: 1,
@@ -93,11 +115,30 @@ const styles = StyleSheet.create({
     paddingBottom: '1%',
     gap: 8,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   pageTitle: {
     fontSize: 18,
     fontWeight: '800',
     color: '#2E2E2E',
   },
-  emptyBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { fontSize: 14, color: '#9AA3B0' },
+  crearBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: '#E85D27',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+  },
+  crearBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  emptyBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  emptyText: { fontSize: 14 },
 });

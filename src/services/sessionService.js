@@ -21,14 +21,15 @@ function formatTime(iso) {
 
 function toSession(raw) {
   return {
-    id:          raw.trainingSessionId,
-    title:       raw.title,
-    applicants:  raw.plannedCapacity ?? 0,
-    status:      STATUS_MAP[raw.status] ?? 'PLANNED',
-    date:        formatDate(raw.scheduledStart),
-    time:        formatTime(raw.scheduledStart),
-    type:        raw.sessionCode ?? 'Capacitación',
-    description: raw.description ?? '',
+    id:            raw.trainingSessionId,
+    title:         raw.title,
+    applicants:    raw.plannedCapacity ?? 0,
+    capacityCount: raw.plannedCapacity ?? 0,
+    status:        STATUS_MAP[raw.status] ?? 'PLANNED',
+    date:          formatDate(raw.scheduledStart),
+    time:          formatTime(raw.scheduledStart),
+    type:          raw.sessionCode ?? 'Capacitación',
+    description:   raw.description ?? '',
     scheduledStart: raw.scheduledStart,
     scheduledEnd:   raw.scheduledEnd,
     actualStart:    raw.actualStart,

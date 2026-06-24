@@ -134,12 +134,13 @@ export const FILTER_KEYS = {
   CANCELLED:   'CANCELLED',
 };
 
-export const FILTERS = [
-  { key: FILTER_KEYS.ALL,         label: 'Todas',     icon: null,           activeColor: '#E85D27' },
-  { key: FILTER_KEYS.IN_PROGRESS, label: 'En Curso',  icon: 'play',         activeColor: '#1E88E5' },
-  { key: FILTER_KEYS.PENDING,     label: 'Pendiente', icon: 'time-outline', activeColor: '#8F949B' },
-  { key: FILTER_KEYS.COMPLETED,   label: 'Realizadas',icon: 'checkmark',    activeColor: '#08C65A' },
-  { key: FILTER_KEYS.CANCELLED,   label: 'Canceladas',icon: 'close',        activeColor: '#D83B35' },
+// Las etiquetas (label) viven en el diccionario de i18n (t.sessions.filterTabs /
+// t.sessions.pageTitle), no aquí — así responden al idioma elegido en Configuración.
+export const FILTER_ORDER = [
+  FILTER_KEYS.ALL,
+  FILTER_KEYS.PENDING,
+  FILTER_KEYS.COMPLETED,
+  FILTER_KEYS.CANCELLED,
 ];
 
 const STATUS_SORT = { ACTIVE: 0, PLANNED: 1, COMPLETED: 2, CANCELLED: 3 };

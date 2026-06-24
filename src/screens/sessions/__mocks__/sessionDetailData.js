@@ -9,7 +9,9 @@ export const BASE_DETAIL = {
   description:
     'Intensive hands-on session focused on interior fire operations, hose advancement, search procedures, and ventilation tactics in live-fire or simulated fire house environments.',
   time: '08:00 AM – 12:00 PM',
-  capacity: '8 Aspirantes',
+  // El número es el dato; la palabra ("Aspirantes"/"Trainees") es chrome y se
+  // compone en SessionDetailScreen vía t.sessions.applicants para que traduzca.
+  capacityCount: 8,
   note:
     'This is a physically demanding evolution. Arrive hydrated and ready for extended activity. All participants must be clean-shaven to ensure a proper SCBA facepiece seal.',
   agenda: [
@@ -63,35 +65,49 @@ export const SESSIONS_DETAIL_MAP = {
   s10: { ...BASE_DETAIL, id: 's10', title: 'Capacitación B3', date: '20 Oct 2025', status: 'COMPLETED' },
   s11: { ...BASE_DETAIL, id: 's11', title: 'Capacitación C1', date: '5 Sep 2025',  status: 'CANCELLED' },
   s12: { ...BASE_DETAIL, id: 's12', title: 'Capacitación C2', date: '15 Sep 2025', status: 'CANCELLED' },
+
+  // Invitación individual enviada desde el dashboard del Aspirante (TraineeDashboard).
+  inv1: {
+    ...BASE_DETAIL,
+    id: 'inv1',
+    title: 'Live Fire Drill - Guayaquil',
+    date: 'Oct 24, 2025',
+    time: '08:00 AM',
+    capacityCount: 8,
+    description: 'Mandatory training session covering hose handling techniques in live fire scenarios.',
+    status: 'PLANNED',
+  },
 };
 
 // ── Status display config ─────────────────────────────────────────────────────
+// "labelKey"/"btnLabelKey" se resuelven contra t.common.status / t.sessionDetail en
+// SessionDetailScreen — son textos de chrome, responden al idioma elegido.
 
 export const STATUS_DISPLAY = {
   PLANNED: {
-    badges:      [{ label: 'Pendiente',   bg: '#F57C00' }],
-    btnLabel:    'Iniciar Capacitación',
+    badges:      [{ labelKey: 'pending',   bg: '#F57C00' }],
+    btnLabelKey: 'start',
     btnBg:       '#E85D27',
     btnDisabled: false,
   },
   ACTIVE: {
     badges:      [
-      { label: 'Pendiente',   bg: '#F57C00' },
-      { label: 'En Progreso', bg: '#2E7D32' },
+      { labelKey: 'pending',   bg: '#F57C00' },
+      { labelKey: 'inProgress', bg: '#2E7D32' },
     ],
-    btnLabel:    'Continuar Capacitación',
+    btnLabelKey: 'continue',
     btnBg:       '#E85D27',
     btnDisabled: false,
   },
   COMPLETED: {
-    badges:      [{ label: 'Realizado', bg: '#2E7D32' }],
-    btnLabel:    'Ver Resultados',
+    badges:      [{ labelKey: 'completed', bg: '#2E7D32' }],
+    btnLabelKey: 'viewResults',
     btnBg:       '#2E7D32',
     btnDisabled: false,
   },
   CANCELLED: {
-    badges:      [{ label: 'Cancelado', bg: '#9E9E9E' }],
-    btnLabel:    'Ver Detalles',
+    badges:      [{ labelKey: 'cancelled', bg: '#9E9E9E' }],
+    btnLabelKey: 'viewDetailsDisabled',
     btnBg:       '#E0E0E0',
     btnDisabled: true,
   },

@@ -74,9 +74,8 @@ export default function MedicalDashboard({ navigation, Sidebar }) {
   }, []);
 
   const handleViewAll = useCallback(() => {
-    // TODO: navigation.navigate(ROUTES.VALIDATION_QUEUE);
-    Alert.alert('Ver todas', 'Navegar a la cola completa.');
-  }, []);
+    navigation?.navigate('ValidationQueue');
+  }, [navigation]);
 
   // ── Derived data ────────────────────────────────────────────────────────────
 
