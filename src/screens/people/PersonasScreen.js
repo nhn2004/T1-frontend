@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Image,
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,256 +11,44 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks';
-import { ROLES } from '../../constants/roles';
-
-const STAFF = [
-  {
-    id: 'person-001',
-    name: 'Lic. Carlos Mendez',
-    role: 'Enfermero',
-    photoUrl: 'src/assets/people/enfermero.jpeg',
-    photoSource: require('../../assets/people/enfermero.jpeg'),
-    email: 'carlos.mendez@firehealth.com',
-    phone: '+1 555-0101',
-    pendingSessions: [
-      { id: 'pending-001', name: 'Control cardiovascular', date: '2026-06-18' },
-    ],
-    completedSessions: [
-      { id: 'completed-001', name: 'Evaluacion inicial', date: '2026-05-21' },
-      { id: 'completed-002', name: 'Seguimiento respiratorio', date: '2026-06-02' },
-    ],
-  },
-  {
-    id: 'person-002',
-    name: 'Dra. Valeria Castro',
-    role: 'Medico',
-    photoUrl: 'src/assets/people/medico.jpeg',
-    photoSource: require('../../assets/people/medico.jpeg'),
-    email: 'valeria.castro@firehealth.com',
-    phone: '+1 555-0102',
-    pendingSessions: [
-      { id: 'pending-002', name: 'Revision medica general', date: '2026-06-16' },
-      { id: 'pending-003', name: 'Prueba de esfuerzo', date: '2026-06-20' },
-      { id: 'pending-004', name: 'Control de signos vitales', date: '2026-06-25' },
-    ],
-    completedSessions: [
-      { id: 'completed-003', name: 'Ingreso clinico', date: '2026-04-12' },
-      { id: 'completed-004', name: 'Monitoreo en campo', date: '2026-04-28' },
-      { id: 'completed-005', name: 'Seguimiento post entrenamiento', date: '2026-05-09' },
-      { id: 'completed-006', name: 'Evaluacion cardiovascular', date: '2026-05-18' },
-      { id: 'completed-007', name: 'Control mensual', date: '2026-05-30' },
-      { id: 'completed-008', name: 'Revision de alertas', date: '2026-06-04' },
-      { id: 'completed-009', name: 'Cierre de protocolo', date: '2026-06-10' },
-    ],
-  },
-  {
-    id: 'person-003',
-    name: 'Nut. Andrea Rivas',
-    role: 'Nutricionista',
-    photoUrl: 'src/assets/people/nutricionista.jpeg',
-    photoSource: require('../../assets/people/nutricionista.jpeg'),
-    email: 'andrea.rivas@firehealth.com',
-    phone: '+1 555-0103',
-    pendingSessions: [
-      { id: 'pending-005', name: 'Plan nutricional', date: '2026-06-17' },
-      { id: 'pending-006', name: 'Control de hidratacion', date: '2026-06-24' },
-    ],
-    completedSessions: [
-      { id: 'completed-010', name: 'Evaluacion antropometrica', date: '2026-05-01' },
-      { id: 'completed-011', name: 'Encuesta alimentaria', date: '2026-05-12' },
-      { id: 'completed-012', name: 'Plan de recuperacion', date: '2026-05-26' },
-      { id: 'completed-013', name: 'Seguimiento calorico', date: '2026-06-03' },
-      { id: 'completed-014', name: 'Reporte nutricional', date: '2026-06-11' },
-    ],
-  },
-  {
-    id: 'person-004',
-    name: 'Lic. Mateo Vargas',
-    role: 'Enfermero',
-    photoUrl: 'src/assets/people/enfermero.jpeg',
-    photoSource: require('../../assets/people/enfermero.jpeg'),
-    email: 'mateo.vargas@firehealth.com',
-    phone: '+1 555-0104',
-    pendingSessions: [
-      { id: 'pending-007', name: 'Toma de bioimpedancia', date: '2026-06-19' },
-    ],
-    completedSessions: [
-      { id: 'completed-015', name: 'Signos vitales basales', date: '2026-05-08' },
-      { id: 'completed-016', name: 'Registro de recuperacion', date: '2026-05-22' },
-      { id: 'completed-017', name: 'Control respiratorio', date: '2026-06-01' },
-      { id: 'completed-018', name: 'Reporte de enfermeria', date: '2026-06-09' },
-    ],
-  },
-  {
-    id: 'person-005',
-    name: 'Dr. Daniel Ortega',
-    role: 'Medico',
-    photoUrl: 'src/assets/people/medico.jpeg',
-    photoSource: require('../../assets/people/medico.jpeg'),
-    email: 'daniel.ortega@firehealth.com',
-    phone: '+1 555-0105',
-    pendingSessions: [
-      { id: 'pending-008', name: 'Evaluacion de aptitud fisica', date: '2026-06-21' },
-      { id: 'pending-009', name: 'Revision de signos de alerta', date: '2026-06-27' },
-    ],
-    completedSessions: [
-      { id: 'completed-019', name: 'Consulta de ingreso', date: '2026-05-06' },
-      { id: 'completed-020', name: 'Control cardiaco', date: '2026-05-19' },
-      { id: 'completed-021', name: 'Seguimiento medico', date: '2026-06-06' },
-    ],
-  },
-  {
-    id: 'person-006',
-    name: 'Nut. Sofia Almeida',
-    role: 'Nutricionista',
-    photoUrl: 'src/assets/people/nutricionista.jpeg',
-    photoSource: require('../../assets/people/nutricionista.jpeg'),
-    email: 'sofia.almeida@firehealth.com',
-    phone: '+1 555-0106',
-    pendingSessions: [
-      { id: 'pending-010', name: 'Revision de plan alimentario', date: '2026-06-22' },
-    ],
-    completedSessions: [
-      { id: 'completed-022', name: 'Evaluacion nutricional', date: '2026-05-10' },
-      { id: 'completed-023', name: 'Control de hidratacion', date: '2026-05-25' },
-      { id: 'completed-024', name: 'Reporte de composicion corporal', date: '2026-06-08' },
-      { id: 'completed-025', name: 'Seguimiento nutricional', date: '2026-06-12' },
-    ],
-  },
-  {
-    id: 'person-007',
-    name: 'Lic. Gabriela Molina',
-    role: 'Enfermero',
-    photoUrl: 'src/assets/people/enfermero.jpeg',
-    photoSource: require('../../assets/people/enfermero.jpeg'),
-    email: 'gabriela.molina@firehealth.com',
-    phone: '+1 555-0107',
-    pendingSessions: [
-      { id: 'pending-011', name: 'Control de recuperacion', date: '2026-06-23' },
-      { id: 'pending-012', name: 'Registro de constantes vitales', date: '2026-06-29' },
-    ],
-    completedSessions: [
-      { id: 'completed-026', name: 'Toma de signos vitales', date: '2026-05-14' },
-      { id: 'completed-027', name: 'Monitoreo post sesion', date: '2026-05-29' },
-    ],
-  },
-];
-
-const FILTERS = [
-  { label: 'Todos', value: 'Todos' },
-  { label: 'Enfermeros', value: 'Enfermero' },
-  { label: 'Nutricionistas', value: 'Nutricionista' },
-  { label: 'Medicos', value: 'Medico' },
-];
-
-// ── Datos para Jefe de Bomberos ────────────────────────────────────────────
-const CHIEF_STAFF = [
-  {
-    id: 'cap-001', name: 'Cap. Fernando Reyes', role: 'Capacitador',
-    email: 'fernando.reyes@firehealth.com', phone: '+593 99-001-0001',
-    pendingSessions: [{ id: 'cp-001', name: 'Entrenamiento físico G5', date: '2026-06-25' }],
-    completedSessions: [
-      { id: 'cc-001', name: 'Capacitación G4', date: '2026-05-10' },
-      { id: 'cc-002', name: 'Simulacro incendio', date: '2026-05-28' },
-    ],
-  },
-  {
-    id: 'cap-002', name: 'Cap. Lorena Ibáñez', role: 'Capacitador',
-    email: 'lorena.ibanez@firehealth.com', phone: '+593 99-001-0002',
-    pendingSessions: [
-      { id: 'cp-002', name: 'Técnicas de rescate', date: '2026-06-28' },
-      { id: 'cp-003', name: 'Manejo de HAZMAT', date: '2026-07-05' },
-    ],
-    completedSessions: [
-      { id: 'cc-003', name: 'Entrenamiento G3', date: '2026-04-15' },
-    ],
-  },
-  {
-    id: 'bom-001', name: 'Bombero Marco Torres', role: 'Bombero',
-    email: 'marco.torres@bomberos.gob.ec', phone: '+593 98-201-0001',
-    pendingSessions: [{ id: 'bp-001', name: 'Evaluación física G5', date: '2026-06-26' }],
-    completedSessions: [
-      { id: 'bc-001', name: 'Chequeo médico anual', date: '2026-03-20' },
-      { id: 'bc-002', name: 'Simulacro G4', date: '2026-05-02' },
-      { id: 'bc-003', name: 'Control de aptitud', date: '2026-05-30' },
-    ],
-  },
-  {
-    id: 'bom-002', name: 'Bombero Sara Vega', role: 'Bombero',
-    email: 'sara.vega@bomberos.gob.ec', phone: '+593 98-201-0002',
-    pendingSessions: [],
-    completedSessions: [
-      { id: 'bc-004', name: 'Evaluación respiratoria', date: '2026-04-10' },
-      { id: 'bc-005', name: 'Chequeo cardiovascular', date: '2026-05-14' },
-    ],
-  },
-  {
-    id: 'bom-003', name: 'Bombero Luis Paredes', role: 'Bombero',
-    email: 'luis.paredes@bomberos.gob.ec', phone: '+593 98-201-0003',
-    pendingSessions: [
-      { id: 'bp-002', name: 'Prueba de esfuerzo G5', date: '2026-06-27' },
-    ],
-    completedSessions: [
-      { id: 'bc-006', name: 'Control médico ingreso', date: '2026-02-18' },
-    ],
-  },
-  {
-    id: 'bom-004', name: 'Bombero Diego Carrillo', role: 'Bombero',
-    email: 'diego.carrillo@bomberos.gob.ec', phone: '+593 98-201-0004',
-    pendingSessions: [{ id: 'bp-003', name: 'Evaluación G5', date: '2026-06-26' }],
-    completedSessions: [
-      { id: 'bc-007', name: 'Chequeo semestral', date: '2026-04-05' },
-      { id: 'bc-008', name: 'Monitoreo en campo', date: '2026-05-22' },
-    ],
-  },
-];
-
-const CHIEF_FILTERS = [
-  { label: 'Todos', value: 'Todos' },
-  { label: 'Capacitadores', value: 'Capacitador' },
-  { label: 'Bomberos', value: 'Bombero' },
-];
+import { COLORS } from '../../constants';
+import { usePersonas } from './hooks/usePersonas';
 
 const emptyLink = () => {};
 
 export default function PersonasScreen({ navigation }) {
   const { role } = useAuth();
-  const isFireChief = role === ROLES.FIRE_CHIEF;
-
   const { width } = useWindowDimensions();
   const [query, setQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('Todos');
 
   const isCompact = width < 980;
 
-  const activeStaff   = isFireChief ? CHIEF_STAFF   : STAFF;
-  const activeFilters = isFireChief ? CHIEF_FILTERS  : FILTERS;
-  const subtitle      = isFireChief
-    ? 'Administra capacitadores y bomberos'
-    : 'Administra medicos, enfermeros y nutricionistas';
+  const { personas, filters, loading, error } = usePersonas(role);
 
-  const filteredStaff = useMemo(() => {
+  const subtitle = role === 'FIRE_CHIEF'
+    ? 'Administra bomberos aspirantes'
+    : 'Administra médicos, enfermeros y nutricionistas';
+
+  const filteredPersonas = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-
-    return activeStaff.filter((person) => {
-      const matchesFilter =
-        selectedFilter === 'Todos' || person.role === selectedFilter;
+    return personas.filter((person) => {
+      const matchesFilter = selectedFilter === 'Todos' || person.role === selectedFilter;
       const matchesQuery =
         !normalizedQuery ||
         person.name.toLowerCase().includes(normalizedQuery) ||
         person.role.toLowerCase().includes(normalizedQuery);
-
       return matchesFilter && matchesQuery;
     });
-  }, [query, selectedFilter, activeStaff]);
+  }, [query, selectedFilter, personas]);
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
         <View style={styles.headerIcon}>
-          <Ionicons name="calendar" size={28} color="#111111" />
+          <Ionicons name="people" size={28} color="#111111" />
         </View>
-        <Text style={styles.headerTitle}>Training Schedule</Text>
+        <Text style={styles.headerTitle}>Personal</Text>
       </View>
 
       <ScrollView
@@ -270,7 +58,6 @@ export default function PersonasScreen({ navigation }) {
       >
         <View style={styles.topRow}>
           <Text style={styles.subtitle}>{subtitle}</Text>
-
           <Pressable style={styles.addButton} onPress={emptyLink}>
             <Text style={styles.addButtonText}>+ Agregar Personal</Text>
           </Pressable>
@@ -289,21 +76,15 @@ export default function PersonasScreen({ navigation }) {
           </View>
 
           <View style={styles.filters}>
-            {activeFilters.map((filter) => {
+            {filters.map((filter) => {
               const isActive = selectedFilter === filter.value;
-
               return (
                 <Pressable
                   key={filter.value}
                   style={[styles.filterButton, isActive && styles.filterButtonActive]}
                   onPress={() => setSelectedFilter(filter.value)}
                 >
-                  <Text
-                    style={[
-                      styles.filterButtonText,
-                      isActive && styles.filterButtonTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.filterButtonText, isActive && styles.filterButtonTextActive]}>
                     {filter.label}
                   </Text>
                 </Pressable>
@@ -312,26 +93,37 @@ export default function PersonasScreen({ navigation }) {
           </View>
         </View>
 
-        <View style={styles.grid}>
-          {filteredStaff.map((person) => {
-            return (
+        {loading ? (
+          <View style={styles.centeredBox}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        ) : error ? (
+          <View style={styles.centeredBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : filteredPersonas.length === 0 ? (
+          <View style={styles.centeredBox}>
+            <Ionicons name="people-outline" size={36} color="#9AA3B0" />
+            <Text style={styles.emptyText}>No se encontró personal</Text>
+          </View>
+        ) : (
+          <View style={styles.grid}>
+            {filteredPersonas.map((person) => (
               <Pressable
                 key={person.id}
                 style={[styles.card, isCompact && styles.cardCompact]}
-                onPress={() => navigation.navigate('PersonasSesiones', { personId: person.id, personName: person.name })}
+                onPress={() =>
+                  navigation.navigate('PersonasSesiones', {
+                    personId: person.id,
+                    personName: person.name,
+                  })
+                }
               >
                 <View style={styles.personRow}>
-                  <View
-                    style={styles.avatarPlaceholder}
-                    accessibilityLabel={person.photoUrl}
-                  >
-                    {person.photoSource && (
-                      <Image
-                        source={person.photoSource}
-                        style={styles.avatarImage}
-                        resizeMode="cover"
-                      />
-                    )}
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarInitials}>
+                      {person.name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()}
+                    </Text>
                   </View>
 
                   <View style={styles.personInfo}>
@@ -355,11 +147,7 @@ export default function PersonasScreen({ navigation }) {
                 <View style={styles.cardDivider} />
 
                 <View style={styles.sessionsTitleRow}>
-                  <MaterialCommunityIcons
-                    name="briefcase-outline"
-                    size={16}
-                    color="#EF3F32"
-                  />
+                  <MaterialCommunityIcons name="briefcase-outline" size={16} color="#EF3F32" />
                   <Text style={styles.sessionsTitle}>Sesiones</Text>
                 </View>
 
@@ -376,11 +164,10 @@ export default function PersonasScreen({ navigation }) {
                     <Text style={styles.badgeText}>{person.completedSessions.length}</Text>
                   </View>
                 </View>
-
               </Pressable>
-            );
-          })}
-        </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -413,9 +200,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '500',
   },
-  body: {
-    flex: 1,
-  },
+  body: { flex: 1 },
   bodyContent: {
     paddingHorizontal: 32,
     paddingTop: 20,
@@ -510,6 +295,20 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
+  centeredBox: {
+    marginTop: 60,
+    alignItems: 'center',
+    gap: 12,
+  },
+  errorText: {
+    color: '#E85D27',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  emptyText: {
+    color: '#9AA3B0',
+    fontSize: 14,
+  },
   grid: {
     paddingTop: 20,
     flexDirection: 'row',
@@ -542,12 +341,15 @@ const styles = StyleSheet.create({
     borderRadius: 47,
     borderWidth: 4,
     borderColor: '#FF7900',
-    backgroundColor: '#F6F8FA',
+    backgroundColor: '#FFF0E6',
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
+  avatarInitials: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#E85D27',
   },
   personInfo: {
     flex: 1,
