@@ -28,9 +28,9 @@ const SESSION_PEOPLE = [
 ];
 
 const STATUS_STYLES = {
-  COMPLETADO: { label: 'Completado', icon: 'checkmark',    bg: '#08C65A' },
-  CANCELADO:  { label: 'Cancelado',  icon: 'close',        bg: '#D83B35' },
-  PENDIENTE:  { label: 'Pendiente',  icon: 'time-outline', bg: '#8F949B' },
+  COMPLETADO: { label: 'Completado', icon: 'checkmark',    bg: '#27AE60' },
+  CANCELADO:  { label: 'Cancelado',  icon: 'close',        bg: '#9E9E9E' },
+  PENDIENTE:  { label: 'Pendiente',  icon: 'time-outline', bg: '#F59E0B' },
   'EN CURSO': { label: 'En curso',   icon: 'play',         bg: '#1E88E5' },
 };
 
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
-  pillActive: { backgroundColor: '#E85D27', borderColor: '#E85D27' },
+  pillActive: { backgroundColor: '#E85D27', borderColor: '#E85D27', shadowColor: '#E85D27', shadowOpacity: 0.3, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 3 },
   pillText: { fontSize: 13, fontWeight: '600', color: '#2E2E2E' },
   pillTextActive: { color: '#FFFFFF' },
   countBadge: {

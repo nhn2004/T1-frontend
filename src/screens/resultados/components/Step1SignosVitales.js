@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function Step1SignosVitales({
@@ -21,76 +21,105 @@ export default function Step1SignosVitales({
     }
   }
 
+  const inicioDisabled = !!formData.horaInicio;
+
   return (
-    <View style={s.container}>
+    <ScrollView
+      style={s.scroll}
+      contentContainerStyle={s.container}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* ── Signos Vitales ─────────────────────────────── */}
+      <Text style={s.secTitle}>Signos Vitales</Text>
 
-      {/* ── Left: vital signs ─────────────────────────── */}
-      <View style={s.leftCol}>
-        <Text style={s.secTitle}>Signos Vitales</Text>
-
-        {/* Tiempo transcurrido — solo T2/T3 (auto-filled, read-only) */}
-        {showTiempo && (
-          <View style={s.tiempoBox}>
-            <Ionicons name="timer-outline" size={16} color="#E85D27" />
-            <View style={{ flex: 1 }}>
-              <Text style={s.tiempoLabel}>Tiempo en quema</Text>
-              <Text style={s.tiempoValue}>{formData.tiempoTranscurrido || '--:--'}</Text>
-            </View>
+      {/* Tiempo en quema — solo T2/T3 (auto-filled, read-only) */}
+      {showTiempo && (
+        <View style={s.tiempoBox}>
+          <Ionicons name="timer-outline" size={16} color="#E85D27" />
+          <View style={{ flex: 1 }}>
+            <Text style={s.tiempoLabel}>Tiempo en quema</Text>
+            <Text style={s.tiempoValue}>{formData.tiempoTranscurrido || '--:--'}</Text>
           </View>
-        )}
-
-        {/* Ahora Inicio / Ahora Fin — solo pre-prueba */}
-        {!showTiempo && (
-          <View style={s.horaRow}>
-            <TimeCapture
-              label="Ahora Inicio"
-              value={formData.horaInicio}
-              onCapture={() => captureNow('horaInicio')}
-              disabled={false}
-            />
-            <TimeCapture
-              label="Ahora Fin"
-              value={formData.horaFin}
-              onCapture={() => captureNow('horaFin')}
-              disabled={!finEnabled}
-            />
-          </View>
-        )}
-
-        {/* Fields — 2 per row */}
-        <View style={s.fieldsGrid}>
-          <VitalInput label="Temperatura (°C)"        icon="thermometer-outline" value={formData.temperatura}         onChange={v => updateField('temperatura', v)}         keyboardType="decimal-pad" />
-          <VitalInput label="Tensión Arterial (mmHg)" icon="pulse-outline"       value={formData.presionArterial}     onChange={v => updateField('presionArterial', v)}     />
-          <VitalInput label="Pulso (lpm)"             icon="heart-outline"       value={formData.frecuenciaCardiaca}  onChange={v => updateField('frecuenciaCardiaca', v)}  keyboardType="number-pad" />
-          <VitalInput label="SpO₂ (%)"                icon="fitness-outline"     value={formData.nivelOxigeno}        onChange={v => updateField('nivelOxigeno', v)}        keyboardType="number-pad" />
-          <VitalInput label="CO (ppm)"                icon="flame-outline"       value={formData.nivelCO}             onChange={v => updateField('nivelCO', v)}             keyboardType="number-pad" />
         </View>
+      )}
+
+      {/* Ahora Inicio / Ahora Fin — solo pre-prueba */}
+      {!showTiempo && (
+        <View style={s.horaRow}>
+          <TimeCapture
+            label="Ahora Inicio"
+            value={formData.horaInicio}
+            onCapture={() => captureNow('horaInicio')}
+            disabled={inicioDisabled}
+          />
+          <TimeCapture
+            label="Ahora Fin"
+            value={formData.horaFin}
+            onCapture={() => captureNow('horaFin')}
+            disabled={!finEnabled}
+          />
+        </View>
+      )}
+
+      {/* Campos vitales — 2 por fila */}
+      <View style={s.fieldsGrid}>
+        <VitalInput
+          label="Temperatura (°C)"
+          icon="thermometer-outline"
+          value={formData.temperatura}
+          onChange={v => updateField('temperatura', v)}
+          keyboardType="decimal-pad"
+        />
+        <BloodPressureInput
+          sistolica={formData.presionSistolica}
+          diastolica={formData.presionDiastolica}
+          onChangeSistolica={v => updateField('presionSistolica', v)}
+          onChangeDiastolica={v => updateField('presionDiastolica', v)}
+        />
+        <VitalInput
+          label="Pulso (lpm)"
+          icon="heart-outline"
+          value={formData.frecuenciaCardiaca}
+          onChange={v => updateField('frecuenciaCardiaca', v)}
+          keyboardType="number-pad"
+        />
+        <VitalInput
+          label="SpO₂ (%)"
+          icon="fitness-outline"
+          value={formData.nivelOxigeno}
+          onChange={v => updateField('nivelOxigeno', v)}
+          keyboardType="number-pad"
+        />
+        <VitalInput
+          label="CO (ppm)"
+          icon="flame-outline"
+          value={formData.nivelCO}
+          onChange={v => updateField('nivelCO', v)}
+          keyboardType="number-pad"
+        />
       </View>
 
-      {/* Divider */}
+      {/* ── Divider ────────────────────────────────────── */}
       <View style={s.divider} />
 
-      {/* ── Right: symptoms ───────────────────────────── */}
-      <View style={s.rightCol}>
-        <Text style={s.secTitle}>Registrar síntomas:</Text>
-        <View style={s.chips}>
-          {sintomas.map(sint => {
-            const sel = (formData.sintomasSeleccionados || []).includes(sint);
-            return (
-              <TouchableOpacity
-                key={sint}
-                style={[s.chip, sel && s.chipOn]}
-                onPress={() => onToggleSintoma && onToggleSintoma(sint)}
-                activeOpacity={0.7}
-              >
-                <Text style={[s.chipText, sel && s.chipTextOn]}>{sint}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+      {/* ── Síntomas (debajo de vitales) ───────────────── */}
+      <Text style={s.secTitle}>Registrar síntomas:</Text>
+      <View style={s.chips}>
+        {sintomas.map(sint => {
+          const sel = (formData.sintomasSeleccionados || []).includes(sint);
+          return (
+            <TouchableOpacity
+              key={sint}
+              style={[s.chip, sel && s.chipOn]}
+              onPress={() => onToggleSintoma && onToggleSintoma(sint)}
+              activeOpacity={0.7}
+            >
+              <Text style={[s.chipText, sel && s.chipTextOn]}>{sint}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
-
-    </View>
+    </ScrollView>
   );
 }
 
@@ -119,7 +148,7 @@ function TimeCapture({ label, value, onCapture, disabled }) {
   );
 }
 
-function VitalInput({ label, icon, value, onChange, keyboardType = 'default' }) {
+function VitalInput({ label, icon, value, onChange, keyboardType = 'number-pad' }) {
   return (
     <View style={s.vitalWrap}>
       <View style={s.vitalLabel}>
@@ -138,17 +167,47 @@ function VitalInput({ label, icon, value, onChange, keyboardType = 'default' }) 
   );
 }
 
+function BloodPressureInput({ sistolica, diastolica, onChangeSistolica, onChangeDiastolica }) {
+  return (
+    <View style={s.vitalWrap}>
+      <View style={s.vitalLabel}>
+        <Ionicons name="pulse-outline" size={11} color="#697282" />
+        <Text style={s.vitalLabelText} numberOfLines={1}>Tensión Art. (mmHg)</Text>
+      </View>
+      <View style={s.bpRow}>
+        <TextInput
+          style={[s.input, s.bpInput]}
+          value={sistolica}
+          onChangeText={onChangeSistolica}
+          keyboardType="number-pad"
+          placeholder="120"
+          placeholderTextColor="#B0B7C3"
+        />
+        <Text style={s.bpSlash}>/</Text>
+        <TextInput
+          style={[s.input, s.bpInput]}
+          value={diastolica}
+          onChangeText={onChangeDiastolica}
+          keyboardType="number-pad"
+          placeholder="80"
+          placeholderTextColor="#B0B7C3"
+        />
+      </View>
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
+  scroll: { flex: 1 },
   container: {
-    flex: 1,
-    flexDirection: 'row',
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 14,
+    gap: 12,
+    maxWidth: 660,
+    alignSelf: 'center',
+    width: '100%',
   },
 
-  leftCol:  { flex: 1, gap: 12 },
-  divider:  { width: 1, backgroundColor: '#F0F0F0', marginHorizontal: 16, alignSelf: 'stretch' },
-  rightCol: { flex: 1, gap: 12 },
   secTitle: { fontSize: 13, fontWeight: '700', color: '#1A1A1A' },
 
   tiempoBox: {
@@ -159,9 +218,9 @@ const s = StyleSheet.create({
   tiempoLabel: { fontSize: 11, color: '#E65100', fontWeight: '600' },
   tiempoValue: { fontSize: 22, fontWeight: '800', color: '#E85D27', marginTop: 2 },
 
-  horaRow:    { flexDirection: 'row', gap: 12 },
+  horaRow: { flexDirection: 'row', gap: 20 },
   timeCapture: { flex: 1, gap: 5 },
-  timeLabel:  { fontSize: 12, fontWeight: '600', color: '#495565' },
+  timeLabel: { fontSize: 12, fontWeight: '600', color: '#495565' },
   timeInputRow: { flexDirection: 'row', gap: 7, alignItems: 'center' },
   timeInput: {
     flex: 1, backgroundColor: '#F3F3F5', borderRadius: 8,
@@ -177,8 +236,8 @@ const s = StyleSheet.create({
   captureBtnText: { fontSize: 12, fontWeight: '600', color: '#fff' },
   captureBtnTextOff: { color: '#B0B7C3' },
 
-  fieldsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  vitalWrap:  { width: '47%', gap: 5 },
+  fieldsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
+  vitalWrap: { width: '45%', gap: 5 },
   vitalLabel: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   vitalLabelText: { fontSize: 11, fontWeight: '600', color: '#495565', flex: 1 },
   input: {
@@ -187,13 +246,19 @@ const s = StyleSheet.create({
     fontSize: 14, color: '#2E2E2E',
   },
 
+  bpRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  bpInput: { flex: 1 },
+  bpSlash: { fontSize: 18, fontWeight: '700', color: '#495565' },
+
+  divider: { height: 1, backgroundColor: '#F0F0F0' },
+
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 12, paddingVertical: 7,
     borderRadius: 8, borderWidth: 1,
     borderColor: '#D0D5DD', backgroundColor: '#F9FAFB',
   },
-  chipOn:     { backgroundColor: '#E85D27', borderColor: '#E85D27' },
-  chipText:   { fontSize: 12, fontWeight: '500', color: '#495565' },
+  chipOn: { backgroundColor: '#E85D27', borderColor: '#E85D27' },
+  chipText: { fontSize: 12, fontWeight: '500', color: '#495565' },
   chipTextOn: { color: '#fff', fontWeight: '600' },
 });

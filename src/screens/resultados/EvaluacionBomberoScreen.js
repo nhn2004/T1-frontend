@@ -24,14 +24,14 @@ const S = {
 
 const EMPTY_VITALS = {
   horaInicio: '', horaFin: '',
-  temperatura: '', presionArterial: '',
+  temperatura: '', presionSistolica: '', presionDiastolica: '',
   frecuenciaCardiaca: '', nivelOxigeno: '',
   nivelCO: '', tiempoTranscurrido: '',
   sintomasSeleccionados: [],
 };
 
 function vitalsComplete(form) {
-  return !!(form.temperatura && form.presionArterial && form.frecuenciaCardiaca && form.nivelOxigeno && form.nivelCO);
+  return !!(form.temperatura && form.presionSistolica && form.presionDiastolica && form.frecuenciaCardiaca && form.nivelOxigeno && form.nivelCO);
 }
 
 function secsToDisplay(secs) {
@@ -365,12 +365,15 @@ function NoAptoPanel({ razones, onTerminar, onReintentar }) {
 }
 
 function AptoPanel({ formData, onIniciar }) {
+  const bp = (formData.presionSistolica && formData.presionDiastolica)
+    ? `${formData.presionSistolica}/${formData.presionDiastolica}`
+    : '—';
   const campos = [
-    { label: 'Temperatura',  value: formData.temperatura       ? `${formData.temperatura}°C`          : '—' },
-    { label: 'Tensión Art.', value: formData.presionArterial   || '—' },
+    { label: 'Temperatura',  value: formData.temperatura        ? `${formData.temperatura}°C`          : '—' },
+    { label: 'Tensión Art.', value: bp },
     { label: 'Pulso',        value: formData.frecuenciaCardiaca ? `${formData.frecuenciaCardiaca} lpm` : '—' },
-    { label: 'SpO₂',         value: formData.nivelOxigeno      ? `${formData.nivelOxigeno}%`           : '—' },
-    { label: 'CO',           value: formData.nivelCO           ? `${formData.nivelCO} ppm`            : '—' },
+    { label: 'SpO₂',         value: formData.nivelOxigeno       ? `${formData.nivelOxigeno}%`          : '—' },
+    { label: 'CO',           value: formData.nivelCO            ? `${formData.nivelCO} ppm`            : '—' },
   ];
   return (
     <View style={p.center}>
@@ -523,7 +526,7 @@ function ListoPanel({ onVolver }) {
 // ── Estilos ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F0F2F5' },
+  root: { flex: 1, backgroundColor: '#fff' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: '#fff', paddingHorizontal: 20, paddingVertical: 12,

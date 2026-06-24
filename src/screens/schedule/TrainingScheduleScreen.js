@@ -128,7 +128,6 @@ export default function TrainingScheduleScreen({ navigation }) {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
       <View style={styles.topBar}>
-        <Ionicons name="calendar" size={20} color={COLORS.primary} />
         <Text style={[styles.topTitle, { color: theme.textPrimary }]}>{t.schedule.pageTitle}</Text>
       </View>
 

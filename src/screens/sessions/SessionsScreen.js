@@ -110,9 +110,9 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 8,
-    paddingTop: '1%',
-    paddingBottom: '1%',
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 14,
     gap: 8,
   },
   titleRow: {
