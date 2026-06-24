@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SESSION_STATUS } from '../__mocks__/sessionsData';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
+import { useAuth } from '../../../hooks';
+import { ROLES } from '../../../constants';
 
 // "labelKey" se resuelve contra t.common.status — el texto del badge es chrome
 // de interfaz, así que responde al idioma elegido en Configuración.
