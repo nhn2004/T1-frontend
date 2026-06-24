@@ -1,4 +1,4 @@
-import useAuthStore from '../store/authStore'; // para el log out
+import useAuthStore from '../store/authStore';
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions, } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,42 +8,20 @@ const COLLAPSED_WIDTH = 88;
 const EXPANDED_WIDTH = 280;
 
 const baseMenuItems = [
-  {
-    label: 'Dashboard',
-    route: 'Dashboard',
-    iconLibrary: 'Ionicons',
-    iconName: 'grid',
-  },
-  {
-    label: 'Capacitaciones',
-    route: 'Training',
-    iconLibrary: 'MaterialCommunityIcons',
-    iconName: 'fire',
-  },
-  {
-    label: 'Schedule',
-    route: 'Schedule',
-    iconLibrary: 'Ionicons',
-    iconName: 'calendar-outline',
-  },
-  {
-    label: 'Configuration',
-    route: 'Configuration',
-    iconLibrary: 'Ionicons',
-    iconName: 'settings',
-  },
+  { label: 'Dashboard',      route: 'Dashboard',     iconLibrary: 'Ionicons',              iconName: 'grid' },
+  { label: 'Capacitaciones', route: 'Training',      iconLibrary: 'MaterialCommunityIcons', iconName: 'fire' },
+  { label: 'Schedule',       route: 'Schedule',      iconLibrary: 'Ionicons',              iconName: 'calendar-outline' },
+  { label: 'Configuration',  route: 'Configuration', iconLibrary: 'Ionicons',              iconName: 'settings' },
 ];
 
 const medicalMenuItem = {
-  label: 'Personas',
-  route: 'Personas',
-  iconLibrary: 'Ionicons',
-  iconName: 'people-outline',
+  label: 'Personas', route: 'Personas', iconLibrary: 'Ionicons', iconName: 'people-outline',
 };
 
 export default function Sidebar({ navigation, activeRoute }) {
-  const clearAuth = useAuthStore((state) => state.clearAuth); 
-  const role = useAuthStore((state) => state.role);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+  const role      = useAuthStore((state) => state.role);
+
   const menuItems = (() => {
     if (role === ROLES.MEDICAL) {
       return [
@@ -60,7 +38,12 @@ export default function Sidebar({ navigation, activeRoute }) {
       ];
     }
     if (role === ROLES.FIREFIGHTER_TRAINEE) {
-      return baseMenuItems.filter(item => item.route !== 'Dashboard');
+      const items = baseMenuItems.filter(item => item.route !== 'Dashboard');
+      return [
+        ...items.slice(0, -1),
+        { label: 'Mi Progreso', route: 'Progress', iconLibrary: 'Ionicons', iconName: 'bar-chart-outline' },
+        items[items.length - 1],
+      ];
     }
     return baseMenuItems;
   })();
@@ -69,9 +52,7 @@ export default function Sidebar({ navigation, activeRoute }) {
   const isLargeScreen = width >= 900;
 
   const [isOpen, setIsOpen] = useState(false);
-  const animatedWidth = useRef(
-    new Animated.Value(COLLAPSED_WIDTH)
-  ).current;
+  const animatedWidth = useRef(new Animated.Value(COLLAPSED_WIDTH)).current;
 
   useEffect(() => {
     Animated.timing(animatedWidth, {
@@ -115,29 +96,29 @@ export default function Sidebar({ navigation, activeRoute }) {
 
           return (
             <Pressable
-            key={item.route}
-            style={[
+              key={item.route}
+              style={[
                 styles.menuItem,
                 !isOpen && styles.menuItemClosed,
                 isActive && styles.menuItemActive,
-            ]}
-            onPress={() => handleNavigate(item.route)}
+              ]}
+              onPress={() => handleNavigate(item.route)}
             >
-                <View style={styles.iconContainer}>
-                    {item.iconLibrary === 'Ionicons' ? (
-                        <Ionicons
-                        name={item.iconName}
-                        size={28}
-                        color={isActive ? '#E84A1A' : '#111'}
-                        />
-                    ) : (
-                        <MaterialCommunityIcons
-                        name={item.iconName}
-                        size={30}
-                        color={isActive ? '#E84A1A' : '#111'}
-                        />
-                    )}
-                </View>
+              <View style={styles.iconContainer}>
+                {item.iconLibrary === 'Ionicons' ? (
+                  <Ionicons
+                    name={item.iconName}
+                    size={28}
+                    color={isActive ? '#E84A1A' : '#111'}
+                  />
+                ) : (
+                  <MaterialCommunityIcons
+                    name={item.iconName}
+                    size={30}
+                    color={isActive ? '#E84A1A' : '#111'}
+                  />
+                )}
+              </View>
 
               <Animated.Text
                 numberOfLines={1}
@@ -157,15 +138,15 @@ export default function Sidebar({ navigation, activeRoute }) {
       <View style={styles.footer}>
         <View style={styles.divider} />
 
-      <Pressable style={styles.logoutButton} onPress={clearAuth}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="log-out-outline" size={30} color="#111" />
-        </View>
+        <Pressable style={styles.logoutButton} onPress={clearAuth}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="log-out-outline" size={30} color="#111" />
+          </View>
 
-        <Animated.Text style={[styles.menuText, { opacity: textOpacity }]}>
-          {isOpen ? 'Log out' : ''}
-        </Animated.Text>
-      </Pressable>
+          <Animated.Text style={[styles.menuText, { opacity: textOpacity }]}>
+            {isOpen ? 'Log out' : ''}
+          </Animated.Text>
+        </Pressable>
       </View>
     </Animated.View>
   );
@@ -226,17 +207,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginBottom: 10,
   },
-
-    menuItemClosed: {
-        justifyContent: 'center',
-        paddingHorizontal: 0,
-    },
-    iconContainer: {
-        width: 44,
-        height: 44,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
+  menuItemClosed: {
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+  },
+  menuItemActive: {},
+  iconContainer: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   menuText: {
     fontSize: 18,
     color: '#111',
@@ -246,7 +227,7 @@ const styles = StyleSheet.create({
   menuTextActive: {
     fontWeight: '700',
     color: '#E84A1A',
-},
+  },
   footer: {
     paddingBottom: 22,
   },
