@@ -154,7 +154,6 @@ const FILTERS = [
   { label: 'Nutricionistas', value: 'Nutricionista' },
   { label: 'Medicos', value: 'Medico' },
 ];
->>>>>>> origin/main
 
 // ── Datos para Jefe de Bomberos ────────────────────────────────────────────
 const CHIEF_STAFF = [
