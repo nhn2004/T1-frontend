@@ -197,9 +197,7 @@ const CHIEF_STAFF = [
   {
     id: 'bom-003', name: 'Bombero Luis Paredes', role: 'Bombero',
     email: 'luis.paredes@bomberos.gob.ec', phone: '+593 98-201-0003',
-    pendingSessions: [
-      { id: 'bp-002', name: 'Prueba de esfuerzo G5', date: '2026-06-27' },
-    ],
+    pendingSessions: [{ id: 'bp-002', name: 'Prueba de esfuerzo G5', date: '2026-06-27' }],
     completedSessions: [
       { id: 'bc-006', name: 'Control médico ingreso', date: '2026-02-18' },
     ],
@@ -226,18 +224,17 @@ const emptyLink = () => {};
 export default function PersonasScreen({ navigation }) {
   const { role } = useAuth();
   const isFireChief = role === ROLES.FIRE_CHIEF;
-
   const { width } = useWindowDimensions();
   const [query, setQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('Todos');
-
-  const isCompact = width < 980;
 
   const activeStaff   = isFireChief ? CHIEF_STAFF   : STAFF;
   const activeFilters = isFireChief ? CHIEF_FILTERS  : FILTERS;
   const subtitle      = isFireChief
     ? 'Administra capacitadores y bomberos'
     : 'Administra medicos, enfermeros y nutricionistas';
+
+  const isCompact = width < 980;
 
   const filteredStaff = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -315,11 +312,7 @@ export default function PersonasScreen({ navigation }) {
         <View style={styles.grid}>
           {filteredStaff.map((person) => {
             return (
-              <Pressable
-                key={person.id}
-                style={[styles.card, isCompact && styles.cardCompact]}
-                onPress={() => navigation.navigate('PersonasSesiones', { personId: person.id, personName: person.name })}
-              >
+              <View key={person.id} style={[styles.card, isCompact && styles.cardCompact]}>
                 <View style={styles.personRow}>
                   <View
                     style={styles.avatarPlaceholder}
@@ -377,7 +370,7 @@ export default function PersonasScreen({ navigation }) {
                   </View>
                 </View>
 
-              </Pressable>
+              </View>
             );
           })}
         </View>

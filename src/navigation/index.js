@@ -26,7 +26,6 @@ import PersonasSesionesScreen from '../screens/people/PersonasSesionesScreen';
 // Screens ya construidas
 import SessionsScreen                from '../screens/sessions/SessionsScreen';
 import SessionDetailScreen           from '../screens/sessions/SessionDetailScreen';
-import SettingsScreen                from '../screens/settings/SettingsScreen';
 import ResultadosIndividualesScreen  from '../screens/resultados/ResultadosIndividualesScreen';
 import EvaluacionBomberoScreen       from '../screens/resultados/EvaluacionBomberoScreen';
 import ResultadosBomberoScreen       from '../screens/resultados/ResultadosBomberoScreen';
@@ -34,6 +33,7 @@ import CrearSesionScreen             from '../screens/sessions/CrearSesionScreen
 import TrainingScheduleScreen        from '../screens/schedule/TrainingScheduleScreen';
 import ProgressHistoryScreen         from '../screens/progress/ProgressHistoryScreen';
 import ValidationQueueScreen         from '../screens/dashboard/ValidationQueueScreen';
+import SettingsScreen                from '../screens/settings/SettingsScreen';
 
 const Stack = createStackNavigator();
 
@@ -105,7 +105,9 @@ function RoleNavigator({ role }) {
         <>
           <Stack.Screen name="Personas" component={PersonasWithLayout} />
           <Stack.Screen name="PersonasSesiones" component={PersonasSesionesWithLayout} />
-          <Stack.Screen name="ValidationQueue" component={withMainLayout(ValidationQueueScreen)} />
+          {role === ROLES.MEDICAL && (
+            <Stack.Screen name="ValidationQueue" component={withMainLayout(ValidationQueueScreen)} />
+          )}
         </>
       )}
       {role === ROLES.FIRE_CHIEF && (
@@ -127,8 +129,3 @@ export default function RootNavigator() {
   );
 }
 
-/* 
-cuando tengamos las pantallas reales, reemplazar los PlaceholderScreen por las pantallas correspondientes. Ejemplo:
-import ScheduleScreen from '../screens/sessions/ScheduleScreen';
-
-<Stack.Screen name="Schedule" component={ScheduleScreen} /> */

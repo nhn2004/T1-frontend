@@ -9,9 +9,11 @@ export const ROLES = {
 };
 
 export const ROLE_LABELS = {
-  [ROLES.SYSTEM_ADMIN]: 'Administrador de Sistema',
-  [ROLES.ADMIN]: 'Administrador',
-  [ROLES.FIREFIGHTER_TRAINEE]: 'Aspirante a Bombero',
-  [ROLES.MEDICAL]: 'Personal Médico',
-  [ROLES.RESEARCHER]: 'Investigador',
+  SYSTEM_ADMIN: 'Administrador del Sistema',
+  ADMIN: 'Administrador',
+  FIREFIGHTER_TRAINEE: 'Bombero Aspirante',
+  CAPACITATOR: 'Capacitador',
+  MEDICAL: 'Médico',
+  RESEARCHER: 'Investigador',
+  FIRE_CHIEF: 'Jefe de Bomberos',
 };

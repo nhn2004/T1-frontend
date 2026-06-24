@@ -1,20 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import useTheme from '../../../hooks/useTheme';
-import useTranslation from '../../../hooks/useTranslation';
 
 // Renders the vertical timeline agenda. Purely presentational.
 
-export default function AgendaTimeline({ items = [] }) {
-  const theme = useTheme();
-  const { t } = useTranslation();
-
+export default function AgendaTimeline({ items }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="document-text-outline" size={18} color={theme.textPrimary} />
-        <Text style={[styles.headerText, { color: theme.textPrimary }]}>{t.sessionDetail.agenda}</Text>
+        <Ionicons name="document-text-outline" size={18} color="#2E2E2E" />
+        <Text style={styles.headerText}>Agenda</Text>
       </View>
 
       <View style={styles.timeline}>
@@ -24,17 +19,17 @@ export default function AgendaTimeline({ items = [] }) {
             <View key={item.id} style={styles.row}>
               {/* Left: time + line */}
               <View style={styles.timeColumn}>
-                <Text style={[styles.time, { color: theme.textSecondary }]}>{item.time}</Text>
+                <Text style={styles.time}>{item.time}</Text>
                 <View style={styles.dotWrapper}>
-                  <View style={[styles.dot, { borderColor: theme.textSecondary, backgroundColor: theme.card }]} />
-                  {!isLast && <View style={[styles.line, { backgroundColor: theme.border }]} />}
+                  <View style={styles.dot} />
+                  {!isLast && <View style={styles.line} />}
                 </View>
               </View>
 
               {/* Right: content */}
               <View style={styles.content}>
-                <Text style={[styles.itemTitle, { color: theme.textPrimary }]}>{item.title}</Text>
-                <Text style={[styles.itemDesc, { color: theme.textSecondary }]}>{item.description}</Text>
+                <Text style={styles.itemTitle}>{item.title}</Text>
+                <Text style={styles.itemDesc}>{item.description}</Text>
               </View>
             </View>
           );

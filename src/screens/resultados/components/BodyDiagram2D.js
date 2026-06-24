@@ -46,17 +46,19 @@ function PulsingRing() {
 }
 
 function Hotspot({ style, alert, selected, onPress }) {
-  if (!alert) {
-    // Not in alert: not interactive, nothing rendered — just inert space.
-    return <View style={[styles.hotspot, style]} pointerEvents="none" />;
-  }
-
   return (
-    <Pressable style={[styles.hotspot, style, selected && styles.hotspotSelected]} onPress={onPress}>
+    <Pressable
+      style={[styles.hotspot, style, selected && styles.hotspotSelected]}
+      onPress={onPress}
+    >
       <View style={styles.markerWrapper}>
-        <PulsingRing />
-        <View style={styles.alertMarker}>
-          <Ionicons name="warning" size={12} color="#fff" />
+        {alert && <PulsingRing />}
+        <View style={[styles.marker, alert ? styles.markerAlert : styles.markerNormal]}>
+          <Ionicons
+            name={alert ? 'warning' : 'checkmark'}
+            size={10}
+            color="#fff"
+          />
         </View>
       </View>
     </Pressable>
@@ -157,15 +159,20 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     backgroundColor: ALERT_COLOR,
   },
-  alertMarker: {
+  marker: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: ALERT_COLOR,
     borderWidth: 1.5,
     borderColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  markerNormal: {
+    backgroundColor: NORMAL_COLOR,
+  },
+  markerAlert: {
+    backgroundColor: ALERT_COLOR,
   },
   infoStrip: {
     marginTop: 12,
