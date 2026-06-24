@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import BodyDiagram2D from './components/BodyDiagram2D';
@@ -42,36 +42,25 @@ export default function ResultadosBomberoScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      {/* Top Header */}
-      <View style={styles.topHeader}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={16} color="#111" />
-          <Text style={styles.backButtonText}>Volver a Capacitación</Text>
-        </TouchableOpacity>
-        
-        <View style={styles.sessionInfo}>
-          <View style={styles.sessionIconBox}>
-            <Ionicons name="shield-outline" size={20} color="#fff" />
-          </View>
-          <View>
-            <Text style={styles.sessionTitle}>Capacitación: {data.sessionName}</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.pageTitle}>Resultados de {nameToDisplay}</Text>
+          <View style={styles.sessionInfoRow}>
+            <Ionicons name="shield-outline" size={14} color="#E85D27" />
+            <Text style={styles.sessionTitle}>{data.sessionName}</Text>
+            <Text style={styles.sessionDot}>·</Text>
+            <Ionicons name="calendar-outline" size={13} color="#697282" />
             <Text style={styles.sessionDate}>{data.sessionDate}</Text>
           </View>
         </View>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={16} color="#111" />
+          <Text style={styles.backButtonText}>Volver</Text>
+        </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
-        <View style={styles.bodyHeader}>
-          <View>
-            <Text style={styles.pageTitle}>Resultados de {nameToDisplay}</Text>
-            <Text style={styles.pageSubtitle}>Análisis fisiológico completo</Text>
-          </View>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={16} color="#111" />
-            <Text style={styles.backButtonText}>Volver a Bomberos</Text>
-          </TouchableOpacity>
-        </View>
-
+      <View style={styles.body}>
         <View style={styles.contentRow}>
           {/* Left Column: Body Diagram */}
           <View style={styles.humanBodyContainer}>
@@ -86,26 +75,15 @@ export default function ResultadosBomberoScreen({ route, navigation }) {
           <View style={styles.metricsContainer}>
             <Text style={styles.metricsTitle}>Métricas Detalladas</Text>
             <View style={styles.metricsGrid}>
-              
-              {/* Heart Rate */}
               <MetricCard metric={data.metrics.frecuenciaCardiaca} title="Frecuencia Cardíaca" />
-              
-              {/* Oxygen */}
               <MetricCard metric={data.metrics.nivelOxigeno} title="Nivel de Oxígeno SpO₂" />
-              
-              {/* Respiratory Rate */}
               <MetricCard metric={data.metrics.frecuenciaRespiratoria} title="Frecuencia Respiratoria" />
-              
-              {/* CO Level */}
               <MetricCard metric={data.metrics.nivelCO} title="Nivel de CO" />
-              
-              {/* Temperature */}
               <MetricCard metric={data.metrics.temperatura} title="Temperatura Corporal" />
-
             </View>
           </View>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -135,97 +113,90 @@ function MetricCard({ metric, title }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F1F4F8' },
-  topHeader: {
-    backgroundColor: '#fff',
-    borderBottomWidth: 3,
-    borderBottomColor: '#D83B35',
+
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 30,
-    paddingVertical: 16,
-    gap: 40,
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.07)',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
   },
+  headerLeft: { gap: 4 },
+  pageTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A' },
+  sessionInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  sessionTitle: { fontSize: 13, fontWeight: '600', color: '#2C323A' },
+  sessionDot: { fontSize: 13, color: '#B0B7C3' },
+  sessionDate: { fontSize: 12, color: '#697282' },
+
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
     borderWidth: 1,
     borderColor: '#DEE3EA',
     borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     backgroundColor: '#fff',
   },
-  backButtonText: { fontSize: 13, fontWeight: '500', color: '#111' },
-  sessionInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  sessionIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#E85D27',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sessionTitle: { fontSize: 15, fontWeight: '600', color: '#111' },
-  sessionDate: { fontSize: 12, color: '#697282', marginTop: 2 },
-  
-  body: { flex: 1 },
-  bodyContent: { paddingHorizontal: 40, paddingTop: 30, paddingBottom: 40 },
-  bodyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 30,
-  },
-  pageTitle: { fontSize: 24, fontWeight: '600', color: '#2C323A', marginBottom: 4 },
-  pageSubtitle: { fontSize: 14, color: '#697282' },
+  backButtonText: { fontSize: 13, fontWeight: '600', color: '#111' },
+
+  body: { flex: 1, paddingHorizontal: 20, paddingVertical: 16 },
 
   contentRow: {
+    flex: 1,
     flexDirection: 'row',
-    gap: 40,
+    gap: 24,
   },
   humanBodyContainer: {
-    width: 300,
+    width: 280,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: 8,
+    paddingTop: 4,
   },
-  
+
   metricsContainer: {
     flex: 1,
   },
   metricsTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#2C323A',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   metricsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: 12,
   },
   metricCard: {
     width: '48%',
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 14,
+    padding: 16,
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 10,
     elevation: 2,
-    marginBottom: 8,
   },
   metricHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   metricTitleRow: {
     flexDirection: 'row',
@@ -245,10 +216,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: 6,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   metricValue: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
     color: '#111',
   },

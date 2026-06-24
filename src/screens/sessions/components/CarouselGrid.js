@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SessionCard from './SessionCard';
 
@@ -8,41 +8,27 @@ const ROWS = 3;
 
 export default function CarouselGrid({ sessions, onViewDetails }) {
   const [box, setBox]   = useState({ w: 0, h: 0 });
-  const fadeAnim        = useRef(new Animated.Value(1)).current;
   const perPage         = COLS * ROWS;
   const totalPages      = Math.ceil(sessions.length / perPage);
   const [page, setPage] = useState(0);
 
-  // Reset to page 0 whenever the session list changes (filter/search change)
-  const firstId = sessions[0]?.id;
-  React.useEffect(() => { setPage(0); }, [firstId, sessions.length]);
+  React.useEffect(() => { setPage(0); }, [sessions.length]);
 
-  const hasPrev    = page > 0;
-  const hasNext    = page < totalPages - 1;
-  const needArrows = totalPages > 1;
+  const hasPrev = page > 0;
+  const hasNext = page < totalPages - 1;
 
   const onLayout = useCallback((e) => {
     const { width, height } = e.nativeEvent.layout;
     setBox({ w: width, h: height });
   }, []);
 
-  // Gaps en % del contenedor
+  // outer has flex:1 and no padding — box.w/h already reflect the true available area
   const colGap    = box.w * 0.012;
   const rowGap    = box.h * 0.02;
-  // Flechas pequeñas — 4% del alto
   const arrowSize = Math.max(28, box.h * 0.04);
-  const arrowRoom = needArrows ? arrowSize + colGap * 2 : 0;
-
-  // Tamaño de cada card ocupando exactamente el espacio disponible
-  const cardW = box.w > 0 ? (box.w - arrowRoom - colGap * (COLS - 1)) / COLS : 0;
-  const cardH = box.h > 0 ? (box.h - rowGap  * (ROWS - 1)) / ROWS         : 0;
-
-  function animateTo(next) {
-    Animated.timing(fadeAnim, { toValue: 0, duration: 80, useNativeDriver: true }).start(() => {
-      setPage(next);
-      Animated.timing(fadeAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
-    });
-  }
+  const gridW     = box.w > 0 ? box.w - 2 * (arrowSize + colGap) : 0;
+  const cardW     = gridW > 0 ? (gridW - colGap * (COLS - 1)) / COLS : 0;
+  const cardH     = box.h > 0 ? (box.h - rowGap * (ROWS - 1)) / ROWS : 0;
 
   const pageCards = sessions.slice(page * perPage, page * perPage + perPage);
   const gridRows  = [];
@@ -56,14 +42,21 @@ export default function CarouselGrid({ sessions, onViewDetails }) {
       {box.w > 0 && (
         <View style={[styles.row, { gap: colGap }]}>
 
-          {/* Flecha izquierda — solo si hace falta */}
-          {needArrows && (
-            <Arrow direction="left" visible={hasPrev} size={arrowSize}
-              onPress={() => animateTo(page - 1)} />
-          )}
+          {/* Flecha izquierda — siempre ocupa espacio, visible solo si hasPrev */}
+          <View style={[styles.arrowWrap, { width: arrowSize }]}>
+            {hasPrev && (
+              <TouchableOpacity
+                style={[styles.arrow, { width: arrowSize, height: arrowSize, borderRadius: arrowSize / 2 }]}
+                onPress={() => setPage(page - 1)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="chevron-back" size={arrowSize * 0.5} color="#E85D27" />
+              </TouchableOpacity>
+            )}
+          </View>
 
-          {/* Grid */}
-          <Animated.View style={[styles.grid, { gap: rowGap, opacity: fadeAnim }]}>
+          {/* Grid — ancho fijo siempre igual */}
+          <View style={[styles.grid, { gap: rowGap, width: gridW }]}>
             {gridRows.map((rowCards, ri) => (
               <View key={ri} style={[styles.gridRow, { gap: colGap, height: cardH }]}>
                 {rowCards.map((s) => (
@@ -81,36 +74,22 @@ export default function CarouselGrid({ sessions, onViewDetails }) {
                   ))}
               </View>
             ))}
-          </Animated.View>
+          </View>
 
-          {/* Flecha derecha */}
-          {needArrows && (
-            <Arrow direction="right" visible={hasNext} size={arrowSize}
-              onPress={() => animateTo(page + 1)} />
-          )}
+          {/* Flecha derecha — siempre ocupa espacio, visible solo si hasNext */}
+          <View style={[styles.arrowWrap, { width: arrowSize }]}>
+            {hasNext && (
+              <TouchableOpacity
+                style={[styles.arrow, { width: arrowSize, height: arrowSize, borderRadius: arrowSize / 2 }]}
+                onPress={() => setPage(page + 1)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="chevron-forward" size={arrowSize * 0.5} color="#E85D27" />
+              </TouchableOpacity>
+            )}
+          </View>
 
         </View>
-      )}
-    </View>
-  );
-}
-
-function Arrow({ direction, visible, size, onPress }) {
-  return (
-    <View style={[styles.arrowWrap, { width: size }]}>
-      {visible ? (
-        <TouchableOpacity
-          style={[styles.arrow, { width: size, height: size, borderRadius: size / 2 }]}
-          onPress={onPress} activeOpacity={0.8}
-        >
-          <Ionicons
-            name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
-            size={size * 0.5}
-            color="#E85D27"
-          />
-        </TouchableOpacity>
-      ) : (
-        <View style={{ width: size }} />
       )}
     </View>
   );
@@ -137,7 +116,6 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   grid: {
-    flex: 1,
     alignSelf: 'stretch',
   },
   gridRow: {

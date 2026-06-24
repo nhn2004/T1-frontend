@@ -7,7 +7,7 @@ import { ROLES } from '../../../constants';
 
 const STATUS_CONFIG = {
   [SESSION_STATUS.PLANNED]: {
-    badge: { label: 'Pendiente', bg: '#8F949B', icon: 'time-outline' },
+    badge: { label: 'Pendiente', bg: '#F59E0B', icon: 'time-outline' },
     btnBg: '#E85D27',
     btnOpacity: 1,
   },
@@ -17,12 +17,12 @@ const STATUS_CONFIG = {
     btnOpacity: 1,
   },
   [SESSION_STATUS.COMPLETED]: {
-    badge: { label: 'Realizado', bg: '#08C65A', icon: 'checkmark' },
-    btnBg: '#08C65A',
+    badge: { label: 'Realizado', bg: '#27AE60', icon: 'checkmark' },
+    btnBg: '#E85D27',
     btnOpacity: 1,
   },
   [SESSION_STATUS.CANCELLED]: {
-    badge: { label: 'Cancelado', bg: '#D83B35', icon: 'close' },
+    badge: { label: 'Cancelado', bg: '#9E9E9E', icon: 'close' },
     btnBg: '#9E9E9E',
     btnOpacity: 0.6,
   },
