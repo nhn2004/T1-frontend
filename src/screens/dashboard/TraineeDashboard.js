@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,17 +8,18 @@ import useAuthStore from '../../store/authStore';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
 
-import WelcomeBanner from './components/WelcomeBanner';
-import InvitationCard from './components/InvitationCard';
-import WeekScheduleCard from './components/WeekScheduleCard';
-import PerformanceStatCard from './components/PerformanceStatCard';
+import WelcomeBanner          from './components/WelcomeBanner';
+import InvitationCard         from './components/InvitationCard';
+import WeekScheduleCard       from './components/WeekScheduleCard';
+import PerformanceStatCard    from './components/PerformanceStatCard';
 import ConfirmAttendanceModal from './components/ConfirmAttendanceModal';
 
-import {
-  PENDING_INVITATION,
-  WEEK_SCHEDULE,
-  PERFORMANCE_STATS,
-} from './__mocks__/traineeData';
+import { invitationService } from '../../services/invitationService';
+import { sessionService }    from '../../services/sessionService';
+
+import { PERFORMANCE_STATS } from './__mocks__/traineeData';
+
+const STATUS_BAR = { ACTIVE: '#2E7D32', PLANNED: '#F57C00' };
 
 export default function TraineeDashboard({ navigation }) {
   const user = useAuthStore((s) => s.user);
@@ -27,38 +28,79 @@ export default function TraineeDashboard({ navigation }) {
   const { width } = useWindowDimensions();
   const isCompact = width < 900;
 
-  const [invitation, setInvitation] = useState(PENDING_INVITATION);
-  const [weekSchedule, setWeekSchedule] = useState(WEEK_SCHEDULE);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [invitation,    setInvitation]    = useState(null);
+  const [weekSchedule,  setWeekSchedule]  = useState([]);
+  const [modalVisible,  setModalVisible]  = useState(false);
 
-  // "Confirm Attendance" abre el modal — la confirmación real ocurre en handleConfirmAccept.
+  // ── Carga inicial ──────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!user?.email) return;
+
+    Promise.all([
+      invitationService.getAll(),
+      sessionService.getAll(),
+    ])
+      .then(([invs, sessions]) => {
+        // Invitación pendiente para este usuario
+        const myRaw = invs.find(
+          i => i.targetEmail === user.email && i.status === 'Pending'
+        );
+        if (myRaw) {
+          const session = myRaw.trainingSessionId
+            ? sessions.find(s => s.id === myRaw.trainingSessionId)
+            : null;
+          setInvitation(invitationService.toPendingInvitation(myRaw, session));
+        }
+
+        // Próximas 3 sesiones activas/planificadas como agenda semanal
+        const upcoming = sessions
+          .filter(s => s.status === 'PLANNED' || s.status === 'ACTIVE')
+          .slice(0, 3)
+          .map(s => {
+            const start = s.scheduledStart ? new Date(s.scheduledStart) : null;
+            return {
+              id:       s.id,
+              day:      start ? start.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase().slice(0, 3) : '—',
+              date:     start ? String(start.getDate()) : '—',
+              title:    s.title,
+              time:     s.time,
+              location: 'Centro Alpha',
+              status:   s.status === 'ACTIVE' ? 'CONFIRMED' : 'PENDING',
+              barColor: STATUS_BAR[s.status] ?? '#D0D0D0',
+            };
+          });
+        setWeekSchedule(upcoming);
+      })
+      .catch(() => {});
+  }, [user?.email]);
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
+
   const handleConfirmPress = useCallback(() => {
     setModalVisible(true);
   }, []);
 
-  const handleConfirmAccept = useCallback((id) => {
+  const handleConfirmAccept = useCallback(async (id) => {
     setModalVisible(false);
-    setInvitation((current) => {
+    try { await invitationService.accept(id); } catch {}
+    setInvitation(current => {
       if (!current || current.id !== id) return current;
-
-      // Se agrega a "This Week" para que la confirmación quede reflejada en el calendario.
-      setWeekSchedule((prev) => [
+      setWeekSchedule(prev => [
         {
-          id: current.id,
-          day: current.weekDay,
-          date: current.weekDate,
-          title: current.title,
-          time: current.time,
+          id:       current.id,
+          day:      current.weekDay,
+          date:     current.weekDate,
+          title:    current.title,
+          time:     current.time,
           location: current.location,
-          status: 'CONFIRMED',
+          status:   'CONFIRMED',
           barColor: '#2E7D32',
         },
         ...prev,
       ]);
-
       return null;
     });
-    // TODO: api.post(`/sessions/invitations/${id}/confirm`)
   }, []);
 
   const handleConfirmCancel = useCallback(() => {
@@ -68,6 +110,8 @@ export default function TraineeDashboard({ navigation }) {
   const handleDetails = useCallback((id) => {
     navigation?.navigate(ROUTES.SESSION_DETAIL, { id });
   }, [navigation]);
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
