@@ -50,26 +50,17 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
   const isTrainee = role === ROLES.FIREFIGHTER_TRAINEE;
 
   const id = sessionId ?? route?.params?.id;
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState({ ...BASE_DETAIL });
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
-    if (!id) { setLoading(false); return; }
+    if (!id) return;
+    setSyncing(true);
     sessionService.getById(id)
       .then(data => setSession({ ...BASE_DETAIL, ...data }))
-      .catch(() => setSession({ ...BASE_DETAIL, title: 'Sesión', status: 'PLANNED', date: '—', time: '—' }))
-      .finally(() => setLoading(false));
+      .catch(() => {})
+      .finally(() => setSyncing(false));
   }, [id]);
-
-  if (loading || !session) {
-    return (
-      <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   const display = isTrainee
     ? (TRAINEE_DISPLAY[session.status] ?? TRAINEE_DISPLAY.PLANNED)
@@ -111,6 +102,7 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
           <View style={styles.topTitleRow}>
             <Ionicons name="calendar" size={20} color={COLORS.primary} />
             <Text style={[styles.topTitle, { color: theme.textPrimary }]}>{t.sessionDetail.pageTitle}</Text>
+            {syncing && <ActivityIndicator size="small" color={COLORS.primary} style={{ marginLeft: 8 }} />}
           </View>
           <TouchableOpacity
             style={[styles.backBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
