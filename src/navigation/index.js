@@ -19,6 +19,7 @@ import TraineeDashboard from '../screens/dashboard/TraineeDashboard';
 import CapacitatorDashboard from '../screens/dashboard/CapacitatorDashboard';
 import MedicalDashboard from '../screens/dashboard/MedicalDashboard';
 import ResearcherDashboard from '../screens/dashboard/ResearcherDashboard';
+import FireChiefDashboard from '../screens/dashboard/FireChiefDashboard';
 import PersonasScreen from '../screens/people/PersonasScreen';
 import PersonasSesionesScreen from '../screens/people/PersonasSesionesScreen';
 
@@ -31,6 +32,7 @@ import SessionDetailScreen           from '../screens/sessions/SessionDetailScre
 import ResultadosIndividualesScreen  from '../screens/resultados/ResultadosIndividualesScreen';
 import EvaluacionBomberoScreen       from '../screens/resultados/EvaluacionBomberoScreen';
 import ResultadosBomberoScreen       from '../screens/resultados/ResultadosBomberoScreen';
+import CrearSesionScreen             from '../screens/sessions/CrearSesionScreen';
 
 const Stack = createStackNavigator();
 
@@ -67,6 +69,7 @@ function RoleNavigator({ role }) {
     [ROLES.CAPACITATOR]: CapacitatorDashboard,
     [ROLES.MEDICAL]: MedicalDashboard,
     [ROLES.RESEARCHER]: ResearcherDashboard,
+    [ROLES.FIRE_CHIEF]: FireChiefDashboard,
   };
 
   const Dashboard = dashboardMap[role];
@@ -96,11 +99,14 @@ function RoleNavigator({ role }) {
       <Stack.Screen name="EvaluacionBombero"     component={EvaluacionBomberoScreen} />
       <Stack.Screen name="ResultadosBombero"     component={ResultadosBomberoScreen} />
       <Stack.Screen name="Schedule" component={PlaceholderScreen} />
-      {(role === ROLES.MEDICAL || role === ROLES.CAPACITATOR) && (
+      {(role === ROLES.MEDICAL || role === ROLES.CAPACITATOR || role === ROLES.FIRE_CHIEF) && (
         <>
           <Stack.Screen name="Personas" component={PersonasWithLayout} />
           <Stack.Screen name="PersonasSesiones" component={PersonasSesionesWithLayout} />
         </>
+      )}
+      {role === ROLES.FIRE_CHIEF && (
+        <Stack.Screen name="CrearSesion" component={withMainLayout(CrearSesionScreen)} />
       )}
       <Stack.Screen name="Configuration" component={PlaceholderScreen} />
     </Stack.Navigator>

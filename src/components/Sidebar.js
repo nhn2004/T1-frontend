@@ -52,6 +52,13 @@ export default function Sidebar({ navigation, activeRoute }) {
         baseMenuItems[baseMenuItems.length - 1],
       ];
     }
+    if (role === ROLES.FIRE_CHIEF) {
+      return [
+        ...baseMenuItems.slice(0, -1),
+        { label: 'Personal', route: 'Personas', iconLibrary: 'Ionicons', iconName: 'people-outline' },
+        baseMenuItems[baseMenuItems.length - 1],
+      ];
+    }
     if (role === ROLES.FIREFIGHTER_TRAINEE) {
       return baseMenuItems.filter(item => item.route !== 'Dashboard');
     }

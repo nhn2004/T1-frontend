@@ -8,9 +8,9 @@ export function hasRole(userRole, allowedRoles) {
 // Role permission maps — extend as features are built
 export const PERMISSIONS = {
   // Session management
-  createSession: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR],
-  manageInvitations: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR],
-  viewAllSessions: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.MEDICAL, ROLES.RESEARCHER],
+  createSession: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.FIRE_CHIEF],
+  manageInvitations: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.FIRE_CHIEF],
+  viewAllSessions: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.MEDICAL, ROLES.RESEARCHER, ROLES.FIRE_CHIEF],
   viewOwnSessions: [ROLES.FIREFIGHTER_TRAINEE],
 
   // Medical records
@@ -24,7 +24,11 @@ export const PERMISSIONS = {
 
   // Research / exports
   exportAnonymizedData: [ROLES.RESEARCHER, ROLES.SYSTEM_ADMIN],
-  generateReports: [ROLES.RESEARCHER, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR],
+  generateReports: [ROLES.RESEARCHER, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.FIRE_CHIEF],
+
+  // Fire chief specific
+  manageFirefighters: [ROLES.FIRE_CHIEF, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
+  manageCapacitators: [ROLES.FIRE_CHIEF, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
 };
 
 export function can(userRole, permission) {
