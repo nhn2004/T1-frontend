@@ -75,3 +75,5 @@ temp/
 
 # Test
 jest/cache/
+android/
+.idea/

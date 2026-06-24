@@ -1,53 +1,69 @@
 import React from 'react';
 import {
-  View, Text, Image, TouchableOpacity, StyleSheet,
+  View, Text, Image, TouchableOpacity, StyleSheet, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ROLE_COLORS } from '../__mocks__/sessionDetailData';
+import useTheme from '../../../hooks/useTheme';
+import useTranslation from '../../../hooks/useTranslation';
 
 // Right sidebar: training center card + instructor list.
 // Purely presentational — receives data as props.
 
-export default function TrainingCenterSidebar({ trainingCenter, instructors }) {
+export default function TrainingCenterSidebar({ trainingCenter, instructors, fullWidth }) {
+  const theme = useTheme();
+  const { t } = useTranslation();
+
+  const handleDirections = () => {
+    const query = encodeURIComponent(trainingCenter.address);
+    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`).catch(() => {});
+  };
+
   return (
-    <View style={styles.sidebar}>
+    <View style={[styles.sidebar, fullWidth && styles.sidebarFullWidth]}>
 
       {/* ── Training center card ── */}
-      <View style={styles.centerCard}>
+      <View style={[styles.centerCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <Image
           source={{ uri: trainingCenter.imageUri }}
           style={styles.centerImage}
           resizeMode="cover"
         />
         <View style={styles.centerInfo}>
-          <Text style={styles.centerName}>{trainingCenter.name}</Text>
+          <Text style={[styles.centerName, { color: theme.textPrimary }]}>{trainingCenter.name}</Text>
 
           <View style={styles.addressRow}>
             <Ionicons name="location-sharp" size={12} color="#E85D27" />
-            <Text style={styles.addressText} numberOfLines={2}>
+            <Text style={[styles.addressText, { color: theme.textSecondary }]} numberOfLines={2}>
               {trainingCenter.address}
             </Text>
           </View>
 
-          <View style={styles.specificBox}>
-            <Ionicons name="business-outline" size={13} color="#495565" />
-            <Text style={styles.specificText}>
+          <View style={[styles.specificBox, { backgroundColor: theme.pill }]}>
+            <Ionicons name="business-outline" size={13} color={theme.textSecondary} />
+            <Text style={[styles.specificText, { color: theme.textSecondary }]}>
               {trainingCenter.specificLocation}
             </Text>
           </View>
 
-          <TouchableOpacity style={styles.directionsRow} activeOpacity={0.7}>
-            <Text style={styles.directionsText}>Get Directions</Text>
-            <Ionicons name="open-outline" size={14} color="#2E2E2E" />
+          <TouchableOpacity
+            style={styles.directionsRow}
+            activeOpacity={0.7}
+            onPress={handleDirections}
+            accessibilityRole="button"
+            accessibilityLabel={t.sessionDetail.getDirections}
+          >
+            <Text style={[styles.directionsText, { color: theme.textPrimary }]}>{t.sessionDetail.getDirections}</Text>
+            <Ionicons name="open-outline" size={14} color={theme.textPrimary} />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* ── Lead instructors ── */}
-      <View style={styles.instructorsCard}>
-        <Text style={styles.instructorsLabel}>LEAD INSTRUCTOR</Text>
+      <View style={[styles.instructorsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <Text style={[styles.instructorsLabel, { color: theme.textMuted }]}>{t.sessionDetail.leadInstructor}</Text>
         {instructors.map((inst) => (
-          <InstructorRow key={inst.id} instructor={inst} />
+          <InstructorRow key={inst.id} instructor={inst} theme={theme} t={t} />
         ))}
       </View>
 
@@ -55,8 +71,8 @@ export default function TrainingCenterSidebar({ trainingCenter, instructors }) {
   );
 }
 
-function InstructorRow({ instructor }) {
-  const roleStyle = ROLE_COLORS[instructor.role] ?? { bg: '#F0F0F0', text: '#333' };
+function InstructorRow({ instructor, theme, t }) {
+  const roleStyle = ROLE_COLORS[instructor.role] ?? { bg: theme.pill, text: theme.textSecondary };
 
   return (
     <View style={styles.instructorRow}>
@@ -67,11 +83,11 @@ function InstructorRow({ instructor }) {
         </Text>
       </View>
       <View style={styles.instructorInfo}>
-        <Text style={styles.instructorName}>{instructor.name}</Text>
-        <Text style={styles.instructorDivision}>{instructor.division}</Text>
+        <Text style={[styles.instructorName, { color: theme.textPrimary }]}>{instructor.name}</Text>
+        <Text style={[styles.instructorDivision, { color: theme.textSecondary }]}>{instructor.division}</Text>
         <View style={[styles.roleBadge, { backgroundColor: roleStyle.bg }]}>
           <Text style={[styles.roleBadgeText, { color: roleStyle.text }]}>
-            {instructor.role}
+            {t.common.instructorRoles[instructor.role] ?? instructor.role}
           </Text>
         </View>
       </View>
@@ -83,6 +99,9 @@ const styles = StyleSheet.create({
   sidebar: {
     width: 260,
     gap: 12,
+  },
+  sidebarFullWidth: {
+    width: '100%',
   },
 
   // Training center card

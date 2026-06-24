@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ImageBackground, StyleSheet } from 'react-native';
 import { COLORS } from '../../../constants';
+import useTranslation from '../../../hooks/useTranslation';
 
 // Firefighter banner image — replace with a local asset when available:
 // import bannerImg from '../../../../assets/banner-fire.jpg';
@@ -9,14 +10,16 @@ const BANNER_IMAGE = {
   uri: 'https://images.unsplash.com/photo-1578736641330-3155e606cd40?w=900&q=80',
 };
 
-function getGreeting() {
+function getGreeting(greetings) {
   const hour = new Date().getHours();
-  if (hour < 12) return 'GOOD MORNING,';
-  if (hour < 18) return 'GOOD AFTERNOON,';
-  return 'GOOD EVENING,';
+  if (hour < 12) return greetings.morning;
+  if (hour < 18) return greetings.afternoon;
+  return greetings.evening;
 }
 
 export default function WelcomeBanner({ name, title }) {
+  const { t } = useTranslation();
+
   return (
     <ImageBackground
       source={BANNER_IMAGE}
@@ -27,7 +30,7 @@ export default function WelcomeBanner({ name, title }) {
       {/* Black overlay at 40% opacity */}
       <View style={styles.overlay} />
 
-      <Text style={styles.greeting}>{getGreeting()}</Text>
+      <Text style={styles.greeting}>{getGreeting(t.greeting)}</Text>
       <Text style={styles.name}>
         {title.toUpperCase()} – {name.toUpperCase()}
       </Text>

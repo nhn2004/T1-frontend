@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
-import { COLORS } from '../../constants';
+import useTheme from '../../hooks/useTheme';
+import useTranslation from '../../hooks/useTranslation';
 import FilterTabs   from './components/FilterTabs';
 import CarouselGrid from './components/CarouselGrid';
 
@@ -10,10 +12,11 @@ import {
   ALL_SESSIONS,
   FILTER_KEYS,
   applyFilter,
-  filterTitle,
 } from './__mocks__/sessionsData';
 
 export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
+  const theme = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [activeFilter, setActiveFilter] = useState(FILTER_KEYS.ALL);
   const [query, setQuery] = useState('');
@@ -42,13 +45,14 @@ export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
     if (searchExpanded) setQuery('');
     setSearchExpanded(v => !v);
   }, [searchExpanded]);
+  const emptyMessage = t.sessions.emptyMessage[activeFilter];
 
   return (
-    <SafeAreaView style={styles.root}>
+    <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
       {Sidebar && <Sidebar />}
 
       <View style={[styles.content, { paddingTop: Math.max(insets.top, 12) }]}>
-        <Text style={styles.pageTitle}>{filterTitle(activeFilter)}</Text>
+        <Text style={[styles.pageTitle, { color: theme.textPrimary }]}>{t.sessions.pageTitle[activeFilter]}</Text>
 
         <FilterTabs
           activeFilter={activeFilter}
@@ -67,7 +71,8 @@ export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
           />
         ) : (
           <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>No hay capacitaciones.</Text>
+            <Ionicons name="file-tray-outline" size={32} color={theme.textMuted} />
+            <Text style={[styles.emptyText, { color: theme.textMuted }]}>{emptyMessage}</Text>
           </View>
         )}
       </View>
@@ -78,7 +83,6 @@ export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#F4F6F8',
   },
   content: {
     flex: 1,
@@ -92,6 +96,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#2E2E2E',
   },
-  emptyBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { fontSize: 14, color: '#9AA3B0' },
+  emptyBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  emptyText: { fontSize: 14 },
 });

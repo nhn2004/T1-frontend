@@ -1,63 +1,52 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { FILTERS } from '../__mocks__/sessionsData';
+import { COLORS } from '../../../constants';
 
-export default function FilterTabs({ activeFilter, counts, onSelect, searchExpanded, onSearchToggle, query, onQueryChange }) {
+export default function FilterTabs({ activeFilter, counts, onSelect }) {
   return (
     <View style={styles.container}>
       {FILTERS.map((filter) => {
         const isActive = activeFilter === filter.key;
         const count = counts[filter.key] ?? 0;
-        const activeColor = filter.activeColor ?? '#E85D27';
 
         return (
           <TouchableOpacity
             key={filter.key}
-            style={[styles.tab, isActive && { backgroundColor: activeColor, borderColor: activeColor }]}
+            style={[styles.tab, isActive && styles.tabActive]}
             onPress={() => onSelect(filter.key)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isActive }}
           >
-            {filter.icon && (
-              <Ionicons
-                name={filter.icon}
-                size={13}
-                color={isActive ? '#FFFFFF' : '#697282'}
-              />
-            )}
             <Text style={[styles.label, isActive && styles.labelActive]}>
               {filter.label}
             </Text>
-            <View style={[styles.countBadge, isActive && styles.countBadgeActive]}>
-              <Text style={[styles.countText, isActive && styles.countTextActive]}>
+            <View style={[
+              styles.countBadge,
+              { backgroundColor: theme.pill },
+              isActive && styles.countBadgeActive,
+            ]}>
+              <Text style={[styles.countText, { color: theme.textSecondary }, isActive && styles.countTextActive]}>
                 {count}
               </Text>
             </View>
           </TouchableOpacity>
         );
       })}
-
-      {/* Lupa — al lado de Canceladas */}
-      <TouchableOpacity style={styles.searchIconBtn} onPress={onSearchToggle} activeOpacity={0.7}>
-        <Ionicons name={searchExpanded ? 'close' : 'search'} size={18} color="#2E2E2E" />
-      </TouchableOpacity>
-
-      {/* Input expandible */}
-      {searchExpanded && (
-        <TextInput
-          style={styles.searchInput}
-          value={query}
-          onChangeText={onQueryChange}
-          placeholder="Buscar capacitación..."
-          placeholderTextColor="#5C6470"
-          autoFocus
-        />
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Sin esto, el ScrollView (al no tener "style" propio) hereda el flex:1 del
+  // layout en columna del padre y se estira para llenar el alto disponible;
+  // luego el "alignItems: stretch" por defecto de un row infla cada tab a esa
+  // misma altura — por eso las pastillas de filtro se veían como columnas gigantes.
+  scrollView: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -71,20 +60,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#E0E0E0',
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#495565',
   },
   labelActive: {
     color: '#FFFFFF',
   },
   countBadge: {
-    backgroundColor: '#F0F0F0',
     borderRadius: 10,
     paddingHorizontal: 7,
     paddingVertical: 1,
@@ -97,7 +82,6 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#495565',
   },
   countTextActive: {
     color: '#FFFFFF',
