@@ -133,11 +133,13 @@ export const FILTER_KEYS = {
   CANCELLED: 'CANCELLED',
 };
 
-export const FILTERS = [
-  { key: FILTER_KEYS.ALL,       label: 'Todas'      },
-  { key: FILTER_KEYS.PENDING,   label: 'Pendientes' },
-  { key: FILTER_KEYS.COMPLETED, label: 'Realizadas' },
-  { key: FILTER_KEYS.CANCELLED, label: 'Canceladas' },
+// Las etiquetas (label) viven en el diccionario de i18n (t.sessions.filterTabs /
+// t.sessions.pageTitle), no aquí — así responden al idioma elegido en Configuración.
+export const FILTER_ORDER = [
+  FILTER_KEYS.ALL,
+  FILTER_KEYS.PENDING,
+  FILTER_KEYS.COMPLETED,
+  FILTER_KEYS.CANCELLED,
 ];
 
 export function applyFilter(sessions, filterKey) {
@@ -152,14 +154,5 @@ export function applyFilter(sessions, filterKey) {
       return sessions.filter((s) => s.status === SESSION_STATUS.CANCELLED);
     default:
       return sessions;
-  }
-}
-
-export function filterTitle(filterKey) {
-  switch (filterKey) {
-    case FILTER_KEYS.PENDING:   return 'Capacitaciones Pendientes';
-    case FILTER_KEYS.COMPLETED: return 'Capacitaciones Realizadas';
-    case FILTER_KEYS.CANCELLED: return 'Capacitaciones Canceladas';
-    default:                    return 'Todas las Capacitaciones';
   }
 }

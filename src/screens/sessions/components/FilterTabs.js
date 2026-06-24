@@ -1,40 +1,69 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { FILTERS } from '../__mocks__/sessionsData';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { FILTER_ORDER } from '../__mocks__/sessionsData';
 import { COLORS } from '../../../constants';
+import useTheme from '../../../hooks/useTheme';
+import useTranslation from '../../../hooks/useTranslation';
 
 export default function FilterTabs({ activeFilter, counts, onSelect }) {
+  const theme = useTheme();
+  const { t } = useTranslation();
+
   return (
-    <View style={styles.container}>
-      {FILTERS.map((filter) => {
-        const isActive = activeFilter === filter.key;
-        const count = counts[filter.key] ?? 0;
+    <ScrollView
+      horizontal
+      style={styles.scrollView}
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.container}
+    >
+      {FILTER_ORDER.map((key) => {
+        const isActive = activeFilter === key;
+        const count = counts[key] ?? 0;
 
         return (
           <TouchableOpacity
-            key={filter.key}
-            style={[styles.tab, isActive && styles.tabActive]}
-            onPress={() => onSelect(filter.key)}
+            key={key}
+            style={[
+              styles.tab,
+              { backgroundColor: theme.card, borderColor: theme.border },
+              isActive && styles.tabActive,
+            ]}
+            onPress={() => onSelect(key)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isActive }}
           >
-            <Text style={[styles.label, isActive && styles.labelActive]}>
-              {filter.label}
+            <Text style={[styles.label, { color: theme.textSecondary }, isActive && styles.labelActive]}>
+              {t.sessions.filterTabs[key]}
             </Text>
-            <View style={[styles.countBadge, isActive && styles.countBadgeActive]}>
-              <Text style={[styles.countText, isActive && styles.countTextActive]}>
+            <View style={[
+              styles.countBadge,
+              { backgroundColor: theme.pill },
+              isActive && styles.countBadgeActive,
+            ]}>
+              <Text style={[styles.countText, { color: theme.textSecondary }, isActive && styles.countTextActive]}>
                 {count}
               </Text>
             </View>
           </TouchableOpacity>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  // Sin esto, el ScrollView (al no tener "style" propio) hereda el flex:1 del
+  // layout en columna del padre y se estira para llenar el alto disponible;
+  // luego el "alignItems: stretch" por defecto de un row infla cada tab a esa
+  // misma altura — por eso las pastillas de filtro se veían como columnas gigantes.
+  scrollView: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
   container: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
     marginBottom: 16,
   },
@@ -45,9 +74,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#E0E0E0',
   },
   tabActive: {
     backgroundColor: COLORS.primary,
@@ -56,13 +83,11 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#495565',
   },
   labelActive: {
     color: '#FFFFFF',
   },
   countBadge: {
-    backgroundColor: '#F0F0F0',
     borderRadius: 10,
     paddingHorizontal: 7,
     paddingVertical: 1,
@@ -75,7 +100,6 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#495565',
   },
   countTextActive: {
     color: '#FFFFFF',

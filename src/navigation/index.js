@@ -21,15 +21,14 @@ import ResearcherDashboard from '../screens/dashboard/ResearcherDashboard';
 import PersonasScreen from '../screens/people/PersonasScreen';
 import PersonasSesionesScreen from '../screens/people/PersonasSesionesScreen';
 
-// Temporary internal screens
-import PlaceholderScreen from '../screens/PlaceholderScreen';
-
 // Screens ya construidas
 import SessionsScreen                from '../screens/sessions/SessionsScreen';
 import SessionDetailScreen           from '../screens/sessions/SessionDetailScreen';
+import SettingsScreen                from '../screens/settings/SettingsScreen';
 import ResultadosIndividualesScreen  from '../screens/resultados/ResultadosIndividualesScreen';
 import EvaluacionBomberoScreen       from '../screens/resultados/EvaluacionBomberoScreen';
 import ResultadosBomberoScreen       from '../screens/resultados/ResultadosBomberoScreen';
+import TrainingScheduleScreen        from '../screens/schedule/TrainingScheduleScreen';
 
 const Stack = createStackNavigator();
 
@@ -89,14 +88,14 @@ function RoleNavigator({ role }) {
       <Stack.Screen name="ResultadosIndividuales" component={ResultadosIndividualesScreen} />
       <Stack.Screen name="EvaluacionBombero"     component={EvaluacionBomberoScreen} />
       <Stack.Screen name="ResultadosBombero"     component={ResultadosBomberoScreen} />
-      <Stack.Screen name="Schedule" component={PlaceholderScreen} />
+      <Stack.Screen name="Schedule" component={withMainLayout(TrainingScheduleScreen)} />
       {role === ROLES.MEDICAL && (
         <>
           <Stack.Screen name="Personas" component={PersonasWithLayout} />
           <Stack.Screen name="PersonasSesiones" component={PersonasSesionesWithLayout} />
         </>
       )}
-      <Stack.Screen name="Configuration" component={PlaceholderScreen} />
+      <Stack.Screen name="Configuration" component={withMainLayout(SettingsScreen)} />
     </Stack.Navigator>
   );
 }

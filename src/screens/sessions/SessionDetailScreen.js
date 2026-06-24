@@ -1,9 +1,12 @@
 import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { COLORS } from '../../constants';
+import { COLORS, ROLES } from '../../constants';
+import { useAuth } from '../../hooks';
+import useTheme from '../../hooks/useTheme';
+import useTranslation from '../../hooks/useTranslation';
 import AgendaTimeline        from './components/AgendaTimeline';
 import TrainingCenterSidebar from './components/TrainingCenterSidebar';
 
@@ -12,16 +15,62 @@ import {
   STATUS_DISPLAY,
 } from './__mocks__/sessionDetailData';
 
+// El aspirante no administra la sesión (eso es del instructor) — solo puede consultarla
+// y, una vez finalizada, ver sus propios resultados. Evita mandarlo a una pantalla de
+// gestión de asistentes que ni siquiera existe en su navegador.
+const TRAINEE_DISPLAY = {
+  PLANNED: {
+    badges: STATUS_DISPLAY.PLANNED.badges,
+    btnLabelKey: 'instructorWillStart',
+    btnBg: '#9AA3B0',
+    btnDisabled: true,
+  },
+  ACTIVE: {
+    badges: STATUS_DISPLAY.ACTIVE.badges,
+    btnLabelKey: 'inProgressWait',
+    btnBg: '#9AA3B0',
+    btnDisabled: true,
+  },
+  COMPLETED: {
+    badges: STATUS_DISPLAY.COMPLETED.badges,
+    btnLabelKey: 'viewMyResults',
+    btnBg: '#2E7D32',
+    btnDisabled: false,
+  },
+  CANCELLED: STATUS_DISPLAY.CANCELLED,
+};
+
 export default function SessionDetailScreen({ navigation, route, Sidebar, sessionId, onBack }) {
+  const theme = useTheme();
+  const { t } = useTranslation();
+  const { role, user, token } = useAuth();
+  const { width } = useWindowDimensions();
+  const isCompact = width < 980;
+  const isTrainee = role === ROLES.FIREFIGHTER_TRAINEE;
+
   // Busca la sesión por id — en producción esto viene del API
   const id      = sessionId ?? route?.params?.id ?? 's1';
   const session = SESSIONS_DETAIL_MAP[id] ?? SESSIONS_DETAIL_MAP['s1'];
-  const display = STATUS_DISPLAY[session.status] ?? STATUS_DISPLAY.PLANNED;
+  const display = isTrainee
+    ? (TRAINEE_DISPLAY[session.status] ?? TRAINEE_DISPLAY.PLANNED)
+    : (STATUS_DISPLAY[session.status] ?? STATUS_DISPLAY.PLANNED);
 
   const handleAction = useCallback(() => {
     if (display.btnDisabled) return;
+
+    if (isTrainee) {
+      // Pendiente de backend: se usa el token como bomberoId placeholder.
+      navigation?.navigate('ResultadosBombero', {
+        bomberoId: token,
+        bomberoName: user?.name,
+      });
+      return;
+    }
+
     navigation?.navigate('PersonasSesiones', { sessionId: session.id });
-  }, [display, session.id, navigation]);
+  }, [display, isTrainee, navigation, session.id, token, user]);
+
+  const BodyContainer = isCompact ? ScrollView : View;
 
   const handleBack = useCallback(() => {
     if (onBack) {
@@ -32,7 +81,7 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
   }, [onBack, navigation]);
 
   return (
-    <SafeAreaView style={styles.root}>
+    <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
       {Sidebar && <Sidebar />}
 
       <View style={styles.content}>
@@ -41,47 +90,61 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
         <View style={styles.topBar}>
           <View style={styles.topTitleRow}>
             <Ionicons name="calendar" size={20} color={COLORS.primary} />
-            <Text style={styles.topTitle}>Capacitation Details</Text>
+            <Text style={[styles.topTitle, { color: theme.textPrimary }]}>{t.sessionDetail.pageTitle}</Text>
           </View>
-          <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.8}>
-            <Ionicons name="arrow-back" size={16} color="#2E2E2E" />
-            <Text style={styles.backBtnText}>Volver</Text>
+          <TouchableOpacity
+            style={[styles.backBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+            onPress={handleBack}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={t.sessionDetail.back}
+          >
+            <Ionicons name="arrow-back" size={16} color={theme.textPrimary} />
+            <Text style={[styles.backBtnText, { color: theme.textPrimary }]}>{t.sessionDetail.back}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── Body ── */}
-        <View style={styles.body}>
+        {/* ── Body ──
+            En tablet/escritorio ocupa toda la altura sin scroll de página (solo la
+            agenda interna scrollea). En teléfono se apila en columna y todo el body
+            scrollea, para que nada quede recortado en pantallas chicas. */}
+        <BodyContainer
+          style={[styles.body, isCompact && styles.bodyCompact]}
+          {...(isCompact ? { contentContainerStyle: styles.bodyCompactContent, showsVerticalScrollIndicator: false } : {})}
+        >
 
           {/* LEFT PANEL */}
-          <View style={styles.leftPanel}>
+          <View style={[styles.leftPanel, isCompact && styles.leftPanelCompact]}>
 
             {/* Summary card */}
-            <View style={styles.card}>
-              <Text style={styles.sessionTitle}>{session.title}</Text>
-              <Text style={styles.sessionDesc}>{session.description}</Text>
+            <View style={[styles.card, { backgroundColor: theme.card }]}>
+              <Text style={[styles.sessionTitle, { color: theme.textPrimary }]}>{session.title}</Text>
+              <Text style={[styles.sessionDesc, { color: theme.textSecondary }]}>{session.description}</Text>
               <View style={styles.statsRow}>
-                <StatItem icon="calendar-outline" label="FECHA"     value={session.date}     />
-                <StatItem icon="time-outline"     label="HORA"      value={session.time}     />
-                <StatItem icon="people-outline"   label="CAPACIDAD" value={session.capacity} />
+                <StatItem icon="calendar-outline" label={t.sessionDetail.date}     value={session.date}     theme={theme} />
+                <StatItem icon="time-outline"     label={t.sessionDetail.time}     value={session.time}     theme={theme} />
+                <StatItem icon="people-outline"   label={t.sessionDetail.capacity} value={`${session.capacityCount} ${t.sessions.applicants}`} theme={theme} />
               </View>
             </View>
 
             {/* Overview + agenda */}
-            <View style={[styles.card, styles.overviewCard]}>
+            <View style={[styles.card, !isCompact && styles.overviewCard, { backgroundColor: theme.card }]}>
               {/* Header fijo — nunca scrollea */}
               <View style={styles.sectionHeader}>
-                <Ionicons name="layers-outline" size={18} color="#2E2E2E" />
-                <Text style={styles.sectionTitle}>Session Overview</Text>
+                <Ionicons name="layers-outline" size={18} color={theme.textPrimary} />
+                <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{t.sessionDetail.overview}</Text>
               </View>
 
-              {/* Solo esta parte hace scroll si el contenido no cabe */}
+              {/* En tablet/escritorio esta sección scrollea internamente; en teléfono
+                  se deja crecer porque ya scrollea la página completa. */}
               <ScrollView
-                style={styles.overviewScroll}
+                style={!isCompact && styles.overviewScroll}
+                scrollEnabled={!isCompact}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.overviewScrollContent}
               >
-                <Text style={styles.note}>
-                  <Text style={styles.noteBold}>Note: </Text>
+                <Text style={[styles.note, { color: theme.textSecondary }]}>
+                  <Text style={[styles.noteBold, { color: theme.textPrimary }]}>{t.sessionDetail.note} </Text>
                   {session.note}
                 </Text>
                 <AgendaTimeline items={session.agenda} />
@@ -89,7 +152,7 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
             </View>
 
             {/* ── Status card with large watermark icon ── */}
-            <View style={styles.statusCard}>
+            <View style={[styles.statusCard, { backgroundColor: theme.card }]}>
               {/* Watermark icon in the background */}
               <View style={styles.watermark} pointerEvents="none">
                 <Ionicons name="flame" size={90} color="#E85D27" style={{ opacity: 0.06 }} />
@@ -97,11 +160,11 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
 
               {/* Estado label + badges */}
               <View style={styles.statusRow}>
-                <Ionicons name="layers-outline" size={16} color="#2E2E2E" />
-                <Text style={styles.statusLabel}>Estado:</Text>
+                <Ionicons name="layers-outline" size={16} color={theme.textPrimary} />
+                <Text style={[styles.statusLabel, { color: theme.textPrimary }]}>{t.sessionDetail.status}</Text>
                 {display.badges.map((b) => (
-                  <View key={b.label} style={[styles.badge, { backgroundColor: b.bg }]}>
-                    <Text style={styles.badgeText}>{b.label}</Text>
+                  <View key={b.labelKey} style={[styles.badge, { backgroundColor: b.bg }]}>
+                    <Text style={styles.badgeText}>{t.common.status[b.labelKey]}</Text>
                   </View>
                 ))}
               </View>
@@ -116,12 +179,14 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
                 onPress={handleAction}
                 activeOpacity={display.btnDisabled ? 1 : 0.85}
                 disabled={display.btnDisabled}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: display.btnDisabled }}
               >
                 <Text style={[
                   styles.actionBtnText,
                   display.btnDisabled && styles.actionBtnTextDisabled,
                 ]}>
-                  {display.btnLabel}
+                  {t.sessionDetail[display.btnLabelKey]}
                 </Text>
               </TouchableOpacity>
 
@@ -133,9 +198,10 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
           <TrainingCenterSidebar
             trainingCenter={session.trainingCenter}
             instructors={session.instructors}
+            fullWidth={isCompact}
           />
 
-        </View>
+        </BodyContainer>
       </View>
     </SafeAreaView>
   );
@@ -143,15 +209,15 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
 
 // ── StatItem ──────────────────────────────────────────────────────────────────
 
-function StatItem({ icon, label, value }) {
+function StatItem({ icon, label, value, theme }) {
   return (
     <View style={styles.statItem}>
-      <View style={styles.statIconBox}>
-        <Ionicons name={icon} size={18} color="#555" />
+      <View style={[styles.statIconBox, { backgroundColor: theme.pill }]}>
+        <Ionicons name={icon} size={18} color={theme.textSecondary} />
       </View>
       <View>
-        <Text style={styles.statLabel}>{label}</Text>
-        <Text style={styles.statValue}>{value}</Text>
+        <Text style={[styles.statLabel, { color: theme.textMuted }]}>{label}</Text>
+        <Text style={[styles.statValue, { color: theme.textPrimary }]}>{value}</Text>
       </View>
     </View>
   );
@@ -160,8 +226,8 @@ function StatItem({ icon, label, value }) {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root: { flex: 1, flexDirection: 'row', backgroundColor: '#F4F6F8' },
-  content: { flex: 1, padding: 14, paddingLeft: 74, gap: 12 },
+  root: { flex: 1, flexDirection: 'row' },
+  content: { flex: 1, padding: 14, gap: 12 },
 
   // Header
   topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -176,7 +242,12 @@ const styles = StyleSheet.create({
 
   // Body layout
   body: { flex: 1, flexDirection: 'row', gap: 14 },
+  bodyCompact: { flexDirection: 'column' },
+  bodyCompactContent: { gap: 14, paddingBottom: 24 },
   leftPanel: { flex: 1, gap: 12 },
+  // "flex: 0" en RN-Web fija flexBasis:0% (colapsa a 0px) — hay que cancelar el
+  // flex heredado con las props largas y flexBasis "auto" para que mida por contenido.
+  leftPanelCompact: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto' },
 
   // Cards
   card: {
