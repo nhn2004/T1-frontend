@@ -19,16 +19,23 @@ function formatTime(iso) {
   });
 }
 
+function splitTitle(fullTitle = '') {
+  const sep = fullTitle.indexOf(' — ');
+  if (sep === -1) return { title: fullTitle, type: 'Capacitación' };
+  return { title: fullTitle.slice(0, sep), type: fullTitle.slice(sep + 3) };
+}
+
 function toSession(raw) {
+  const { title, type } = splitTitle(raw.title);
   return {
     id:            raw.trainingSessionId,
-    title:         raw.title,
+    title,
     applicants:    raw.plannedCapacity ?? 0,
     capacityCount: raw.plannedCapacity ?? 0,
     status:        STATUS_MAP[raw.status] ?? 'PLANNED',
     date:          formatDate(raw.scheduledStart),
     time:          formatTime(raw.scheduledStart),
-    type:          raw.sessionCode ?? 'Capacitación',
+    type,
     description:   raw.description ?? '',
     scheduledStart: raw.scheduledStart,
     scheduledEnd:   raw.scheduledEnd,
