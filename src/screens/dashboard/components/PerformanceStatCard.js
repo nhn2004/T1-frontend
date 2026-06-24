@@ -7,9 +7,14 @@ import useTranslation from '../../../hooks/useTranslation';
 // Vertical stat card used in the trainee "Performance Overview" section.
 // Distinct from StatCard (horizontal layout, used by Medical/Admin dashboards).
 
-export default function PerformanceStatCard({ iconName, iconBg, iconColor, labelKey, value, valueColor, progress }) {
+// `labelKey` resuelve contra t.dashboard.metrics (uso original, Resumen de
+// Desempeño). `label` acepta texto ya traducido por el caller — lo usa, por
+// ejemplo, el Historial de Progreso, que tiene su propio namespace de i18n.
+// `hint` es una línea pequeña opcional debajo del valor (ej. "Óptimo", "-0.5kg").
+export default function PerformanceStatCard({ iconName, iconBg, iconColor, labelKey, label, value, valueColor, progress, hint, hintColor }) {
   const theme = useTheme();
   const { t } = useTranslation();
+  const resolvedLabel = label ?? t.dashboard.metrics[labelKey];
 
   return (
     <View style={[styles.card, { backgroundColor: theme.card }]}>
@@ -17,8 +22,11 @@ export default function PerformanceStatCard({ iconName, iconBg, iconColor, label
         <Ionicons name={iconName} size={26} color={iconColor} />
       </View>
 
-      <Text style={[styles.label, { color: theme.textPrimary }]}>{t.dashboard.metrics[labelKey]}</Text>
+      <Text style={[styles.label, { color: theme.textPrimary }]}>{resolvedLabel}</Text>
       <Text style={[styles.value, { color: valueColor }]}>{value}</Text>
+      {hint && (
+        <Text style={[styles.hint, { color: hintColor ?? theme.textMuted }]} numberOfLines={1}>{hint}</Text>
+      )}
 
       {progress != null && (
         <View style={[styles.progressTrack, { backgroundColor: theme.mode === 'dark' ? '#3A2A22' : '#FBE3D9' }]}>
@@ -52,6 +60,10 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 22,
     fontWeight: '700',
+  },
+  hint: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   progressTrack: {
     width: '100%',

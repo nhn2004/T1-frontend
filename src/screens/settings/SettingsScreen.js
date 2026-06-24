@@ -138,7 +138,7 @@ export default function SettingsScreen() {
 
         <View style={[styles.gridRow, isWide && styles.gridRowWide]}>
           <View style={[styles.gridItem, isWide && styles.gridItemWide]}>
-            <SettingsCard icon="notifications-outline" title={t.notifications} dark={darkMode}>
+            <SettingsCard icon="notifications-outline" title={t.notifications} dark={darkMode} style={isWide && styles.gridCardFill}>
               <ToggleRow
                 label={t.pushTitle}
                 description={t.pushDesc}
@@ -157,7 +157,7 @@ export default function SettingsScreen() {
           </View>
 
           <View style={[styles.gridItem, isWide && styles.gridItemWide]}>
-            <SettingsCard icon="sync-outline" title={t.dataSync} dark={darkMode}>
+            <SettingsCard icon="sync-outline" title={t.dataSync} dark={darkMode} style={isWide && styles.gridCardFill}>
               <ToggleRow
                 label={t.autoSyncTitle}
                 description={t.autoSyncDesc}
@@ -193,7 +193,7 @@ export default function SettingsScreen() {
 
         <View style={[styles.gridRow, isWide && styles.gridRowWide]}>
           <View style={[styles.gridItem, isWide && styles.gridItemWide]}>
-            <SettingsCard icon="color-palette-outline" title={t.appearance} dark={darkMode}>
+            <SettingsCard icon="color-palette-outline" title={t.appearance} dark={darkMode} style={isWide && styles.gridCardFill}>
               <ToggleRow
                 label={t.darkModeTitle}
                 description={t.darkModeDesc}
@@ -205,7 +205,7 @@ export default function SettingsScreen() {
           </View>
 
           <View style={[styles.gridItem, isWide && styles.gridItemWide]}>
-            <SettingsCard icon="globe-outline" title={t.language} dark={darkMode}>
+            <SettingsCard icon="globe-outline" title={t.language} dark={darkMode} style={isWide && styles.gridCardFill}>
               <View style={styles.langRow}>
                 <TouchableOpacity
                   style={[
@@ -334,6 +334,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   gridItemWide: {
+    flex: 1,
+  },
+  // "gridItemWide" se estira para igualar al hermano más alto de la fila (es el
+  // comportamiento por defecto de un row), pero ese estiramiento no baja por sí
+  // solo a la tarjeta — un View en columna solo estira el ancho de sus hijos, no
+  // el alto. Por eso la tarjeta necesita flex:1 explícito para llenar esa altura.
+  gridCardFill: {
     flex: 1,
   },
 

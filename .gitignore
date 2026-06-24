@@ -5,3 +5,4 @@ dist/
 *.orig.*
 web-build/
 android/
+.idea/

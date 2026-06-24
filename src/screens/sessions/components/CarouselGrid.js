@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, ScrollView, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import SessionCard from './SessionCard';
 import useTheme from '../../../hooks/useTheme';
@@ -31,6 +31,7 @@ export default function CarouselGrid({ sessions, onViewDetails }) {
   const fadeAnim        = useRef(new Animated.Value(1)).current;
   const COLS            = useMemo(() => columnsForWidth(box.w), [box.w]);
   const ROWS            = useMemo(() => rowsForHeight(box.h), [box.h]);
+  const isSingleColumn  = COLS === 1;
   const perPage         = COLS * ROWS;
   const totalPages      = Math.ceil(sessions.length / perPage);
   const [page, setPage] = useState(0);
@@ -74,6 +75,30 @@ export default function CarouselGrid({ sessions, onViewDetails }) {
   for (let r = 0; r < ROWS; r++) {
     const row = pageCards.slice(r * COLS, r * COLS + COLS);
     if (row.length > 0) gridRows.push(row);
+  }
+
+  // En una sola columna (teléfono) no tiene sentido forzar la altura de cada
+  // tarjeta a "alto disponible / filas": con pocas filas eso deja muchísimo
+  // espacio vacío entre el contenido y el botón. En ese caso se vuelve una
+  // lista vertical normal, con scroll, donde cada tarjeta mide según su
+  // contenido — sin paginar ni forzar alto.
+  if (isSingleColumn) {
+    return (
+      <View style={styles.outer} onLayout={onLayout}>
+        {box.w > 0 && (
+          <ScrollView style={styles.singleColumnScroll} showsVerticalScrollIndicator={false} contentContainerStyle={styles.singleColumnList}>
+            {sessions.map((s) => (
+              <SessionCard
+                key={s.id}
+                session={s}
+                onViewDetails={onViewDetails}
+                cardWidth={box.w}
+              />
+            ))}
+          </ScrollView>
+        )}
+      </View>
+    );
   }
 
   return (
@@ -145,6 +170,8 @@ function Arrow({ direction, visible, size, onPress, cardColor, label }) {
 
 const styles = StyleSheet.create({
   outer: { flex: 1 },
+  singleColumnScroll: { flex: 1 },
+  singleColumnList: { gap: 12, paddingBottom: 12 },
   row: {
     flex: 1,
     flexDirection: 'row',

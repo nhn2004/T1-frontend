@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions, } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { ROLES } from '../constants/roles';
+import { can } from '../navigation/guards';
 import useTheme from '../hooks/useTheme';
 import useTranslation from '../hooks/useTranslation';
 import ConfirmDialog from './ConfirmDialog';
@@ -19,21 +20,34 @@ function buildBaseMenuItems(t) {
   ];
 }
 
+// Inserta un item justo antes del último (Configuración siempre se queda al fondo,
+// sin importar cuántos items por rol se agreguen delante).
+function insertBeforeLast(items, item) {
+  return [...items.slice(0, -1), item, items[items.length - 1]];
+}
+
 export default function Sidebar({ navigation, activeRoute }) {
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const role = useAuthStore((state) => state.role);
   const theme = useTheme();
   const { t } = useTranslation();
-  const baseMenuItems = buildBaseMenuItems(t);
-  const medicalMenuItem = { label: t.sidebar.people, route: 'Personas', iconLibrary: 'Ionicons', iconName: 'people-outline' };
-  const menuItems =
-    role === ROLES.MEDICAL
-      ? [
-          ...baseMenuItems.slice(0, -1),
-          medicalMenuItem,
-          baseMenuItems[baseMenuItems.length - 1],
-        ]
-      : baseMenuItems;
+
+  let menuItems = buildBaseMenuItems(t);
+
+  // "Mi Progreso" es el historial propio del aspirante — se gatea por el mismo
+  // permiso que ya protege el resto de su info médica (readOwnMedicalRecord),
+  // no por un chequeo de rol suelto.
+  if (can(role, 'readOwnMedicalRecord')) {
+    menuItems = insertBeforeLast(menuItems, {
+      label: t.sidebar.progress, route: 'Progress', iconLibrary: 'Ionicons', iconName: 'analytics-outline',
+    });
+  }
+
+  if (role === ROLES.MEDICAL) {
+    menuItems = insertBeforeLast(menuItems, {
+      label: t.sidebar.people, route: 'Personas', iconLibrary: 'Ionicons', iconName: 'people-outline',
+    });
+  }
 
   const { width } = useWindowDimensions();
   // Tablet/escritorio: el sidebar arranca expandido (con etiquetas visibles) para que

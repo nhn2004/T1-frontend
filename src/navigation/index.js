@@ -29,6 +29,8 @@ import ResultadosIndividualesScreen  from '../screens/resultados/ResultadosIndiv
 import EvaluacionBomberoScreen       from '../screens/resultados/EvaluacionBomberoScreen';
 import ResultadosBomberoScreen       from '../screens/resultados/ResultadosBomberoScreen';
 import TrainingScheduleScreen        from '../screens/schedule/TrainingScheduleScreen';
+import ProgressHistoryScreen         from '../screens/progress/ProgressHistoryScreen';
+import ValidationQueueScreen         from '../screens/dashboard/ValidationQueueScreen';
 
 const Stack = createStackNavigator();
 
@@ -89,10 +91,12 @@ function RoleNavigator({ role }) {
       <Stack.Screen name="EvaluacionBombero"     component={EvaluacionBomberoScreen} />
       <Stack.Screen name="ResultadosBombero"     component={ResultadosBomberoScreen} />
       <Stack.Screen name="Schedule" component={withMainLayout(TrainingScheduleScreen)} />
+      <Stack.Screen name="Progress" component={withMainLayout(ProgressHistoryScreen)} />
       {role === ROLES.MEDICAL && (
         <>
           <Stack.Screen name="Personas" component={PersonasWithLayout} />
           <Stack.Screen name="PersonasSesiones" component={PersonasSesionesWithLayout} />
+          <Stack.Screen name="ValidationQueue" component={withMainLayout(ValidationQueueScreen)} />
         </>
       )}
       <Stack.Screen name="Configuration" component={withMainLayout(SettingsScreen)} />
