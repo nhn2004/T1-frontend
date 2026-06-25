@@ -1,17 +1,27 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Modal, Pressable, Alert,
+  StyleSheet, Modal, Pressable, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import {
-  MOCK_DOCTORS, MOCK_CAPACITADORES, DOCTOR_FILTERS, DOCTOR_ROLES,
-} from './__mocks__/crearSesionData';
+import { DOCTOR_FILTERS, MOCK_CAPACITADORES } from './__mocks__/crearSesionData';
+import { healthPersonnelService } from '../../services/healthPersonnelService';
+import api from '../../services/api';
 
-// ── Constantes del carousel de selección ──────────────────────────────────────
 const COLS = 3;
+
+function parseDatetime(fecha, hora) {
+  const parts = fecha.trim().split('/').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  const [day, month, year] = parts;
+  const [timePart, period] = hora.trim().split(' ');
+  let [h, m] = (timePart || '09:00').split(':').map(Number);
+  if (period === 'PM' && h < 12) h += 12;
+  if (period === 'AM' && h === 12) h = 0;
+  return new Date(year, month - 1, day, h, m, 0);
+}
 
 export default function CrearSesionScreen({ navigation }) {
   const [step, setStep] = useState(1);
@@ -21,29 +31,48 @@ export default function CrearSesionScreen({ navigation }) {
   const [fecha,  setFecha]    = useState('');
   const [hora,   setHora]     = useState('');
 
-  // Step 1 — Doctores
+  // Step 1 — Doctores (API)
+  const [allDoctors,     setAllDoctors]     = useState([]);
+  const [loadingDocs,    setLoadingDocs]    = useState(true);
   const [doctorFilter,   setDoctorFilter]   = useState('todos');
   const [doctorSearch,   setDoctorSearch]   = useState('');
   const [selectedDocs,   setSelectedDocs]   = useState([]);
   const [showAddDoctor,  setShowAddDoctor]  = useState(false);
 
-  // Step 2 — Capacitadores
+  // Step 2 — Capacitadores (sin endpoint — usa mock)
   const [capSearch,      setCapSearch]      = useState('');
   const [selectedCaps,   setSelectedCaps]   = useState([]);
   const [showAddCap,     setShowAddCap]     = useState(false);
 
   // Step 2 — Bomberos (lista de correos)
   const [bomberoEmails,  setBomberoEmails]  = useState(['', '', '', '']);
+  const [saving,         setSaving]         = useState(false);
+
+  // ── Carga personal médico ──────────────────────────────────────────────────
+  useEffect(() => {
+    healthPersonnelService.getAll()
+      .then(list => setAllDoctors(list.map(p => ({
+        id:        p.id,
+        name:      p.name,
+        specialty: p.specialty ?? p.role,
+        email:     p.email,
+        role:      p.role?.toLowerCase().includes('enfer') ? 'enfermero'
+                 : p.role?.toLowerCase().includes('nutri') ? 'nutricionista'
+                 : 'medico',
+      }))))
+      .catch(() => {})
+      .finally(() => setLoadingDocs(false));
+  }, []);
 
   // ── Filtrado doctores ──────────────────────────────────────────────────────
   const filteredDoctors = useMemo(() => {
-    let list = MOCK_DOCTORS;
+    let list = allDoctors;
     if (doctorFilter !== 'todos') list = list.filter(d => d.role === doctorFilter);
     if (doctorSearch.trim())      list = list.filter(d =>
       d.name.toLowerCase().includes(doctorSearch.trim().toLowerCase())
     );
     return list;
-  }, [doctorFilter, doctorSearch]);
+  }, [allDoctors, doctorFilter, doctorSearch]);
 
   const filteredCaps = useMemo(() => {
     if (!capSearch.trim()) return MOCK_CAPACITADORES;
@@ -73,10 +102,67 @@ export default function CrearSesionScreen({ navigation }) {
     setBomberoEmails(prev => prev.filter((_, i) => i !== idx));
   }
 
-  function handleCrearSesion() {
-    Alert.alert('Sesión creada', `"${nombre || 'Nueva Sesión'}" fue creada correctamente.`, [
-      { text: 'Volver', onPress: () => navigation.goBack() },
-    ]);
+  async function handleCrearSesion() {
+    const start = parseDatetime(fecha, hora);
+    if (!nombre.trim() || !start) {
+      Alert.alert('Faltan datos', 'Ingresa nombre, fecha (dd/mm/aaaa) y hora (HH:MM AM/PM).');
+      return;
+    }
+    const end = new Date(start.getTime() + 4 * 3_600_000);
+
+    setSaving(true);
+    try {
+      // Resolver institución y ubicación
+      const [{ data: instWrap }, { data: locWrap }] = await Promise.all([
+        api.get('/institutions'),
+        api.get('/training-locations'),
+      ]);
+      const institutionId       = instWrap.data?.[0]?.institutionId;
+      const trainingLocationId  = locWrap.data?.[0]?.trainingLocationId;
+
+      if (!institutionId || !trainingLocationId) {
+        Alert.alert('Error', 'No se encontró institución o ubicación de entrenamiento.');
+        return;
+      }
+
+      // Crear sesión
+      const { data: sessionWrap } = await api.post('/training-sessions', {
+        institutionId,
+        trainingLocationId,
+        title:          nombre.trim(),
+        description:    null,
+        sessionCode:    null,
+        scheduledStart: start.toISOString(),
+        scheduledEnd:   end.toISOString(),
+        plannedCapacity: null,
+      });
+      const sessionId = sessionWrap.data?.trainingSessionId;
+
+      // Invitar bomberos
+      const validEmails = bomberoEmails.map(e => e.trim()).filter(Boolean);
+      const expiresAt   = new Date(Date.now() + 7 * 86_400_000).toISOString();
+      await Promise.allSettled(
+        validEmails.map(email =>
+          api.post('/invitations', {
+            targetEmail:       email,
+            trainingSessionId: sessionId,
+            targetUserId:      null,
+            targetRoleId:      null,
+            expiresAt,
+          })
+        )
+      );
+
+      Alert.alert(
+        'Sesión creada',
+        `"${nombre}" fue creada${validEmails.length ? ` e invitaciones enviadas a ${validEmails.length} bombero(s).` : '.'}`,
+        [{ text: 'Volver', onPress: () => navigation.goBack() }]
+      );
+    } catch {
+      Alert.alert('Error', 'No se pudo crear la sesión. Revisa la conexión.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -103,6 +189,7 @@ export default function CrearSesionScreen({ navigation }) {
           doctorFilter={doctorFilter} setDoctorFilter={setDoctorFilter}
           doctorSearch={doctorSearch} setDoctorSearch={setDoctorSearch}
           filteredDoctors={filteredDoctors}
+          loadingDocs={loadingDocs}
           selectedDocs={selectedDocs} toggleDoc={toggleDoc}
           onAddDoctor={() => setShowAddDoctor(true)}
           onSiguiente={() => setStep(2)}
@@ -119,6 +206,7 @@ export default function CrearSesionScreen({ navigation }) {
           addBomberoEmail={addBomberoEmail}
           onCancelar={() => setStep(1)}
           onCrear={handleCrearSesion}
+          saving={saving}
         />
       )}
 
@@ -145,7 +233,7 @@ export default function CrearSesionScreen({ navigation }) {
 function Step1({
   nombre, setNombre, fecha, setFecha, hora, setHora,
   doctorFilter, setDoctorFilter, doctorSearch, setDoctorSearch,
-  filteredDoctors, selectedDocs, toggleDoc, onAddDoctor, onSiguiente,
+  filteredDoctors, loadingDocs, selectedDocs, toggleDoc, onAddDoctor, onSiguiente,
 }) {
   return (
     <View style={s.body}>
@@ -222,12 +310,10 @@ function Step1({
           </View>
 
           {/* Grid de doctores */}
-          <PersonGrid
-            people={filteredDoctors}
-            selected={selectedDocs}
-            onToggle={toggleDoc}
-            cols={COLS}
-          />
+          {loadingDocs
+            ? <ActivityIndicator size="small" color="#E85D27" style={{ marginVertical: 8 }} />
+            : <PersonGrid people={filteredDoctors} selected={selectedDocs} onToggle={toggleDoc} cols={COLS} />
+          }
 
           {/* Seleccionados */}
           {selectedDocs.length > 0 && (
@@ -254,7 +340,7 @@ function Step2({
   filteredCaps, capSearch, setCapSearch,
   selectedCaps, toggleCap, onAddCap,
   bomberoEmails, updateBomberoEmail, removeBomberoEmail, addBomberoEmail,
-  onCancelar, onCrear,
+  onCancelar, onCrear, saving,
 }) {
   return (
     <View style={s.body}>
@@ -334,9 +420,12 @@ function Step2({
         <TouchableOpacity style={s.cancelBtn} onPress={onCancelar} activeOpacity={0.8}>
           <Text style={s.cancelBtnText}>Cancelar</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.crearBtn} onPress={onCrear} activeOpacity={0.85}>
-          <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
-          <Text style={s.crearBtnText}>Crear Sesión</Text>
+        <TouchableOpacity style={[s.crearBtn, saving && { opacity: 0.6 }]} onPress={saving ? undefined : onCrear} activeOpacity={0.85}>
+          {saving
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+          }
+          <Text style={s.crearBtnText}>{saving ? 'Creando...' : 'Crear Sesión'}</Text>
         </TouchableOpacity>
       </View>
     </View>

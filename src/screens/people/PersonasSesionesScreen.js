@@ -8,24 +8,14 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import ResultadosGeneralesView from '../resultados/ResultadosGeneralesView';
-
-const SESSION_PEOPLE = [
-  { id: 'firefighter-001', name: 'Mario Fernandez',  age: 31, weight: '78 kg', status: 'PENDIENTE',  photoSource: require('../../assets/people/bombero.png') },
-  { id: 'firefighter-002', name: 'Juan Perez',        age: 31, weight: '78 kg', status: 'COMPLETADO', photoSource: require('../../assets/people/bombero.png') },
-  { id: 'firefighter-003', name: 'Carlos Ruiz',       age: 29, weight: '74 kg', status: 'COMPLETADO', photoSource: require('../../assets/people/bombero.png') },
-  { id: 'firefighter-004', name: 'Diego Morales',     age: 34, weight: '82 kg', status: 'EN CURSO',   photoSource: require('../../assets/people/bombero.png') },
-  { id: 'firefighter-005', name: 'Ana Torres',        age: 28, weight: '65 kg', status: 'CANCELADO',  photoSource: require('../../assets/people/bombero.png') },
-  { id: 'firefighter-006', name: 'Luis Herrera',      age: 32, weight: '80 kg', status: 'PENDIENTE',  photoSource: require('../../assets/people/bombero.png') },
-  { id: 'firefighter-007', name: 'Maria Sanchez',     age: 30, weight: '68 kg', status: 'COMPLETADO', photoSource: require('../../assets/people/bombero.png') },
-  { id: 'firefighter-008', name: 'Pedro Zambrano',    age: 36, weight: '85 kg', status: 'EN CURSO',   photoSource: require('../../assets/people/bombero.png') },
-  { id: 'firefighter-009', name: 'Rafael Medina',     age: 27, weight: '72 kg', status: 'COMPLETADO', photoSource: require('../../assets/people/bombero.png') },
-  { id: 'firefighter-010', name: 'Sofia Ramirez',     age: 33, weight: '69 kg', status: 'CANCELADO',  photoSource: require('../../assets/people/bombero.png') },
-];
+import { participantService } from '../../services/participantService';
+import { COLORS } from '../../constants';
 
 const STATUS_STYLES = {
   COMPLETADO: { label: 'Completado', icon: 'checkmark',    bg: '#27AE60' },
@@ -45,33 +35,40 @@ const PER_PAGE = COLS * ROWS;
 
 export default function PersonasSesionesScreen({ navigation, route }) {
   const sessionName = route?.params?.sessionName ?? 'la Capacitación';
+  const sessionId   = route?.params?.sessionId   ?? null;
   const { width } = useWindowDimensions();
   const isCompact = width < 920;
 
-  const [query, setQuery]                   = React.useState('');
+  const [people,         setPeople]         = React.useState([]);
+  const [loading,        setLoading]        = React.useState(true);
+  const [query,          setQuery]          = React.useState('');
   const [selectedStatus, setSelectedStatus] = React.useState('Todos');
-  const [activeTab, setActiveTab]           = React.useState('bomberos');
+  const [activeTab,      setActiveTab]      = React.useState('bomberos');
   const [searchExpanded, setSearchExpanded] = React.useState(false);
-  const [page, setPage]                     = React.useState(0);
-  const [box, setBox]                       = React.useState({ w: 0, h: 0 });
+  const [page,           setPage]           = React.useState(0);
+  const [box,            setBox]            = React.useState({ w: 0, h: 0 });
   const fadeAnim                            = React.useRef(new Animated.Value(1)).current;
 
-  // ── Datos ordenados y filtrados ────────────────────────────────────────────
+  // ── Carga participantes ────────────────────────────────────────────────────
 
-  const sortedPeople = React.useMemo(() =>
-    [...SESSION_PEOPLE].sort((a, b) =>
-      (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99)
-    ), []
-  );
+  React.useEffect(() => {
+    if (!sessionId) { setLoading(false); return; }
+    participantService.getBySession(sessionId)
+      .then(setPeople)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [sessionId]);
+
+  // ── Datos filtrados ────────────────────────────────────────────────────────
 
   const statusCounts = React.useMemo(() => {
     const c = {};
-    SESSION_PEOPLE.forEach(p => { c[p.status] = (c[p.status] || 0) + 1; });
+    people.forEach(p => { c[p.status] = (c[p.status] || 0) + 1; });
     return c;
-  }, []);
+  }, [people]);
 
   const orderedFilters = [
-    { label: 'Todos',      value: 'Todos',     count: SESSION_PEOPLE.length },
+    { label: 'Todos',      value: 'Todos',     count: people.length },
     { label: 'En Curso',   value: 'EN CURSO',  count: statusCounts['EN CURSO']  || 0 },
     { label: 'Pendiente',  value: 'PENDIENTE', count: statusCounts['PENDIENTE'] || 0 },
     { label: 'Completado', value: 'COMPLETADO',count: statusCounts['COMPLETADO']|| 0 },
@@ -79,11 +76,11 @@ export default function PersonasSesionesScreen({ navigation, route }) {
   ];
 
   const filteredPeople = React.useMemo(() =>
-    sortedPeople.filter(p => {
+    people.filter(p => {
       const matchName   = p.name.toLowerCase().includes(query.trim().toLowerCase());
       const matchStatus = selectedStatus === 'Todos' || p.status === selectedStatus;
       return matchName && matchStatus;
-    }), [sortedPeople, query, selectedStatus]
+    }), [people, query, selectedStatus]
   );
 
   // ── Carousel ───────────────────────────────────────────────────────────────
@@ -200,7 +197,12 @@ export default function PersonasSesionesScreen({ navigation, route }) {
 
       {/* ── Content ── */}
       <View style={styles.content} onLayout={onLayout}>
-        {activeTab === 'bomberos' ? (
+        {activeTab === 'bomberos' && loading && (
+          <View style={styles.emptyBox}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        )}
+        {activeTab === 'bomberos' && !loading ? (
           box.w > 0 && (
             <View style={[styles.carouselRow, { gap: colGap }]}>
 
@@ -266,9 +268,9 @@ export default function PersonasSesionesScreen({ navigation, route }) {
 
             </View>
           )
-        ) : (
+        ) : !loading && activeTab !== 'bomberos' ? (
           <ResultadosGeneralesView />
-        )}
+        ) : null}
       </View>
 
     </SafeAreaView>
@@ -310,10 +312,12 @@ function BomberoCard({ person, cardW, cardH, navigation }) {
     }
   }
 
+  const FALLBACK_PHOTO = require('../../assets/people/bombero.png');
+
   return (
     <View style={[styles.card, { width: cardW, height: cardH }]}>
       <View style={styles.photoBox}>
-        <Image source={person.photoSource} style={styles.photo} resizeMode="cover" />
+        <Image source={person.photoSource ?? FALLBACK_PHOTO} style={styles.photo} resizeMode="cover" />
         <View style={styles.statusBadge}>
           <View style={[styles.statusBadgeFill, { backgroundColor: statusStyle.bg }]}>
             <Ionicons name={statusStyle.icon} size={10} color="#FFFFFF" />

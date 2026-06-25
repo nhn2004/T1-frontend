@@ -1,7 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, useWindowDimensions } from 'react-native';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 
 import { COLORS, ROUTES } from '../../constants';
 import useTheme from '../../hooks/useTheme';
@@ -10,26 +9,18 @@ import FilterTabs from '../sessions/components/FilterTabs';
 import MonthCalendar from './components/MonthCalendar';
 import DayAgendaPanel from './components/DayAgendaPanel';
 
-import {
-  ALL_SESSIONS,
-  FILTER_KEYS,
-  applyFilter,
-} from '../sessions/__mocks__/sessionsData';
-import { SESSIONS_DETAIL_MAP } from '../sessions/__mocks__/sessionDetailData';
-import { buildMonthMatrix, parseSessionDate, isSameDay } from './utils/calendarUtils';
+import { FILTER_KEYS, applyFilter } from '../sessions/__mocks__/sessionsData';
+import { buildMonthMatrix } from './utils/calendarUtils';
+import { useSessions } from '../sessions/hooks/useSessions';
 
 const TODAY = new Date();
 
-// Punto de partida del calendario: la sesión más próxima a hoy (pasada o futura).
-// Con datos mock fijos a 2025, "hoy" real del dispositivo casi nunca cae cerca de
-// ellas — sin esto, el aspirante abriría el cronograma y vería un mes vacío sin
-// pista de hacia dónde navegar.
 function closestSessionDate(sessions) {
   let best = null;
   let bestDiff = Infinity;
-  sessions.forEach((session) => {
-    const date = parseSessionDate(session.date);
-    if (!date) return;
+  sessions.forEach(session => {
+    if (!session.scheduledStart) return;
+    const date = new Date(session.scheduledStart);
     const diff = Math.abs(date.getTime() - TODAY.getTime());
     if (diff < bestDiff) {
       bestDiff = diff;
@@ -45,43 +36,47 @@ export default function TrainingScheduleScreen({ navigation }) {
   const { width } = useWindowDimensions();
   const isCompact = width < 1000;
 
-  const initialFocusDate = useMemo(() => closestSessionDate(ALL_SESSIONS), []);
+  const { sessions, loading } = useSessions();
 
   const [activeFilter, setActiveFilter] = useState(FILTER_KEYS.ALL);
-  const [monthDate, setMonthDate] = useState(
-    new Date(initialFocusDate.getFullYear(), initialFocusDate.getMonth(), 1)
-  );
-  const [selectedDate, setSelectedDate] = useState(initialFocusDate);
+  const [monthDate,    setMonthDate]    = useState(() => new Date(TODAY.getFullYear(), TODAY.getMonth(), 1));
+  const [selectedDate, setSelectedDate] = useState(TODAY);
+  const hasJumped = useRef(false);
+
+  // Al cargar las sesiones por primera vez, saltar a la sesión más próxima.
+  useEffect(() => {
+    if (hasJumped.current || sessions.length === 0) return;
+    const closest = closestSessionDate(sessions);
+    setSelectedDate(closest);
+    setMonthDate(new Date(closest.getFullYear(), closest.getMonth(), 1));
+    hasJumped.current = true;
+  }, [sessions]);
 
   const filteredSessions = useMemo(
-    () => applyFilter(ALL_SESSIONS, activeFilter),
-    [activeFilter]
+    () => applyFilter(sessions, activeFilter),
+    [sessions, activeFilter]
   );
 
   const counts = useMemo(() => ({
-    [FILTER_KEYS.ALL]:       ALL_SESSIONS.length,
-    [FILTER_KEYS.PENDING]:   applyFilter(ALL_SESSIONS, FILTER_KEYS.PENDING).length,
-    [FILTER_KEYS.COMPLETED]: applyFilter(ALL_SESSIONS, FILTER_KEYS.COMPLETED).length,
-    [FILTER_KEYS.CANCELLED]: applyFilter(ALL_SESSIONS, FILTER_KEYS.CANCELLED).length,
-  }), []);
+    [FILTER_KEYS.ALL]:       sessions.length,
+    [FILTER_KEYS.PENDING]:   applyFilter(sessions, FILTER_KEYS.PENDING).length,
+    [FILTER_KEYS.COMPLETED]: applyFilter(sessions, FILTER_KEYS.COMPLETED).length,
+    [FILTER_KEYS.CANCELLED]: applyFilter(sessions, FILTER_KEYS.CANCELLED).length,
+  }), [sessions]);
 
-  // Convierte cada sesión filtrada en un evento de calendario, agrupado por día.
   const eventsByDay = useMemo(() => {
     const map = {};
-    filteredSessions.forEach((session) => {
-      const date = parseSessionDate(session.date);
-      if (!date) return;
-
-      const detail = SESSIONS_DETAIL_MAP[session.id];
+    filteredSessions.forEach(session => {
+      if (!session.scheduledStart) return;
+      const date = new Date(session.scheduledStart);
       const badgeKey = session.status === 'CANCELLED' ? 'neutral' : session.status === 'PLANNED' ? 'pending' : 'success';
       const event = {
-        id: session.id,
-        title: session.title,
-        time: session.time,
-        location: detail?.trainingCenter?.specificLocation ?? null,
-        color: theme.badge[badgeKey],
+        id:       session.id,
+        title:    session.title,
+        time:     session.time,
+        location: null,
+        color:    theme.badge[badgeKey],
       };
-
       const key = date.toDateString();
       if (!map[key]) map[key] = [];
       map[key].push(event);
@@ -120,9 +115,6 @@ export default function TrainingScheduleScreen({ navigation }) {
     setMonthDate(new Date(TODAY.getFullYear(), TODAY.getMonth(), 1));
   }, []);
 
-  // En tablet/escritorio el body llena toda la altura (sin scroll de página). En
-  // teléfono se apila en columna y la página entera scrollea, para que el grid del
-  // mes (mínimo ~6 filas) nunca quede recortado por la altura de la pantalla.
   const BodyContainer = isCompact ? ScrollView : View;
 
   return (
@@ -138,30 +130,36 @@ export default function TrainingScheduleScreen({ navigation }) {
           onSelect={setActiveFilter}
         />
 
-        <BodyContainer
-          style={[styles.body, isCompact && styles.bodyCompact]}
-          {...(isCompact ? { contentContainerStyle: styles.bodyCompactContent, showsVerticalScrollIndicator: false } : {})}
-        >
-          <MonthCalendar
-            weeks={weeks}
-            monthDate={monthDate}
-            eventsByDay={eventsByDay}
-            selectedDate={selectedDate}
-            today={TODAY}
-            onSelectDay={handleSelectDay}
-            onPrevMonth={handlePrevMonth}
-            onNextMonth={handleNextMonth}
-            onToday={handleToday}
-            compact={isCompact}
-          />
+        {loading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        ) : (
+          <BodyContainer
+            style={[styles.body, isCompact && styles.bodyCompact]}
+            {...(isCompact ? { contentContainerStyle: styles.bodyCompactContent, showsVerticalScrollIndicator: false } : {})}
+          >
+            <MonthCalendar
+              weeks={weeks}
+              monthDate={monthDate}
+              eventsByDay={eventsByDay}
+              selectedDate={selectedDate}
+              today={TODAY}
+              onSelectDay={handleSelectDay}
+              onPrevMonth={handlePrevMonth}
+              onNextMonth={handleNextMonth}
+              onToday={handleToday}
+              compact={isCompact}
+            />
 
-          <DayAgendaPanel
-            selectedDate={selectedDate}
-            events={selectedDayEvents}
-            onViewDetails={handleViewDetails}
-            compact={isCompact}
-          />
-        </BodyContainer>
+            <DayAgendaPanel
+              selectedDate={selectedDate}
+              events={selectedDayEvents}
+              onViewDetails={handleViewDetails}
+              compact={isCompact}
+            />
+          </BodyContainer>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -186,6 +184,11 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 14,
     gap: 4,
+  },
+  loadingBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   body: {
     flex: 1,

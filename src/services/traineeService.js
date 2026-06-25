@@ -3,6 +3,7 @@ import api from './api';
 function toPersona(raw) {
   return {
     id:                raw.traineeFirefighterId,
+    userId:            raw.userId,
     name:              `${raw.firstName} ${raw.lastName}`.trim(),
     role:              'Bombero',
     email:             raw.email,

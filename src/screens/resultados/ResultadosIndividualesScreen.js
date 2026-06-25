@@ -9,6 +9,7 @@ import Step2Sintomas      from './components/Step2Sintomas';
 import Step3Nutricion     from './components/Step3Nutricion';
 import Step4Certificados  from './components/Step4Certificados';
 import { MOMENTOS_CONFIG } from './__mocks__/resultadosData';
+import { vitalSignsService } from '../../services/vitalSignsService';
 
 const TOTAL_STEPS = 4;
 
@@ -16,7 +17,8 @@ const INITIAL_FORM = {
   horaInicio:         '',
   horaFin:            '',
   temperatura:        '',
-  presionArterial:    '',
+  presionSistolica:   '',
+  presionDiastolica:  '',
   frecuenciaCardiaca: '',
   nivelOxigeno:       '',
   nivelCO:            '',
@@ -30,9 +32,11 @@ const INITIAL_FORM = {
 };
 
 export default function ResultadosIndividualesScreen({ navigation, route }) {
-  const momento       = route?.params?.momento ?? 'T4';
-  const momentoConfig = MOMENTOS_CONFIG[momento] ?? MOMENTOS_CONFIG.T4;
-  const isFullWizard  = momento === 'T4';
+  const momento          = route?.params?.momento          ?? 'T4';
+  const participantId    = route?.params?.participantId    ?? null;
+  const healthPersonnelId = route?.params?.healthPersonnelId ?? null;
+  const momentoConfig    = MOMENTOS_CONFIG[momento] ?? MOMENTOS_CONFIG.T4;
+  const isFullWizard     = momento === 'T4';
 
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData]       = useState(INITIAL_FORM);
@@ -49,7 +53,10 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
     if (currentStep > 1) setCurrentStep(s => s - 1);
   }
 
-  function handleSave() {
+  async function handleSave() {
+    if (participantId && healthPersonnelId) {
+      try { await vitalSignsService.submit(participantId, healthPersonnelId, formData); } catch {}
+    }
     navigation.goBack();
   }
 

@@ -1,44 +1,33 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import BodyDiagram2D from './components/BodyDiagram2D';
+import { vitalSignsService } from '../../services/vitalSignsService';
+import { COLORS } from '../../constants';
 
-// Mock data
-const MOCK_RESULTS = {
-  'firefighter-002': {
-    name: 'Juan Pérez',
-    sessionName: 'Chequeo Rutinario',
-    sessionDate: '2 Nov 2025 - 09:00 AM',
-    metrics: {
-      frecuenciaCardiaca: { value: 82, status: 'Normal', color: '#E85D27', icon: 'heart-outline', unit: 'bpm', progress: 0.3 },
-      nivelOxigeno: { value: 98, status: 'Normal', color: '#27B8A1', icon: 'water-outline', unit: '%', progress: 0.9 },
-      frecuenciaRespiratoria: { value: 18, status: 'Normal', color: '#F18C00', icon: 'leaf-outline', unit: 'rpm', progress: 0.2 },
-      nivelCO: { value: 0.2, status: 'Seguro', color: '#D83B35', icon: 'cloud-outline', unit: 'CO%', progress: 0.1 },
-      temperatura: { value: 36.8, status: 'Normal', color: '#E85D27', icon: 'thermometer-outline', unit: '°C', progress: 0.4 },
-    },
-    image: require('../../assets/people/bombero.png')
-  },
-  'default': {
-    name: 'Maria Espinoza',
-    sessionName: 'Chequeo Rutinario',
-    sessionDate: '2 Nov 2025 - 09:00 AM',
-    metrics: {
-      frecuenciaCardiaca: { value: 78, status: 'Normal', color: '#E85D27', icon: 'heart-outline', unit: 'bpm', progress: 0.25 },
-      nivelOxigeno: { value: 99, status: 'Normal', color: '#27B8A1', icon: 'water-outline', unit: '%', progress: 0.95 },
-      frecuenciaRespiratoria: { value: 16, status: 'Normal', color: '#F18C00', icon: 'leaf-outline', unit: 'rpm', progress: 0.15 },
-      nivelCO: { value: 0.1, status: 'Seguro', color: '#D83B35', icon: 'cloud-outline', unit: 'CO%', progress: 0.05 },
-      temperatura: { value: 36.5, status: 'Normal', color: '#E85D27', icon: 'thermometer-outline', unit: '°C', progress: 0.35 },
-    },
-    image: require('../../assets/people/bombero.png')
-  }
+const EMPTY_METRICS = {
+  frecuenciaCardiaca:     { value: '—', status: '—', color: '#E85D27', icon: 'heart-outline',       unit: 'bpm', progress: 0 },
+  nivelOxigeno:           { value: '—', status: '—', color: '#27B8A1', icon: 'water-outline',        unit: '%',   progress: 0 },
+  frecuenciaRespiratoria: { value: '—', status: '—', color: '#F18C00', icon: 'leaf-outline',         unit: 'rpm', progress: 0 },
+  nivelCO:                { value: '—', status: '—', color: '#D83B35', icon: 'cloud-outline',        unit: 'ppm', progress: 0 },
+  temperatura:            { value: '—', status: '—', color: '#E85D27', icon: 'thermometer-outline',  unit: '°C',  progress: 0 },
 };
 
 export default function ResultadosBomberoScreen({ route, navigation }) {
   const { bomberoId, bomberoName } = route.params || {};
-  const data = MOCK_RESULTS[bomberoId] || MOCK_RESULTS['default'];
-  const nameToDisplay = bomberoName || data.name;
+  const nameToDisplay = bomberoName ?? 'Bombero';
+  const [metrics,      setMetrics]      = useState(EMPTY_METRICS);
+  const [loading,      setLoading]      = useState(true);
   const [activeMetric, setActiveMetric] = useState(null);
+
+  useEffect(() => {
+    if (!bomberoId) { setLoading(false); return; }
+    vitalSignsService.getByParticipant(bomberoId)
+      .then(({ metrics: m }) => { if (m) setMetrics(m); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [bomberoId]);
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
@@ -46,13 +35,6 @@ export default function ResultadosBomberoScreen({ route, navigation }) {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.pageTitle}>Resultados de {nameToDisplay}</Text>
-          <View style={styles.sessionInfoRow}>
-            <Ionicons name="shield-outline" size={14} color="#E85D27" />
-            <Text style={styles.sessionTitle}>{data.sessionName}</Text>
-            <Text style={styles.sessionDot}>·</Text>
-            <Ionicons name="calendar-outline" size={13} color="#697282" />
-            <Text style={styles.sessionDate}>{data.sessionDate}</Text>
-          </View>
         </View>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={16} color="#111" />
@@ -60,30 +42,34 @@ export default function ResultadosBomberoScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.body}>
-        <View style={styles.contentRow}>
-          {/* Left Column: Body Diagram */}
-          <View style={styles.humanBodyContainer}>
-            <BodyDiagram2D
-              metrics={data.metrics}
-              activeMetric={activeMetric}
-              onSelectMetric={(key) => setActiveMetric(prev => prev === key ? null : key)}
-            />
-          </View>
+      {loading ? (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
+        <View style={styles.body}>
+          <View style={styles.contentRow}>
+            <View style={styles.humanBodyContainer}>
+              <BodyDiagram2D
+                metrics={metrics}
+                activeMetric={activeMetric}
+                onSelectMetric={(key) => setActiveMetric(prev => prev === key ? null : key)}
+              />
+            </View>
 
-          {/* Right Column: Metrics Grid */}
-          <View style={styles.metricsContainer}>
-            <Text style={styles.metricsTitle}>Métricas Detalladas</Text>
-            <View style={styles.metricsGrid}>
-              <MetricCard metric={data.metrics.frecuenciaCardiaca} title="Frecuencia Cardíaca" />
-              <MetricCard metric={data.metrics.nivelOxigeno} title="Nivel de Oxígeno SpO₂" />
-              <MetricCard metric={data.metrics.frecuenciaRespiratoria} title="Frecuencia Respiratoria" />
-              <MetricCard metric={data.metrics.nivelCO} title="Nivel de CO" />
-              <MetricCard metric={data.metrics.temperatura} title="Temperatura Corporal" />
+            <View style={styles.metricsContainer}>
+              <Text style={styles.metricsTitle}>Métricas Detalladas</Text>
+              <View style={styles.metricsGrid}>
+                <MetricCard metric={metrics.frecuenciaCardiaca}     title="Frecuencia Cardíaca" />
+                <MetricCard metric={metrics.nivelOxigeno}           title="Nivel de Oxígeno SpO₂" />
+                <MetricCard metric={metrics.frecuenciaRespiratoria} title="Frecuencia Respiratoria" />
+                <MetricCard metric={metrics.nivelCO}                title="Nivel de CO" />
+                <MetricCard metric={metrics.temperatura}            title="Temperatura Corporal" />
+              </View>
             </View>
           </View>
         </View>
-      </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -153,6 +139,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: { fontSize: 13, fontWeight: '600', color: '#111' },
 
+  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, paddingHorizontal: 20, paddingVertical: 16 },
 
   contentRow: {

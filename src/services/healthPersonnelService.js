@@ -3,6 +3,7 @@ import api from './api';
 function toPersona(raw) {
   return {
     id:                raw.healthPersonnelId,
+    userId:            raw.userId,
     name:              `${raw.firstName} ${raw.lastName}`.trim(),
     role:              raw.profession ?? 'Personal médico',
     email:             raw.email,

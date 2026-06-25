@@ -6,6 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Step1SignosVitales from './components/Step1SignosVitales';
 import { SINTOMAS_LIST } from './__mocks__/resultadosData';
+import { vitalSignsService } from '../../services/vitalSignsService';
+import { healthPersonnelService } from '../../services/healthPersonnelService';
+import { useAuth } from '../../hooks';
 
 // ── Etapas ───────────────────────────────────────────────────────────────────
 const S = {
@@ -56,13 +59,32 @@ function verificarAptitud(form) {
 
 // ── Pantalla ──────────────────────────────────────────────────────────────────
 export default function EvaluacionBomberoScreen({ navigation, route }) {
-  const bomberoName = route?.params?.bomberoName ?? 'Bombero';
+  const bomberoName      = route?.params?.bomberoName      ?? 'Bombero';
+  const participantId    = route?.params?.bomberoId        ?? null;
+  const { user }         = useAuth();
+  const hpIdRef          = React.useRef(null);
+
   const [stage,     setStage]     = React.useState(S.INITIAL);
   const [preForm,   setPreForm]   = React.useState(EMPTY_VITALS);
   const [t2Form,    setT2Form]    = React.useState(EMPTY_VITALS);
   const [t3Form,    setT3Form]    = React.useState(EMPTY_VITALS);
   const [finalSintomas, setFinalSintomas] = React.useState([]);
   const [aptitud,   setAptitud]   = React.useState(null);
+
+  // Resolver HealthPersonnelId del médico logueado
+  React.useEffect(() => {
+    healthPersonnelService.getAll()
+      .then(list => {
+        const match = list.find(hp => hp.userId === user?.userId);
+        hpIdRef.current = match?.id ?? list[0]?.id ?? null;
+      })
+      .catch(() => {});
+  }, [user]);
+
+  async function submitVitals(form) {
+    if (!participantId || !hpIdRef.current) return;
+    try { await vitalSignsService.submit(participantId, hpIdRef.current, form); } catch {}
+  }
 
   const updatePre = (f, v) => setPreForm(p => ({ ...p, [f]: v }));
   const updateT2  = (f, v) => setT2Form(p  => ({ ...p, [f]: v }));
@@ -79,6 +101,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
   function handleEvaluarPre() {
     const result = verificarAptitud(preForm);
     setAptitud(result);
+    submitVitals(preForm);
     setStage(result.apto ? S.APTO : S.NO_APTO);
   }
 
@@ -169,7 +192,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
               btnLabel="Guardar T2"
               btnColor="#E85D27"
               btnEnabled={vitalsComplete(t2Form)}
-              onGuardar={() => setStage(S.ENTRE_TIEMPOS)}
+              onGuardar={() => { submitVitals(t2Form); setStage(S.ENTRE_TIEMPOS); }}
             />
           )}
 
@@ -205,7 +228,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
               btnLabel="Guardar T3"
               btnColor="#C62828"
               btnEnabled={vitalsComplete(t3Form)}
-              onGuardar={() => setStage(S.EVAL_FINAL)}
+              onGuardar={() => { submitVitals(t3Form); setStage(S.EVAL_FINAL); }}
             />
           )}
 
