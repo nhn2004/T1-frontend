@@ -23,8 +23,10 @@ export const MOCK_DOCTORS = [
 ];
 
 export const MOCK_CAPACITADORES = [
-  { id: 'c1', name: 'Dr. Carlos Méndez',  specialty: 'Capacitador', email: 'carlos.mendez@firehealth.com' },
-  { id: 'c2', name: 'Dra. Ana Rodríguez', specialty: 'Capacitador', email: 'ana.rodriguez@firehealth.com' },
-  { id: 'c3', name: 'Dr. Luis Torres',    specialty: 'Capacitador', email: 'luis.torres@firehealth.com' },
-  { id: 'c4', name: 'Dra. Sofia Herrera', specialty: 'Capacitador', email: 'sofia.herrera@firehealth.com' },
+  { id: 'cap1', name: 'Instr. Mario Salinas',  specialty: 'Capacitador', email: 'mario.salinas@firehealth.com' },
+  { id: 'cap2', name: 'Instr. Patricia León',  specialty: 'Capacitadora', email: 'patricia.leon@firehealth.com' },
+  { id: 'cap3', name: 'Instr. Roberto Vera',   specialty: 'Capacitador', email: 'roberto.vera@firehealth.com' },
+  { id: 'cap4', name: 'Instr. Carmen Ríos',    specialty: 'Capacitadora', email: 'carmen.rios@firehealth.com' },
+  { id: 'cap5', name: 'Instr. Diego Fuentes',  specialty: 'Capacitador', email: 'diego.fuentes@firehealth.com' },
+  { id: 'cap6', name: 'Instr. Valeria Mora',   specialty: 'Capacitadora', email: 'valeria.mora@firehealth.com' },
 ];

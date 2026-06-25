@@ -39,18 +39,8 @@ export default function FireChiefDashboard({ navigation }) {
 
         {/* ── Header ── */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Bienvenido, {nombre}</Text>
-            <Text style={styles.subtitle}>Jefatura de Bomberos · Panel de Control</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.crearBtn}
-            onPress={() => navigation.navigate('CrearSesion')}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="add-circle-outline" size={18} color="#fff" />
-            <Text style={styles.crearBtnText}>Crear Sesión</Text>
-          </TouchableOpacity>
+          <Text style={styles.greeting}>Bienvenido, {nombre}</Text>
+          <Text style={styles.subtitle}>Jefatura de Bomberos · Panel de Control</Text>
         </View>
 
         {/* ── Middle row ── */}
@@ -138,26 +128,17 @@ const styles = StyleSheet.create({
   root:    { flex: 1, backgroundColor: '#F4F6F8' },
   content: { flex: 1, padding: 14, gap: 12 },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+  header: { gap: 2 },
   greeting: { fontSize: 20, fontWeight: '800', color: '#1A1A1A' },
-  subtitle: { fontSize: 12, color: '#697282', marginTop: 2 },
-  crearBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#E85D27', borderRadius: 10,
-    paddingHorizontal: 16, paddingVertical: 10,
-  },
-  crearBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  subtitle: { fontSize: 12, color: '#697282' },
 
   middleRow: { flex: 1, flexDirection: 'row', gap: 12 },
 
   statsGrid: {
-    width: 320, flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignContent: 'flex-start',
+    flex: 0.52, flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignContent: 'flex-start',
   },
   statCard: {
-    width: '47%', backgroundColor: '#fff', borderRadius: 12,
+    flexBasis: '47%', flexGrow: 0, backgroundColor: '#fff', borderRadius: 12,
     borderWidth: 1, borderColor: '#E8EBF0',
     borderLeftWidth: 4, padding: 14,
     flexDirection: 'row', alignItems: 'center', gap: 10,
