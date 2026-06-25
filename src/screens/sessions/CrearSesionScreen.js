@@ -315,27 +315,30 @@ function Step2({
 
   return (
     <View style={s.body}>
-      <View style={s.row}>
 
-        {/* ── Resumen ── */}
-        <View style={[s.card, { flex: 0.62 }]}>
-          <SectionHeader icon="document-text-outline" title="Resumen de Sesión" />
-          <View style={s.summaryList}>
-            <SummaryRow icon="text-outline"     label="Nombre"         value={nombre} />
-            <SummaryRow icon="calendar-outline" label="Fecha"          value={fecha} />
-            <SummaryRow icon="flame-outline"    label="Punto de quema" value={puntoLabel} />
-            <SummaryRow icon="layers-outline"   label="N° de quemas"   value={`${numQuemas} quema${numQuemas > 1 ? 's' : ''}`} />
-            <SummaryRow
-              icon="medkit-outline"
-              label="Médicos"
-              value={selectedMedicos.length > 0
-                ? selectedMedicos.map(m => m.name).join(', ')
-                : 'Ninguno asignado'}
-            />
-          </View>
+      {/* ── Resumen arriba, ancho completo ── */}
+      <View style={s.card}>
+        <SectionHeader icon="document-text-outline" title="Resumen de Sesión" />
+        <View style={s.summaryGrid}>
+          <SummaryChip icon="text-outline"     label="Nombre"         value={nombre} />
+          <SummaryChip icon="calendar-outline" label="Fecha"          value={fecha} />
+          <SummaryChip icon="flame-outline"    label="Punto de quema" value={puntoLabel} />
+          <SummaryChip icon="layers-outline"   label="N° de quemas"   value={`${numQuemas} quema${numQuemas > 1 ? 's' : ''}`} />
+          <SummaryChip
+            icon="medkit-outline"
+            label="Médicos a cargo"
+            value={selectedMedicos.length > 0
+              ? selectedMedicos.map(m => m.name).join(' · ')
+              : 'Ninguno asignado'}
+            wide
+          />
         </View>
+      </View>
 
-        {/* ── Capacitadores a Cargo ── */}
+      {/* ── Abajo: dos columnas ── */}
+      <View style={[s.row, { flex: 1 }]}>
+
+        {/* Capacitadores */}
         <View style={[s.card, { flex: 1 }]}>
           <View style={s.cardHeaderRow}>
             <SectionHeader icon="people-outline" title="Capacitadores a Cargo" />
@@ -344,7 +347,6 @@ function Step2({
               <Text style={s.addBtnText}>Añadir</Text>
             </TouchableOpacity>
           </View>
-
           <View style={s.filterRow}>
             <TextInput
               style={[s.searchSmall, { flex: 1 }]}
@@ -352,20 +354,16 @@ function Step2({
               placeholder="Buscar capacitador..." placeholderTextColor="#B0B7C3"
             />
           </View>
-
           <PersonGrid people={filteredCaps} selected={selectedCaps} onToggle={toggleCap} cols={COLS} />
           {selectedCaps.length > 0 && (
             <SelectedTags people={selectedCaps} onRemove={cap => toggleCap(cap)} />
           )}
         </View>
 
-        {/* ── Bomberos ── */}
+        {/* Bomberos */}
         <View style={[s.card, { flex: 1 }]}>
           <View style={s.cardHeaderRow}>
-            <SectionHeader
-              icon="shield-outline"
-              title={`Bomberos (${bomberoEmails.length}/20)`}
-            />
+            <SectionHeader icon="shield-outline" title={`Bomberos (${bomberoEmails.length}/20)`} />
             <TouchableOpacity
               style={[s.addBtn, bomberoEmails.length >= 20 && s.addBtnDisabled]}
               onPress={addBomberoEmail}
@@ -381,9 +379,7 @@ function Step2({
               </Text>
             </TouchableOpacity>
           </View>
-
           <Text style={s.emailHint}>Invitación directa por correo electrónico.</Text>
-
           <ScrollView showsVerticalScrollIndicator={false}>
             <View style={s.emailList}>
               {bomberoEmails.map((email, idx) => (
@@ -409,6 +405,7 @@ function Step2({
             </View>
           </ScrollView>
         </View>
+
       </View>
 
       <View style={s.footer}>
@@ -450,12 +447,16 @@ function SectionHeader({ icon, title }) {
   );
 }
 
-function SummaryRow({ icon, label, value }) {
+function SummaryChip({ icon, label, value, wide }) {
   return (
-    <View style={s.summaryRow}>
-      <Ionicons name={icon} size={13} color="#697282" />
-      <Text style={s.summaryLabel}>{label}:</Text>
-      <Text style={s.summaryValue} numberOfLines={2}>{value}</Text>
+    <View style={[s.summaryChip, wide && s.summaryChipWide]}>
+      <View style={s.summaryChipIcon}>
+        <Ionicons name={icon} size={14} color="#E85D27" />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={s.summaryChipLabel}>{label}</Text>
+        <Text style={s.summaryChipValue} numberOfLines={2}>{value}</Text>
+      </View>
     </View>
   );
 }
@@ -679,10 +680,12 @@ const s = StyleSheet.create({
   addBtnText:     { fontSize: 13, color: '#E85D27', fontWeight: '600' },
 
   // Summary
-  summaryList: { gap: 12 },
-  summaryRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
-  summaryLabel:{ fontSize: 12, fontWeight: '700', color: '#495565', width: 90 },
-  summaryValue:{ flex: 1, fontSize: 12, color: '#2E2E2E', lineHeight: 18 },
+  summaryGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
+  summaryChip:     { flexDirection: 'row', alignItems: 'center', gap: 10, width: '23%', backgroundColor: '#F9FAFB', borderRadius: 10, borderWidth: 1, borderColor: '#E8EBF0', padding: 10 },
+  summaryChipWide: { width: '100%' },
+  summaryChipIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#FFF0EA', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  summaryChipLabel:{ fontSize: 10, fontWeight: '700', color: '#9AA3B0', textTransform: 'uppercase', letterSpacing: 0.4 },
+  summaryChipValue:{ fontSize: 13, fontWeight: '700', color: '#1A1A1A', marginTop: 1 },
 
   emailHint: { fontSize: 11, color: '#9AA3B0', fontStyle: 'italic' },
   emailList: { gap: 8 },
