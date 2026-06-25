@@ -81,6 +81,11 @@ function RoleNavigator({ role }) {
   const PersonasWithLayout = withMainLayout(PersonasScreen);
   const PersonasSesionesWithLayout = withMainLayout(PersonasSesionesScreen);
 
+  const canCreateSession = role === ROLES.FIRE_CHIEF || role === ROLES.ADMIN;
+  const canSeePersonas   = role === ROLES.MEDICAL || role === ROLES.CAPACITATOR
+                        || role === ROLES.FIRE_CHIEF || role === ROLES.ADMIN;
+  const canValidate      = role === ROLES.MEDICAL || role === ROLES.ADMIN;
+
   return (
     <Stack.Navigator
       initialRouteName={role === ROLES.FIREFIGHTER_TRAINEE ? 'Training' : 'Dashboard'}
@@ -91,26 +96,29 @@ function RoleNavigator({ role }) {
       }}
     >
       <Stack.Screen name="Dashboard" component={DashboardWithLayout} />
-      <Stack.Screen 
-        name="Training"        
-        component={role === ROLES.FIREFIGHTER_TRAINEE ? withMainLayout(TraineeDashboard) : withMainLayout(SessionsScreen)} 
+      <Stack.Screen
+        name="Training"
+        component={role === ROLES.FIREFIGHTER_TRAINEE
+          ? withMainLayout(TraineeDashboard)
+          : withMainLayout(SessionsScreen)}
       />
       <Stack.Screen name="SessionDetail"          component={withMainLayout(SessionDetailScreen)} />
       <Stack.Screen name="ResultadosIndividuales" component={ResultadosIndividualesScreen} />
-      <Stack.Screen name="EvaluacionBombero"     component={EvaluacionBomberoScreen} />
-      <Stack.Screen name="ResultadosBombero"     component={ResultadosBomberoScreen} />
-      <Stack.Screen name="Schedule" component={withMainLayout(TrainingScheduleScreen)} />
-      <Stack.Screen name="Progress" component={withMainLayout(ProgressHistoryScreen)} />
-      {(role === ROLES.MEDICAL || role === ROLES.CAPACITATOR || role === ROLES.FIRE_CHIEF) && (
+      <Stack.Screen name="EvaluacionBombero"      component={EvaluacionBomberoScreen} />
+      <Stack.Screen name="ResultadosBombero"      component={ResultadosBomberoScreen} />
+      <Stack.Screen name="Schedule"               component={withMainLayout(TrainingScheduleScreen)} />
+      <Stack.Screen name="Progress"               component={withMainLayout(ProgressHistoryScreen)} />
+
+      {canSeePersonas && (
         <>
-          <Stack.Screen name="Personas" component={PersonasWithLayout} />
+          <Stack.Screen name="Personas"         component={PersonasWithLayout} />
           <Stack.Screen name="PersonasSesiones" component={PersonasSesionesWithLayout} />
-          {role === ROLES.MEDICAL && (
-            <Stack.Screen name="ValidationQueue" component={withMainLayout(ValidationQueueScreen)} />
-          )}
         </>
       )}
-      {role === ROLES.FIRE_CHIEF && (
+      {canValidate && (
+        <Stack.Screen name="ValidationQueue" component={withMainLayout(ValidationQueueScreen)} />
+      )}
+      {canCreateSession && (
         <Stack.Screen name="CrearSesion" component={withMainLayout(CrearSesionScreen)} />
       )}
       <Stack.Screen name="Configuration" component={withMainLayout(SettingsScreen)} />

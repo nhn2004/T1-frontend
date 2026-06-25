@@ -219,6 +219,18 @@ const CHIEF_FILTERS = [
   { label: 'Bomberos', value: 'Bombero' },
 ];
 
+// ── Datos unificados para Admin (médicos + personal operativo) ─────────────
+const ADMIN_STAFF = [...STAFF, ...CHIEF_STAFF];
+
+const ADMIN_FILTERS = [
+  { label: 'Todos', value: 'Todos' },
+  { label: 'Médicos', value: 'Medico' },
+  { label: 'Enfermeros', value: 'Enfermero' },
+  { label: 'Nutricionistas', value: 'Nutricionista' },
+  { label: 'Capacitadores', value: 'Capacitador' },
+  { label: 'Bomberos', value: 'Bombero' },
+];
+
 const emptyLink = () => {};
 
 const COLS = 3;
@@ -228,14 +240,15 @@ const PER_PAGE = COLS * ROWS;
 export default function PersonasScreen({ navigation }) {
   const { role } = useAuth();
   const isFireChief = role === ROLES.FIRE_CHIEF;
+  const isAdmin     = role === ROLES.ADMIN;
   const [query, setQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('Todos');
   const [searchExpanded, setSearchExpanded] = useState(false);
   const [page, setPage] = useState(0);
   const [box, setBox] = useState({ w: 0, h: 0 });
 
-  const activeStaff   = isFireChief ? CHIEF_STAFF   : STAFF;
-  const activeFilters = isFireChief ? CHIEF_FILTERS  : FILTERS;
+  const activeStaff   = isAdmin ? ADMIN_STAFF : isFireChief ? CHIEF_STAFF : STAFF;
+  const activeFilters = isAdmin ? ADMIN_FILTERS : isFireChief ? CHIEF_FILTERS : FILTERS;
 
   const filterCounts = useMemo(() => {
     const counts = { Todos: activeStaff.length };
@@ -305,7 +318,7 @@ export default function PersonasScreen({ navigation }) {
       {/* Título */}
       <View style={styles.titleRow}>
         <Text style={styles.pageTitle}>
-          {isFireChief ? 'Personal' : 'Personal Médico'}
+          {isAdmin ? 'Todo el Personal' : isFireChief ? 'Personal' : 'Personal Médico'}
         </Text>
         <Pressable style={styles.addButton} onPress={emptyLink}>
           <Text style={styles.addButtonText}>+ Agregar Personal</Text>

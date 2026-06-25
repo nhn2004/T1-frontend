@@ -19,7 +19,7 @@ import {
 export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
   const insets = useSafeAreaInsets();
   const { role } = useAuth();
-  const isFireChief = role === ROLES.FIRE_CHIEF;
+  const isFireChief = role === ROLES.FIRE_CHIEF || role === ROLES.ADMIN;
   const [activeFilter, setActiveFilter] = useState(FILTER_KEYS.ALL);
   const [query, setQuery] = useState('');
   const [searchExpanded, setSearchExpanded] = useState(false);

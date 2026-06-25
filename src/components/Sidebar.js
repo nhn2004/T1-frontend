@@ -33,6 +33,13 @@ export default function Sidebar({ navigation, activeRoute, isOpen, onOpen, onClo
         baseMenuItems[baseMenuItems.length - 1],
       ];
     }
+    if (role === ROLES.ADMIN) {
+      return [
+        ...baseMenuItems.slice(0, -1),
+        { label: 'Personal', route: 'Personas', iconLibrary: 'Ionicons', iconName: 'people-outline' },
+        baseMenuItems[baseMenuItems.length - 1],
+      ];
+    }
     if (role === ROLES.FIREFIGHTER_TRAINEE) {
       const items = baseMenuItems.filter(item => item.route !== 'Dashboard');
       return [
