@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,11 +10,24 @@ import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
 import { sessionService } from '../../services';
+import { traineeService } from '../../services/traineeService';
+import api from '../../services/api';
 
-import {
-  BASE_DETAIL,
-  STATUS_DISPLAY,
-} from './__mocks__/sessionDetailData';
+import { STATUS_DISPLAY } from './__mocks__/sessionDetailData';
+
+const EMPTY_SESSION = {
+  id:               null,
+  title:            '',
+  description:      '',
+  date:             '—',
+  time:             '—',
+  capacityCount:    0,
+  status:           'PLANNED',
+  note:             '',
+  agenda:           [],
+  trainingCenter:   { name: '—', address: '—', specificLocation: '', imageUri: null },
+  instructors:      [],
+};
 
 // El aspirante no administra la sesión (eso es del instructor) — solo puede consultarla
 // y, una vez finalizada, ver sus propios resultados. Evita mandarlo a una pantalla de
@@ -44,23 +57,41 @@ const TRAINEE_DISPLAY = {
 export default function SessionDetailScreen({ navigation, route, Sidebar, sessionId, onBack }) {
   const theme = useTheme();
   const { t } = useTranslation();
-  const { role, user, token } = useAuth();
+  const { role, user } = useAuth();
   const { width } = useWindowDimensions();
   const isCompact = width < 980;
   const isTrainee = role === ROLES.FIREFIGHTER_TRAINEE;
 
   const id = sessionId ?? route?.params?.id;
-  const [session, setSession] = useState({ ...BASE_DETAIL });
+  const [session, setSession] = useState({ ...EMPTY_SESSION });
   const [syncing, setSyncing] = useState(false);
+  const myParticipantIdRef = useRef(null);
 
   useEffect(() => {
     if (!id) return;
     setSyncing(true);
     sessionService.getById(id)
-      .then(data => setSession({ ...BASE_DETAIL, ...data }))
+      .then(data => setSession({ ...EMPTY_SESSION, ...data }))
       .catch(() => {})
       .finally(() => setSyncing(false));
   }, [id]);
+
+  // Resolver sessionParticipantId del trainee logueado para esta sesión
+  useEffect(() => {
+    if (!isTrainee || !id || !user?.userId) return;
+    traineeService.getAll()
+      .then(trainees => {
+        const me = trainees.find(t => t.userId === user.userId);
+        if (!me) return;
+        return api.get('/session-participants').then(({ data: wrapper }) => {
+          const mine = (wrapper.data ?? []).find(p =>
+            p.trainingSessionId === id && p.traineeFirefighterId === me.id
+          );
+          if (mine) myParticipantIdRef.current = mine.sessionParticipantId;
+        });
+      })
+      .catch(() => {});
+  }, [isTrainee, id, user]);
 
   const display = isTrainee
     ? (TRAINEE_DISPLAY[session.status] ?? TRAINEE_DISPLAY.PLANNED)
@@ -70,16 +101,15 @@ export default function SessionDetailScreen({ navigation, route, Sidebar, sessio
     if (display.btnDisabled) return;
 
     if (isTrainee) {
-      // Pendiente de backend: se usa el token como bomberoId placeholder.
       navigation?.navigate('ResultadosBombero', {
-        bomberoId: token,
+        bomberoId:   myParticipantIdRef.current,
         bomberoName: user?.name,
       });
       return;
     }
 
     navigation?.navigate('PersonasSesiones', { sessionId: session.id });
-  }, [display, isTrainee, navigation, session.id, token, user]);
+  }, [display, isTrainee, navigation, session.id, user]);
 
   const BodyContainer = isCompact ? ScrollView : View;
 

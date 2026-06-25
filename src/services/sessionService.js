@@ -44,6 +44,25 @@ function toSession(raw) {
   };
 }
 
+function toTrainingCenter(loc) {
+  if (!loc) return { name: '—', address: '—', specificLocation: '', imageUri: null };
+  return {
+    name:             loc.name,
+    address:          loc.address ?? '—',
+    specificLocation: loc.locationType ?? 'Sede principal',
+    imageUri:         null,
+  };
+}
+
+function toInstructor(hp) {
+  return {
+    id:       hp.healthPersonnelId,
+    name:     `${hp.firstName} ${hp.lastName}`.trim(),
+    division: hp.specialty ?? hp.profession ?? '—',
+    role:     (hp.profession ?? 'MEDICO').toUpperCase().replace(/\s+/g, '_'),
+  };
+}
+
 export const sessionService = {
   async getAll() {
     const { data: wrapper } = await api.get('/training-sessions');
@@ -52,6 +71,30 @@ export const sessionService = {
 
   async getById(id) {
     const { data: wrapper } = await api.get(`/training-sessions/${id}`);
-    return toSession(wrapper.data);
+    const raw = wrapper.data;
+    const session = toSession(raw);
+
+    const [locResult, hpResult] = await Promise.allSettled([
+      raw.trainingLocationId
+        ? api.get(`/training-locations/${raw.trainingLocationId}`)
+        : Promise.resolve(null),
+      api.get('/health-personnel'),
+    ]);
+
+    const loc = locResult.status === 'fulfilled' && locResult.value
+      ? locResult.value.data.data
+      : null;
+    const hp = hpResult.status === 'fulfilled'
+      ? hpResult.value.data.data ?? []
+      : [];
+
+    return {
+      ...session,
+      trainingLocationId: raw.trainingLocationId,
+      note:               raw.description ?? '',
+      agenda:             [],
+      trainingCenter:     toTrainingCenter(loc),
+      instructors:        hp.map(toInstructor),
+    };
   },
 };
