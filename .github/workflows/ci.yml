@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+      - 'feature/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint (if configured)
+        run: |
+          if npm run | grep -q " lint"; then
+            npm run lint
+          else
+            echo "No 'lint' script defined yet, skipping."
+          fi
+
+      - name: Test (if configured)
+        run: |
+          if npm run | grep -q " test"; then
+            npm test -- --watchAll=false
+          else
+            echo "No 'test' script defined yet, skipping."
+          fi
+
+      - name: Export web build (build validation)
+        run: npx expo export --platform web
