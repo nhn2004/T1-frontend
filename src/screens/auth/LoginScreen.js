@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, Alert,
+  StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,10 +16,12 @@ export default function LoginScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading,  setLoading]  = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   async function handleLogin() {
+    setErrorMsg('');
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Campos requeridos', 'Ingresa tu correo y contraseña.');
+      setErrorMsg('Ingresa tu correo y contraseña.');
       return;
     }
 
@@ -32,13 +34,13 @@ export default function LoginScreen({ navigation }) {
       const message = error.response?.data?.message;
 
       if (status === 401) {
-        Alert.alert('Credenciales incorrectas', 'Correo o contraseña inválidos.');
+        setErrorMsg('Correo o contraseña incorrectos.');
       } else if (status === 422) {
-        Alert.alert('Acceso denegado', message ?? 'Cuenta inactiva o bloqueada.');
+        setErrorMsg(message ?? 'Cuenta inactiva o bloqueada.');
       } else if (status === 400) {
-        Alert.alert('Datos inválidos', message ?? 'Revisa los campos e intenta de nuevo.');
+        setErrorMsg(message ?? 'Revisa los campos e intenta de nuevo.');
       } else {
-        Alert.alert('Error de conexión', 'No se pudo conectar al servidor.');
+        setErrorMsg('No se pudo conectar al servidor.');
       }
     } finally {
       setLoading(false);
@@ -81,7 +83,7 @@ export default function LoginScreen({ navigation }) {
               placeholder="usuario@smab.app"
               placeholderTextColor="#BDBDBD"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={v => { setEmail(v); setErrorMsg(''); }}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
@@ -98,7 +100,7 @@ export default function LoginScreen({ navigation }) {
               placeholder="••••••••"
               placeholderTextColor="#BDBDBD"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={v => { setPassword(v); setErrorMsg(''); }}
               secureTextEntry={!showPass}
               autoCapitalize="none"
             />
@@ -114,6 +116,13 @@ export default function LoginScreen({ navigation }) {
         >
           <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
         </TouchableOpacity>
+
+        {!!errorMsg && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle-outline" size={17} color="#D83B35" />
+            <Text style={styles.errorBannerText}>{errorMsg}</Text>
+          </View>
+        )}
 
         <TouchableOpacity
           style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
@@ -186,6 +195,14 @@ const styles = StyleSheet.create({
 
   forgotRow: { alignSelf: 'flex-end', marginTop: -6 },
   forgotText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
+
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FEF2F2', borderRadius: 10,
+    borderWidth: 1.5, borderColor: '#FECACA',
+    paddingHorizontal: 14, paddingVertical: 11,
+  },
+  errorBannerText: { flex: 1, fontSize: 13, color: '#D83B35', fontWeight: '600' },
 
   loginBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

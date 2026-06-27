@@ -151,8 +151,6 @@ export const FILTERS = [
   { key: FILTER_KEYS.CANCELLED,   label: 'Canceladas',icon: 'close',        activeColor: '#E85D27' },
 ];
 
-const STATUS_SORT = { ACTIVE: 0, PLANNED: 1, COMPLETED: 2, CANCELLED: 3 };
-
 export function applyFilter(sessions, filterKey) {
   switch (filterKey) {
     case FILTER_KEYS.IN_PROGRESS: return sessions.filter(s => s.status === SESSION_STATUS.ACTIVE);
@@ -160,7 +158,7 @@ export function applyFilter(sessions, filterKey) {
     case FILTER_KEYS.COMPLETED:   return sessions.filter(s => s.status === SESSION_STATUS.COMPLETED);
     case FILTER_KEYS.CANCELLED:   return sessions.filter(s => s.status === SESSION_STATUS.CANCELLED);
     default: return [...sessions].sort((a, b) =>
-      (STATUS_SORT[a.status] ?? 99) - (STATUS_SORT[b.status] ?? 99)
+      new Date(a.scheduledStart) - new Date(b.scheduledStart)
     );
   }
 }

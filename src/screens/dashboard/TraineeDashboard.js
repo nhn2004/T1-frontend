@@ -14,10 +14,10 @@ import WeekScheduleCard       from './components/WeekScheduleCard';
 import PerformanceStatCard    from './components/PerformanceStatCard';
 import ConfirmAttendanceModal from './components/ConfirmAttendanceModal';
 
-import { invitationService } from '../../services/invitationService';
-import { sessionService }    from '../../services/sessionService';
-
-import { PERFORMANCE_STATS } from './__mocks__/traineeData';
+import { invitationService }  from '../../services/invitationService';
+import { sessionService }     from '../../services/sessionService';
+import { traineeService }     from '../../services/traineeService';
+import { vitalSignsService }  from '../../services/vitalSignsService';
 
 const STATUS_BAR = { ACTIVE: '#2E7D32', PLANNED: '#F57C00' };
 
@@ -28,9 +28,10 @@ export default function TraineeDashboard({ navigation }) {
   const { width } = useWindowDimensions();
   const isCompact = width < 900;
 
-  const [invitation,    setInvitation]    = useState(null);
-  const [weekSchedule,  setWeekSchedule]  = useState([]);
-  const [modalVisible,  setModalVisible]  = useState(false);
+  const [invitation,       setInvitation]       = useState(null);
+  const [weekSchedule,     setWeekSchedule]     = useState([]);
+  const [modalVisible,     setModalVisible]     = useState(false);
+  const [performanceStats, setPerformanceStats] = useState([]);
 
   // ── Carga inicial ──────────────────────────────────────────────────────────
 
@@ -71,9 +72,54 @@ export default function TraineeDashboard({ navigation }) {
             };
           });
         setWeekSchedule(upcoming);
+
+        // Signos vitales del trainee logueado
+        const trainees = await traineeService.getAll().catch(() => []);
+        const me = trainees.find(t => t.userId === user.userId);
+        if (!me) return;
+
+        const history = await vitalSignsService.getHistoryForTrainee(me.id).catch(() => []);
+        if (!history.length) return;
+
+        const meanInt  = arr => arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : null;
+        const meanDec  = arr => arr.length ? (arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(1) : null;
+
+        const pulses = history.map(h => h.vitals.frecuenciaCardiaca).filter(Boolean);
+        const temps  = history.map(h => h.vitals.temperatura).filter(Boolean);
+        const latest = history[history.length - 1];
+
+        const totalInvited  = invs.filter(i => i.targetEmail === user.email).length;
+        const totalAccepted = invs.filter(i => i.targetEmail === user.email && i.status === 'Accepted').length;
+        const completionPct = totalInvited > 0 ? Math.round((totalAccepted / totalInvited) * 100) : 0;
+
+        const avgPulse = meanInt(pulses);
+        const avgTemp  = meanDec(temps);
+
+        setPerformanceStats([
+          {
+            id: 'p1', iconName: 'flame', iconBg: '#FFE8DD', iconColor: '#E85D27',
+            labelKey: 'sessionCompletion',
+            value: `${completionPct}%`, valueColor: '#1A1A1A', progress: completionPct / 100,
+          },
+          {
+            id: 'p2', iconName: 'pulse', iconBg: '#E3F2FD', iconColor: '#2196F3',
+            labelKey: 'avgPulse',
+            value: avgPulse ? `${avgPulse} bpm` : '—', valueColor: '#2F7828',
+          },
+          {
+            id: 'p3', iconName: 'speedometer', iconBg: '#E8F5E9', iconColor: '#4CAF50',
+            labelKey: 'avgPressure',
+            value: latest?.vitals.presionArterial ?? '—', valueColor: '#2F7828',
+          },
+          {
+            id: 'p4', iconName: 'thermometer-outline', iconBg: '#FFF3E0', iconColor: '#F57C00',
+            labelKey: 'avgTemperature',
+            value: avgTemp ? `${avgTemp}°C` : '—', valueColor: '#2F7828',
+          },
+        ]);
       })
       .catch(() => {});
-  }, [user?.email]);
+  }, [user?.email, user?.userId]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -146,7 +192,7 @@ export default function TraineeDashboard({ navigation }) {
 
         <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{t.dashboard.performanceOverview}</Text>
         <View style={[styles.statsRow, isCompact && styles.statsRowCompact]}>
-          {PERFORMANCE_STATS.map((stat) => (
+          {performanceStats.map((stat) => (
             <View key={stat.id} style={isCompact ? styles.statItemCompact : styles.statItem}>
               <PerformanceStatCard {...stat} />
             </View>

@@ -16,17 +16,26 @@ import { invitationService }      from '../../services/invitationService';
 import { healthPersonnelService } from '../../services/healthPersonnelService';
 import { sessionService }         from '../../services/sessionService';
 
-import { STAT_CARDS, RECENT_ACTIVITIES } from './__mocks__/medicalData';
-
 const MAX_VISIBLE = 1;
+
+function timeAgo(iso) {
+  if (!iso) return '—';
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (mins < 60)  return `Hace ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs  < 24)  return `Hace ${hrs} hora${hrs > 1 ? 's' : ''}`;
+  const days = Math.floor(hrs / 24);
+  return `Hace ${days} día${days > 1 ? 's' : ''}`;
+}
 
 export default function MedicalDashboard({ navigation, Sidebar }) {
   const user = useAuthStore((s) => s.user);
 
-  const [rawInvitations, setRawInvitations] = useState([]);
-  const [staffCount,     setStaffCount]     = useState(0);
-  const [sessionCount,   setSessionCount]   = useState(0);
-  const [approvedCount,  setApproved]       = useState(0);
+  const [rawInvitations,  setRawInvitations]  = useState([]);
+  const [allInvitations,  setAllInvitations]  = useState([]);
+  const [staffCount,      setStaffCount]      = useState(0);
+  const [sessionCount,    setSessionCount]    = useState(0);
+  const [approvedCount,   setApproved]        = useState(0);
 
   const [modalVisible,  setModalVisible]  = useState(false);
   const [selectedItem,  setSelectedItem]  = useState(null);
@@ -40,6 +49,7 @@ export default function MedicalDashboard({ navigation, Sidebar }) {
       sessionService.getAll(),
     ])
       .then(([invs, staff, sessions]) => {
+        setAllInvitations(invs);
         setRawInvitations(invs.filter(i => i.status === 'Pending'));
         setStaffCount(staff.length);
         setSessionCount(sessions.length);
@@ -99,12 +109,44 @@ export default function MedicalDashboard({ navigation, Sidebar }) {
     ? { name: user.name, title: 'Medical Director' }
     : { name: 'Medical Director', title: 'Medical Director' };
 
-  // Valores dinámicos para las stat cards (misma estructura visual)
   const statCards = [
-    { ...STAT_CARDS[0], value: String(remainingCount) },
-    { ...STAT_CARDS[1], value: String(staffCount) },
-    { ...STAT_CARDS[2], value: String(sessionCount) },
+    {
+      id: 'stat_invitations',
+      title: 'Invitaciones Pendientes',
+      value: String(remainingCount),
+      subtitle: 'Esperando confirmación',
+      iconName: 'send',
+      iconBg: '#F6D622',
+    },
+    {
+      id: 'stat_staff',
+      title: 'Personal Activo',
+      value: String(staffCount),
+      subtitle: 'Médicos y enfermeros',
+      iconName: 'people',
+      iconBg: '#2690F3',
+    },
+    {
+      id: 'stat_sessions',
+      title: 'Total Sesiones',
+      value: String(sessionCount),
+      subtitle: 'Registradas en el sistema',
+      iconName: 'calendar',
+      iconBg: '#1EB91E',
+    },
   ];
+
+  const recentActivities = allInvitations
+    .filter(i => i.status === 'Accepted' || i.status === 'Rejected')
+    .sort((a, b) => new Date(b.respondedAt ?? b.createdAt) - new Date(a.respondedAt ?? a.createdAt))
+    .slice(0, 4)
+    .map(i => ({
+      id:       i.invitationId,
+      title:    i.status === 'Accepted' ? 'Invitación aceptada' : 'Invitación rechazada',
+      subtitle: i.targetEmail,
+      time:     timeAgo(i.respondedAt ?? i.createdAt),
+      dotColor: i.status === 'Accepted' ? '#1EB91E' : '#D83B35',
+    }));
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -159,9 +201,15 @@ export default function MedicalDashboard({ navigation, Sidebar }) {
         {/* Recent activity */}
         <View style={styles.activityPanel}>
           <Text style={styles.sectionTitle}>Actividades recientes</Text>
-          {RECENT_ACTIVITIES.map((activity) => (
-            <ActivityRow key={activity.id} {...activity} />
-          ))}
+          {recentActivities.length > 0 ? (
+            recentActivities.map((activity) => (
+              <ActivityRow key={activity.id} {...activity} />
+            ))
+          ) : (
+            <Text style={{ fontSize: 13, color: '#9AA3B0', paddingVertical: 8 }}>
+              Sin actividad reciente
+            </Text>
+          )}
         </View>
 
       </View>
