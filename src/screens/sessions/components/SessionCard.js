@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SESSION_STATUS } from '../__mocks__/sessionsData';
+import useTheme from '../../../hooks/useTheme';
+import useTranslation from '../../../hooks/useTranslation';
 import { useAuth } from '../../../hooks';
 import { ROLES } from '../../../constants';
 
@@ -29,6 +31,8 @@ const STATUS_CONFIG = {
 };
 
 export default function SessionCard({ session, onViewDetails, cardWidth, cardHeight }) {
+  const theme = useTheme();
+  const { t } = useTranslation();
   const cfg = STATUS_CONFIG[session.status] ?? STATUS_CONFIG[SESSION_STATUS.PLANNED];
   const { badge } = cfg;
   const { role } = useAuth();
@@ -42,11 +46,12 @@ export default function SessionCard({ session, onViewDetails, cardWidth, cardHei
     ? 'Ver Resultados'
     : session.status === SESSION_STATUS.COMPLETED
       ? 'Ver Reportes'
-      : 'Ver Detalles';
+      : t.sessions.viewDetails;
 
   return (
     <View style={[
       styles.card,
+      { backgroundColor: theme.card },
       { width: cardWidth },
       cardHeight ? { height: cardHeight } : null,
     ]}>
@@ -54,8 +59,8 @@ export default function SessionCard({ session, onViewDetails, cardWidth, cardHei
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.titleBlock}>
-          <Text style={styles.title} numberOfLines={1}>{session.title}</Text>
-          <Text style={styles.applicants}>{session.applicants} Aspirantes</Text>
+          <Text style={[styles.title, { color: theme.textPrimary }]} numberOfLines={1}>{session.title}</Text>
+          <Text style={styles.applicants}>{session.applicants} {t.sessions.applicants}</Text>
         </View>
 
         {/* Badge estilo pill con icono */}
@@ -66,10 +71,10 @@ export default function SessionCard({ session, onViewDetails, cardWidth, cardHei
       </View>
 
       {/* Details */}
-      <View style={styles.details}>
-        <DetailRow icon="calendar-outline"  label={session.date} />
-        <DetailRow icon="time-outline"      label={session.time} />
-        <DetailRow icon="clipboard-outline" label={session.type} />
+      <View style={[styles.details, { borderTopColor: theme.divider ?? '#F0F0F0' }]}>
+        <DetailRow icon="calendar-outline"  label={session.date} color={theme.textSecondary} />
+        <DetailRow icon="time-outline"      label={session.time} color={theme.textSecondary} />
+        <DetailRow icon="clipboard-outline" label={session.type} color={theme.textSecondary} />
       </View>
 
       {/* Botón */}
@@ -83,6 +88,8 @@ export default function SessionCard({ session, onViewDetails, cardWidth, cardHei
         onPress={() => onViewDetails(session.id)}
         activeOpacity={isBtnDisabled ? 1 : 0.8}
         disabled={isBtnDisabled}
+        accessibilityRole="button"
+        accessibilityLabel={`${btnLabel} — ${session.title}`}
       >
         <Text style={[styles.btnText, isBtnDisabled && { color: '#8E9399' }]}>
           {btnLabel}
@@ -94,18 +101,17 @@ export default function SessionCard({ session, onViewDetails, cardWidth, cardHei
   );
 }
 
-function DetailRow({ icon, label }) {
+function DetailRow({ icon, label, color }) {
   return (
     <View style={styles.detailRow}>
-      <Ionicons name={icon} size={12} color="#697282" />
-      <Text style={styles.detailText} numberOfLines={1}>{label}</Text>
+      <Ionicons name={icon} size={12} color={color ?? '#697282'} />
+      <Text style={[styles.detailText, { color: color ?? '#495565' }]} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E0E0E0',
@@ -130,7 +136,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#2E2E2E',
   },
   applicants: {
     fontSize: 11,
@@ -154,7 +159,6 @@ const styles = StyleSheet.create({
 
   details: {
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
     paddingTop: '1.5%',
     gap: 3,
   },
@@ -165,7 +169,6 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 11,
-    color: '#495565',
     flex: 1,
   },
 

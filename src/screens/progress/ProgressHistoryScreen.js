@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -7,41 +7,59 @@ import { COLORS, ROUTES } from '../../constants';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
 import { getStatus } from '../resultados/utils/vitalThresholds';
-import { parseSessionDate } from '../schedule/utils/calendarUtils';
+import { useAuth } from '../../hooks';
+import { vitalSignsService } from '../../services/vitalSignsService';
+import { traineeService } from '../../services/traineeService';
 
 import InteractiveLineChart from './components/InteractiveLineChart';
 import SymptomFrequencyChart from './components/SymptomFrequencyChart';
 import SymptomHistoryItem from './components/SymptomHistoryItem';
 import PerformanceStatCard from '../dashboard/components/PerformanceStatCard';
 
-import { SESSION_HISTORY, VITAL_META } from './__mocks__/progressData';
+import { VITAL_META } from './__mocks__/progressData';
 
 const RANGE = { RECENT: 'recent', ALL: 'all' };
 const VIEW = { BIOMETRIC: 'biometric', SYMPTOMS: 'symptoms' };
 const RECENT_DAYS = 30;
-const RECENT_SESSION_FALLBACK = 5; // si no hay nada en los últimos 30 días reales del dataset, igual se ve algo
+const RECENT_SESSION_FALLBACK = 5;
 
 export default function ProgressHistoryScreen({ navigation }) {
   const theme = useTheme();
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const isCompact = width < 900;
+  const { user } = useAuth();
 
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [range, setRange] = useState(RANGE.ALL);
   const [view, setView] = useState(VIEW.BIOMETRIC);
   const [symptomFilter, setSymptomFilter] = useState(null);
 
-  // Orden cronológico ascendente — el dataset no lo garantiza por construcción.
+  useEffect(() => {
+    if (!user?.userId) return;
+    traineeService.getAll()
+      .then(trainees => {
+        const me = trainees.find(t => t.userId === user.userId);
+        if (!me) return;
+        return vitalSignsService.getHistoryForTrainee(me.id);
+      })
+      .then(entries => { if (entries) setHistory(entries); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [user]);
+
   const chronological = useMemo(() => {
-    return [...SESSION_HISTORY].sort((a, b) => parseSessionDate(a.date) - parseSessionDate(b.date));
-  }, []);
+    return [...history].sort((a, b) => new Date(a.date) - new Date(b.date));
+  }, [history]);
 
   const filteredEntries = useMemo(() => {
     if (range === RANGE.ALL) return chronological;
-    const latest = parseSessionDate(chronological[chronological.length - 1].date);
+    if (chronological.length === 0) return [];
+    const latest = new Date(chronological[chronological.length - 1].date);
     const cutoff = new Date(latest);
     cutoff.setDate(cutoff.getDate() - RECENT_DAYS);
-    const recent = chronological.filter((e) => parseSessionDate(e.date) >= cutoff);
+    const recent = chronological.filter((e) => new Date(e.date) >= cutoff);
     return recent.length > 0 ? recent : chronological.slice(-RECENT_SESSION_FALLBACK);
   }, [chronological, range]);
 
@@ -72,26 +90,28 @@ export default function ProgressHistoryScreen({ navigation }) {
 
   const snapshotCards = useMemo(() => {
     if (!latestEntry) return [];
-    const pesoDelta = firstEntry ? latestEntry.vitals.peso - firstEntry.vitals.peso : 0;
+    const peso = latestEntry.vitals.peso;
+    const firstPeso = firstEntry?.vitals.peso;
+    const pesoDelta = (peso != null && firstPeso != null) ? peso - firstPeso : 0;
     return [
       {
         id: 'presion', iconName: VITAL_META.presionArterial.icon, iconBg: '#E3F2FD', iconColor: VITAL_META.presionArterial.color,
-        label: t.progress.metrics.presionArterial, value: `${latestEntry.vitals.presionArterial}`, valueColor: theme.textPrimary,
+        label: t.progress.metrics.presionArterial, value: latestEntry.vitals.presionArterial ?? '—/—', valueColor: theme.textPrimary,
         hint: t.progress.hints.optimal, hintColor: theme.badge.success.text,
       },
       {
         id: 'spo2', iconName: VITAL_META.nivelOxigeno.icon, iconBg: '#E0F7F4', iconColor: VITAL_META.nivelOxigeno.color,
-        label: t.progress.metrics.nivelOxigeno, value: `${latestEntry.vitals.nivelOxigeno}%`, valueColor: theme.textPrimary,
+        label: t.progress.metrics.nivelOxigeno, value: latestEntry.vitals.nivelOxigeno != null ? `${latestEntry.vitals.nivelOxigeno}%` : '—', valueColor: theme.textPrimary,
         hint: t.progress.hints.avgRange(94, 99), hintColor: theme.textMuted,
       },
       {
         id: 'peso', iconName: VITAL_META.peso.icon, iconBg: '#F3E5F5', iconColor: VITAL_META.peso.color,
-        label: t.progress.metrics.peso, value: `${latestEntry.vitals.peso}kg`, valueColor: theme.textPrimary,
+        label: t.progress.metrics.peso, value: peso != null ? `${peso}kg` : '—', valueColor: theme.textPrimary,
         hint: t.progress.hints.sinceFirst(pesoDelta), hintColor: pesoDelta <= 0 ? theme.badge.success.text : theme.badge.pending.text,
       },
       {
         id: 'temp', iconName: VITAL_META.temperatura.icon, iconBg: '#FFF3E0', iconColor: VITAL_META.temperatura.color,
-        label: t.progress.metrics.temperatura, value: `${latestEntry.vitals.temperatura}°C`, valueColor: theme.textPrimary,
+        label: t.progress.metrics.temperatura, value: latestEntry.vitals.temperatura != null ? `${latestEntry.vitals.temperatura}°C` : '—', valueColor: theme.textPrimary,
         hint: t.progress.hints.postSession, hintColor: theme.textMuted,
       },
     ];
@@ -125,6 +145,11 @@ export default function ProgressHistoryScreen({ navigation }) {
         </View>
       </View>
 
+      {loading ? (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      ) : (
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={[styles.filterRow, isCompact && styles.filterRowCompact]}>
           <Pill active={range === RANGE.RECENT} icon="calendar-outline" label={t.progress.rangeRecent} onPress={() => setRange(RANGE.RECENT)} theme={theme} />
@@ -203,6 +228,7 @@ export default function ProgressHistoryScreen({ navigation }) {
           </>
         )}
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -228,6 +254,7 @@ function Pill({ active, icon, label, onPress, theme }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   topBar: {
     flexDirection: 'row',
     alignItems: 'flex-start',

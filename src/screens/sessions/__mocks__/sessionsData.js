@@ -134,6 +134,15 @@ export const FILTER_KEYS = {
   CANCELLED:   'CANCELLED',
 };
 
+// Las etiquetas (label) viven en el diccionario de i18n (t.sessions.filterTabs /
+// t.sessions.pageTitle), no aquí — así responden al idioma elegido en Configuración.
+export const FILTER_ORDER = [
+  FILTER_KEYS.ALL,
+  FILTER_KEYS.PENDING,
+  FILTER_KEYS.COMPLETED,
+  FILTER_KEYS.CANCELLED,
+];
+
 export const FILTERS = [
   { key: FILTER_KEYS.ALL,         label: 'Todas',     icon: null,           activeColor: '#E85D27' },
   { key: FILTER_KEYS.IN_PROGRESS, label: 'En Curso',  icon: 'play',         activeColor: '#E85D27' },
@@ -142,8 +151,6 @@ export const FILTERS = [
   { key: FILTER_KEYS.CANCELLED,   label: 'Canceladas',icon: 'close',        activeColor: '#E85D27' },
 ];
 
-const STATUS_SORT = { ACTIVE: 0, PLANNED: 1, COMPLETED: 2, CANCELLED: 3 };
-
 export function applyFilter(sessions, filterKey) {
   switch (filterKey) {
     case FILTER_KEYS.IN_PROGRESS: return sessions.filter(s => s.status === SESSION_STATUS.ACTIVE);
@@ -151,7 +158,7 @@ export function applyFilter(sessions, filterKey) {
     case FILTER_KEYS.COMPLETED:   return sessions.filter(s => s.status === SESSION_STATUS.COMPLETED);
     case FILTER_KEYS.CANCELLED:   return sessions.filter(s => s.status === SESSION_STATUS.CANCELLED);
     default: return [...sessions].sort((a, b) =>
-      (STATUS_SORT[a.status] ?? 99) - (STATUS_SORT[b.status] ?? 99)
+      new Date(a.scheduledStart) - new Date(b.scheduledStart)
     );
   }
 }

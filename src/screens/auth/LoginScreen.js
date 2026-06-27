@@ -1,49 +1,50 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, Alert,
+  StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants';
 import useAuthStore from '../../store/authStore';
-
-// ── Demo credentials — reemplazar con api.post('/auth/login') en Sprint 2 ────
-const DEMO_USERS = [
-  { token: 'admin-001',    password: '1234', role: 'ADMIN',               name: 'Sara Flores'    },
-  { token: 'medical-001',  password: '1234', role: 'MEDICAL',             name: 'Michael Poveda' },
-  { token: 'trainee-001',  password: '1234', role: 'FIREFIGHTER_TRAINEE', name: 'Carlos Ruiz'    },
-  { token: 'research-001', password: '1234', role: 'RESEARCHER',          name: 'Ana Torres'     },
-  { token: 'sysadmin-001', password: '1234', role: 'SYSTEM_ADMIN',        name: 'Admin Sistema'  },
-  { token: 'capacitator-001', password: '1234', role: 'CAPACITATOR',      name: 'Capacitador'    },
-  { token: 'chief-001',      password: '1234', role: 'FIRE_CHIEF',        name: 'Jefe Bomberos'  },
-];
+import { authService } from '../../services';
 
 export default function LoginScreen({ navigation }) {
   const setAuth = useAuthStore((s) => s.setAuth);
 
-  const [token,    setToken]    = useState('');
+  const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading,  setLoading]  = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  function handleLogin() {
-    if (!token.trim() || !password.trim()) {
-      Alert.alert('Campos requeridos', 'Ingresa el token de invitación y tu contraseña.');
+  async function handleLogin() {
+    setErrorMsg('');
+    if (!email.trim() || !password.trim()) {
+      setErrorMsg('Ingresa tu correo y contraseña.');
       return;
     }
+
     setLoading(true);
-    setTimeout(() => {
-      const user = DEMO_USERS.find(
-        (u) => u.token === token.trim() && u.password === password
-      );
-      if (user) {
-        setAuth({ user: { name: user.name, email: `${user.token}@smab.app` }, role: user.role, token: user.token });
+    try {
+      const authData = await authService.login(email.trim().toLowerCase(), password);
+      setAuth(authData);
+    } catch (error) {
+      const status  = error.response?.status;
+      const message = error.response?.data?.message;
+
+      if (status === 401) {
+        setErrorMsg('Correo o contraseña incorrectos.');
+      } else if (status === 422) {
+        setErrorMsg(message ?? 'Cuenta inactiva o bloqueada.');
+      } else if (status === 400) {
+        setErrorMsg(message ?? 'Revisa los campos e intenta de nuevo.');
       } else {
-        Alert.alert('Credenciales incorrectas', 'Token o contraseña inválidos.');
+        setErrorMsg('No se pudo conectar al servidor.');
       }
+    } finally {
       setLoading(false);
-    }, 300);
+    }
   }
 
   return (
@@ -70,21 +71,22 @@ export default function LoginScreen({ navigation }) {
       >
         <Text style={styles.welcomeTitle}>Bienvenido</Text>
         <Text style={styles.welcomeSub}>
-          Ingresa con tu token de invitación para acceder al sistema.
+          Ingresa con tu correo electrónico y contraseña.
         </Text>
 
         <View style={styles.fieldGroup}>
-          <Text style={styles.label}>Token de invitación</Text>
+          <Text style={styles.label}>Correo electrónico</Text>
           <View style={styles.inputBox}>
-            <Ionicons name="key-outline" size={18} color="#9AA3B0" />
+            <Ionicons name="mail-outline" size={18} color="#9AA3B0" />
             <TextInput
               style={styles.input}
-              placeholder="ej. medical-001"
+              placeholder="usuario@smab.app"
               placeholderTextColor="#BDBDBD"
-              value={token}
-              onChangeText={setToken}
+              value={email}
+              onChangeText={v => { setEmail(v); setErrorMsg(''); }}
               autoCapitalize="none"
               autoCorrect={false}
+              keyboardType="email-address"
             />
           </View>
         </View>
@@ -98,7 +100,7 @@ export default function LoginScreen({ navigation }) {
               placeholder="••••••••"
               placeholderTextColor="#BDBDBD"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={v => { setPassword(v); setErrorMsg(''); }}
               secureTextEntry={!showPass}
               autoCapitalize="none"
             />
@@ -115,6 +117,13 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
         </TouchableOpacity>
 
+        {!!errorMsg && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle-outline" size={17} color="#D83B35" />
+            <Text style={styles.errorBannerText}>{errorMsg}</Text>
+          </View>
+        )}
+
         <TouchableOpacity
           style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
           onPress={handleLogin}
@@ -126,19 +135,6 @@ export default function LoginScreen({ navigation }) {
             {loading ? 'Ingresando...' : 'Ingresar'}
           </Text>
         </TouchableOpacity>
-
-        {/* Tokens de prueba — quitar en producción */}
-        <View style={styles.hintBox}>
-          <Text style={styles.hintTitle}>TOKENS DE PRUEBA  (contraseña: 1234)</Text>
-          {DEMO_USERS.map((u) => (
-            <TouchableOpacity key={u.token} onPress={() => { setToken(u.token); setPassword('1234'); }}>
-              <Text style={styles.hintItem}>
-                <Text style={styles.hintToken}>{u.token}</Text>
-                {'   '}{u.role}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
       </KeyboardAvoidingView>
 
     </SafeAreaView>
@@ -200,6 +196,14 @@ const styles = StyleSheet.create({
   forgotRow: { alignSelf: 'flex-end', marginTop: -6 },
   forgotText: { fontSize: 12, color: COLORS.primary, fontWeight: '600' },
 
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FEF2F2', borderRadius: 10,
+    borderWidth: 1.5, borderColor: '#FECACA',
+    paddingHorizontal: 14, paddingVertical: 11,
+  },
+  errorBannerText: { flex: 1, fontSize: 13, color: '#D83B35', fontWeight: '600' },
+
   loginBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, backgroundColor: COLORS.primary, borderRadius: 12,
@@ -207,13 +211,4 @@ const styles = StyleSheet.create({
   },
   loginBtnDisabled: { backgroundColor: '#BDBDBD' },
   loginBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-
-  hintBox: {
-    backgroundColor: '#F8F9FA', borderRadius: 10,
-    padding: 12, gap: 5, marginTop: 4,
-    borderWidth: 1, borderColor: '#E0E4EA',
-  },
-  hintTitle: { fontSize: 10, fontWeight: '700', color: '#9AA3B0', marginBottom: 2 },
-  hintItem: { fontSize: 11, color: '#697282' },
-  hintToken: { color: COLORS.primary, fontWeight: '700' },
 });

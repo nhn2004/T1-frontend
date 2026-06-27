@@ -2,15 +2,16 @@ import useAuthStore from '../store/authStore';
 import { can } from '../navigation/guards';
 
 export function useAuth() {
-  const { user, role, token, isAuthenticated, setAuth, clearAuth } = useAuthStore();
+  const { user, role, roles, token, isAuthenticated, setAuth, clearAuth } = useAuthStore();
 
   return {
     user,
     role,
+    roles,
     token,
     isAuthenticated,
-    login: setAuth,
+    login:  setAuth,
     logout: clearAuth,
-    can: (permission) => can(role, permission),
+    can:    (permission) => can(role, permission),
   };
 }

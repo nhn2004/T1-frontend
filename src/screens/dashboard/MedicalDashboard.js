@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,65 +6,88 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../constants';
 import useAuthStore from '../../store/authStore';
 
-import WelcomeBanner       from './components/WelcomeBanner';
-import ValidationCard      from './components/ValidationCard';
-import StatCard            from './components/StatCard';
-import ActivityRow         from './components/ActivityRow';
+import WelcomeBanner        from './components/WelcomeBanner';
+import ValidationCard       from './components/ValidationCard';
+import StatCard             from './components/StatCard';
+import ActivityRow          from './components/ActivityRow';
 import ConfirmApprovalModal from './components/ConfirmApprovalModal';
 
-import {
-  MEDICAL_DIRECTOR,
-  VALIDATION_QUEUE,
-  TOTAL_PENDING,
-  STAT_CARDS,
-  RECENT_ACTIVITIES,
-} from './__mocks__/medicalData';
+import { invitationService }      from '../../services/invitationService';
+import { healthPersonnelService } from '../../services/healthPersonnelService';
+import { sessionService }         from '../../services/sessionService';
 
-// Max cards visible at once — keeps the layout fixed with no scroll.
 const MAX_VISIBLE = 1;
+
+function timeAgo(iso) {
+  if (!iso) return '—';
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (mins < 60)  return `Hace ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs  < 24)  return `Hace ${hrs} hora${hrs > 1 ? 's' : ''}`;
+  const days = Math.floor(hrs / 24);
+  return `Hace ${days} día${days > 1 ? 's' : ''}`;
+}
 
 export default function MedicalDashboard({ navigation, Sidebar }) {
   const user = useAuthStore((s) => s.user);
 
-  // Full queue in state — when one is approved it's removed and the next slides in.
-  const [queue, setQueue]           = useState(VALIDATION_QUEUE);
-  const [approvedCount, setApproved] = useState(0);
+  const [rawInvitations,  setRawInvitations]  = useState([]);
+  const [allInvitations,  setAllInvitations]  = useState([]);
+  const [staffCount,      setStaffCount]      = useState(0);
+  const [sessionCount,    setSessionCount]    = useState(0);
+  const [approvedCount,   setApproved]        = useState(0);
 
-  // Modal state
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [modalVisible,  setModalVisible]  = useState(false);
+  const [selectedItem,  setSelectedItem]  = useState(null);
+
+  // ── Carga inicial ──────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    Promise.all([
+      invitationService.getAll(),
+      healthPersonnelService.getAll(),
+      sessionService.getAll(),
+    ])
+      .then(([invs, staff, sessions]) => {
+        setAllInvitations(invs);
+        setRawInvitations(invs.filter(i => i.status === 'Pending'));
+        setStaffCount(staff.length);
+        setSessionCount(sessions.length);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Cola derivada — mapea InvitationDto al shape que ValidationCard espera
+  const queue = rawInvitations.map(invitationService.toValidationItem);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 
-  // "Aprobar" → aprueba directamente sin modal
-  const handleApprovePress = useCallback((id) => {
-    setQueue((prev) => prev.filter((v) => v.id !== id));
-    setApproved((n) => n + 1);
-    // TODO: api.post(`/validations/${id}/approve`)
+  const handleApprovePress = useCallback(async (id) => {
+    try { await invitationService.accept(id); } catch {}
+    setRawInvitations(prev => prev.filter(i => i.invitationId !== id));
+    setApproved(n => n + 1);
   }, []);
 
-  // "Rechazar" → abre el modal
   const handleReview = useCallback((id) => {
-    const item = queue.find((v) => v.id === id);
+    const item = queue.find(v => v.id === id);
     setSelectedItem(item);
     setModalVisible(true);
   }, [queue]);
 
-  // Aprobar desde el modal
-  const handleConfirmApproval = useCallback((id) => {
+  const handleConfirmApproval = useCallback(async (id) => {
     setModalVisible(false);
     setSelectedItem(null);
-    setQueue((prev) => prev.filter((v) => v.id !== id));
-    setApproved((n) => n + 1);
+    try { await invitationService.accept(id); } catch {}
+    setRawInvitations(prev => prev.filter(i => i.invitationId !== id));
+    setApproved(n => n + 1);
   }, []);
 
-  // Rechazar con motivo desde el modal
-  const handleRejectWithReason = useCallback((id, reason) => {
+  const handleRejectWithReason = useCallback(async (id, reason) => {
     setModalVisible(false);
     setSelectedItem(null);
-    setQueue((prev) => prev.filter((v) => v.id !== id));
-    setApproved((n) => n + 1);
-    // TODO: api.post(`/validations/${id}/reject`, { reason })
+    try { await invitationService.reject(id); } catch {}
+    setRawInvitations(prev => prev.filter(i => i.invitationId !== id));
+    setApproved(n => n + 1);
     Alert.alert('Rechazado', `Motivo enviado: "${reason}"`);
   }, []);
 
@@ -74,24 +97,61 @@ export default function MedicalDashboard({ navigation, Sidebar }) {
   }, []);
 
   const handleViewAll = useCallback(() => {
-    // TODO: navigation.navigate(ROUTES.VALIDATION_QUEUE);
-    Alert.alert('Ver todas', 'Navegar a la cola completa.');
-  }, []);
+    navigation?.navigate('ValidationQueue');
+  }, [navigation]);
 
-  // ── Derived data ────────────────────────────────────────────────────────────
+  // ── Datos derivados ──────────────────────────────────────────────────────
 
-  const displayQueue   = queue.slice(0, MAX_VISIBLE);
-  const remainingCount = Math.max(0, TOTAL_PENDING - approvedCount);
+  const displayQueue     = queue.slice(0, MAX_VISIBLE);
+  const remainingCount   = rawInvitations.length;
 
   const director = user
     ? { name: user.name, title: 'Medical Director' }
-    : MEDICAL_DIRECTOR;
+    : { name: 'Medical Director', title: 'Medical Director' };
+
+  const statCards = [
+    {
+      id: 'stat_invitations',
+      title: 'Invitaciones Pendientes',
+      value: String(remainingCount),
+      subtitle: 'Esperando confirmación',
+      iconName: 'send',
+      iconBg: '#F6D622',
+    },
+    {
+      id: 'stat_staff',
+      title: 'Personal Activo',
+      value: String(staffCount),
+      subtitle: 'Médicos y enfermeros',
+      iconName: 'people',
+      iconBg: '#2690F3',
+    },
+    {
+      id: 'stat_sessions',
+      title: 'Total Sesiones',
+      value: String(sessionCount),
+      subtitle: 'Registradas en el sistema',
+      iconName: 'calendar',
+      iconBg: '#1EB91E',
+    },
+  ];
+
+  const recentActivities = allInvitations
+    .filter(i => i.status === 'Accepted' || i.status === 'Rejected')
+    .sort((a, b) => new Date(b.respondedAt ?? b.createdAt) - new Date(a.respondedAt ?? a.createdAt))
+    .slice(0, 4)
+    .map(i => ({
+      id:       i.invitationId,
+      title:    i.status === 'Accepted' ? 'Invitación aceptada' : 'Invitación rechazada',
+      subtitle: i.targetEmail,
+      time:     timeAgo(i.respondedAt ?? i.createdAt),
+      dotColor: i.status === 'Accepted' ? '#1EB91E' : '#D83B35',
+    }));
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.root}>
-      {/* Sidebar slot — filled by Dev 2 via the navigator */}
       {Sidebar && <Sidebar />}
 
       <View style={styles.content}>
@@ -132,7 +192,7 @@ export default function MedicalDashboard({ navigation, Sidebar }) {
 
           {/* Stat cards */}
           <View style={styles.statsPanel}>
-            {STAT_CARDS.map((card) => (
+            {statCards.map((card) => (
               <StatCard key={card.id} {...card} />
             ))}
           </View>
@@ -141,14 +201,19 @@ export default function MedicalDashboard({ navigation, Sidebar }) {
         {/* Recent activity */}
         <View style={styles.activityPanel}>
           <Text style={styles.sectionTitle}>Actividades recientes</Text>
-          {RECENT_ACTIVITIES.map((activity) => (
-            <ActivityRow key={activity.id} {...activity} />
-          ))}
+          {recentActivities.length > 0 ? (
+            recentActivities.map((activity) => (
+              <ActivityRow key={activity.id} {...activity} />
+            ))
+          ) : (
+            <Text style={{ fontSize: 13, color: '#9AA3B0', paddingVertical: 8 }}>
+              Sin actividad reciente
+            </Text>
+          )}
         </View>
 
       </View>
 
-      {/* Confirmation modal — rendered outside the content flow so it overlays everything */}
       <ConfirmApprovalModal
         visible={modalVisible}
         item={selectedItem}
@@ -204,7 +269,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 
-  // Queue panel
   queuePanel: {
     flex: 1.1,
     backgroundColor: '#FFFFFF',
@@ -265,13 +329,11 @@ const styles = StyleSheet.create({
     color: '#697282',
   },
 
-  // Stat cards
   statsPanel: {
     flex: 0.9,
     gap: 10,
   },
 
-  // Activity panel
   activityPanel: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,

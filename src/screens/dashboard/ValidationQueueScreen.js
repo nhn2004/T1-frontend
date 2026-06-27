@@ -1,42 +1,55 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import React, { useState, useCallback, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
+import { COLORS } from '../../constants';
 import ValidationCard from './components/ValidationCard';
 import ConfirmApprovalModal from './components/ConfirmApprovalModal';
-import { VALIDATION_QUEUE } from './__mocks__/medicalData';
+import { invitationService } from '../../services/invitationService';
 
-// Lista completa de la cola de validaciones — antes "Ver Todas las Solicitudes"
-// solo mostraba un Alert.alert() de marcador de posición (que además no
-// aparece en absoluto en web, donde Alert.alert es un no-op), así que el botón
-// no hacía nada visible. Reutiliza los mismos componentes y handlers que el
-// panel resumido del dashboard.
 export default function ValidationQueueScreen({ navigation }) {
-  const [queue, setQueue] = useState(VALIDATION_QUEUE);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [rawInvitations, setRawInvitations] = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [modalVisible,   setModalVisible]   = useState(false);
+  const [selectedItem,   setSelectedItem]   = useState(null);
 
-  const handleApprovePress = useCallback((id) => {
-    setQueue((prev) => prev.filter((v) => v.id !== id));
+  // ── Carga inicial ──────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    invitationService.getAll()
+      .then(invs => setRawInvitations(invs.filter(i => i.status === 'Pending')))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const queue = rawInvitations.map(invitationService.toValidationItem);
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
+
+  const handleApprovePress = useCallback(async (id) => {
+    try { await invitationService.accept(id); } catch {}
+    setRawInvitations(prev => prev.filter(i => i.invitationId !== id));
   }, []);
 
   const handleReview = useCallback((id) => {
-    const item = queue.find((v) => v.id === id);
+    const item = queue.find(v => v.id === id);
     setSelectedItem(item);
     setModalVisible(true);
   }, [queue]);
 
-  const handleConfirmApproval = useCallback((id) => {
+  const handleConfirmApproval = useCallback(async (id) => {
     setModalVisible(false);
     setSelectedItem(null);
-    setQueue((prev) => prev.filter((v) => v.id !== id));
+    try { await invitationService.accept(id); } catch {}
+    setRawInvitations(prev => prev.filter(i => i.invitationId !== id));
   }, []);
 
-  const handleRejectWithReason = useCallback((id, reason) => {
+  const handleRejectWithReason = useCallback(async (id, reason) => {
     setModalVisible(false);
     setSelectedItem(null);
-    setQueue((prev) => prev.filter((v) => v.id !== id));
+    try { await invitationService.reject(id); } catch {}
+    setRawInvitations(prev => prev.filter(i => i.invitationId !== id));
     Alert.alert('Rechazado', `Motivo enviado: "${reason}"`);
   }, []);
 
@@ -44,6 +57,8 @@ export default function ValidationQueueScreen({ navigation }) {
     setModalVisible(false);
     setSelectedItem(null);
   }, []);
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.root}>
@@ -62,7 +77,11 @@ export default function ValidationQueueScreen({ navigation }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
-        {queue.length > 0 ? (
+        {loading ? (
+          <View style={styles.emptyBox}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+          </View>
+        ) : queue.length > 0 ? (
           queue.map((item) => (
             <ValidationCard
               key={item.id}

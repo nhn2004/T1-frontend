@@ -1,56 +1,104 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Modal, Pressable, Alert,
+  StyleSheet, Modal, Pressable, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import {
-  MOCK_DOCTORS, MOCK_CAPACITADORES, DOCTOR_FILTERS, DOCTOR_ROLES,
-} from './__mocks__/crearSesionData';
+import { DOCTOR_FILTERS } from './__mocks__/crearSesionData';
+import { healthPersonnelService } from '../../services/healthPersonnelService';
+import api from '../../services/api';
 
-// ── Constantes del carousel de selección ──────────────────────────────────────
 const COLS = 3;
+
+function parseDatetime(fecha, hora) {
+  const parts = fecha.trim().split('/').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  const [day, month, year] = parts;
+  const [timePart, period] = hora.trim().split(' ');
+  let [h, m] = (timePart || '09:00').split(':').map(Number);
+  if (period === 'PM' && h < 12) h += 12;
+  if (period === 'AM' && h === 12) h = 0;
+  return new Date(year, month - 1, day, h, m, 0);
+}
 
 export default function CrearSesionScreen({ navigation }) {
   const [step, setStep] = useState(1);
 
   // Step 1 — Información de la sesión
-  const [nombre, setNombre]   = useState('');
-  const [fecha,  setFecha]    = useState('');
-  const [hora,   setHora]     = useState('');
+  const [nombre,    setNombre]    = useState('');
+  const [fecha,     setFecha]     = useState('');
+  const [hora,      setHora]      = useState('');
+  const [capacidad, setCapacidad] = useState('');
 
-  // Step 1 — Doctores
+  // Step 1 — Doctores (API)
+  const [allDoctors,     setAllDoctors]     = useState([]);
+  const [loadingDocs,    setLoadingDocs]    = useState(true);
   const [doctorFilter,   setDoctorFilter]   = useState('todos');
   const [doctorSearch,   setDoctorSearch]   = useState('');
   const [selectedDocs,   setSelectedDocs]   = useState([]);
   const [showAddDoctor,  setShowAddDoctor]  = useState(false);
 
-  // Step 2 — Capacitadores
-  const [capSearch,      setCapSearch]      = useState('');
-  const [selectedCaps,   setSelectedCaps]   = useState([]);
-  const [showAddCap,     setShowAddCap]     = useState(false);
+  // Step 2 — Capacitadores (API)
+  const [allCapacitadores, setAllCapacitadores] = useState([]);
+  const [loadingCaps,      setLoadingCaps]      = useState(true);
+  const [capSearch,        setCapSearch]         = useState('');
+  const [selectedCaps,     setSelectedCaps]      = useState([]);
+  const [showAddCap,       setShowAddCap]        = useState(false);
 
   // Step 2 — Bomberos (lista de correos)
   const [bomberoEmails,  setBomberoEmails]  = useState(['', '', '', '']);
+  const [saving,         setSaving]         = useState(false);
+  const [successData,    setSuccessData]    = useState(null);
+
+  // ── Carga personal médico ──────────────────────────────────────────────────
+  useEffect(() => {
+    healthPersonnelService.getAll()
+      .then(list => setAllDoctors(list.map(p => ({
+        id:        p.id,
+        name:      p.name,
+        specialty: p.specialty ?? p.role,
+        email:     p.email,
+        role:      p.role?.toLowerCase().includes('enfer') ? 'enfermero'
+                 : p.role?.toLowerCase().includes('nutri') ? 'nutricionista'
+                 : 'medico',
+      }))))
+      .catch(() => {})
+      .finally(() => setLoadingDocs(false));
+  }, []);
+
+  // ── Carga capacitadores ────────────────────────────────────────────────────
+  useEffect(() => {
+    api.get('/users?role=CAPACITATOR')
+      .then(({ data: wrapper }) =>
+        setAllCapacitadores((wrapper.data ?? []).map(u => ({
+          id:        u.userId,
+          name:      `${u.firstName} ${u.lastName}`.trim(),
+          specialty: 'Capacitador',
+          email:     u.email,
+        })))
+      )
+      .catch(() => {})
+      .finally(() => setLoadingCaps(false));
+  }, []);
 
   // ── Filtrado doctores ──────────────────────────────────────────────────────
   const filteredDoctors = useMemo(() => {
-    let list = MOCK_DOCTORS;
+    let list = allDoctors;
     if (doctorFilter !== 'todos') list = list.filter(d => d.role === doctorFilter);
     if (doctorSearch.trim())      list = list.filter(d =>
       d.name.toLowerCase().includes(doctorSearch.trim().toLowerCase())
     );
     return list;
-  }, [doctorFilter, doctorSearch]);
+  }, [allDoctors, doctorFilter, doctorSearch]);
 
   const filteredCaps = useMemo(() => {
-    if (!capSearch.trim()) return MOCK_CAPACITADORES;
-    return MOCK_CAPACITADORES.filter(c =>
+    if (!capSearch.trim()) return allCapacitadores;
+    return allCapacitadores.filter(c =>
       c.name.toLowerCase().includes(capSearch.trim().toLowerCase())
     );
-  }, [capSearch]);
+  }, [allCapacitadores, capSearch]);
 
   function toggleDoc(doc) {
     setSelectedDocs(prev =>
@@ -73,10 +121,67 @@ export default function CrearSesionScreen({ navigation }) {
     setBomberoEmails(prev => prev.filter((_, i) => i !== idx));
   }
 
-  function handleCrearSesion() {
-    Alert.alert('Sesión creada', `"${nombre || 'Nueva Sesión'}" fue creada correctamente.`, [
-      { text: 'Volver', onPress: () => navigation.goBack() },
-    ]);
+  async function handleCrearSesion() {
+    const start = parseDatetime(fecha, hora);
+    if (!nombre.trim() || !start) {
+      Alert.alert('Faltan datos', 'Ingresa nombre, fecha (dd/mm/aaaa) y hora (HH:MM AM/PM).');
+      return;
+    }
+    const end = new Date(start.getTime() + 4 * 3_600_000);
+
+    setSaving(true);
+    try {
+      // Resolver institución y ubicación
+      const [{ data: instWrap }, { data: locWrap }] = await Promise.all([
+        api.get('/institutions'),
+        api.get('/training-locations'),
+      ]);
+      const institutionId       = instWrap.data?.[0]?.institutionId;
+      const trainingLocationId  = locWrap.data?.[0]?.trainingLocationId;
+
+      if (!institutionId || !trainingLocationId) {
+        Alert.alert('Error', 'No se encontró institución o ubicación de entrenamiento.');
+        return;
+      }
+
+      // Crear sesión
+      const { data: sessionWrap } = await api.post('/training-sessions', {
+        institutionId,
+        trainingLocationId,
+        title:          nombre.trim(),
+        description:    null,
+        sessionCode:    null,
+        scheduledStart: start.toISOString(),
+        scheduledEnd:   end.toISOString(),
+        plannedCapacity: capacidad.trim() ? parseInt(capacidad, 10) : null,
+      });
+      const sessionId = sessionWrap.data?.trainingSessionId;
+
+      // Invitar bomberos
+      const validEmails = bomberoEmails.map(e => e.trim()).filter(Boolean);
+      const expiresAt   = new Date(Date.now() + 7 * 86_400_000).toISOString();
+      await Promise.allSettled(
+        validEmails.map(email =>
+          api.post('/invitations', {
+            targetEmail:       email,
+            trainingSessionId: sessionId,
+            targetUserId:      null,
+            targetRoleId:      null,
+            expiresAt,
+          })
+        )
+      );
+
+      setSuccessData({
+        title:   nombre.trim(),
+        invites: validEmails.length,
+      });
+    } catch (e) {
+      const msg = e?.response?.data?.message ?? e?.message ?? 'No se pudo crear la sesión.';
+      Alert.alert('Error al crear sesión', msg);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -97,12 +202,14 @@ export default function CrearSesionScreen({ navigation }) {
       {/* ── Contenido por step ── */}
       {step === 1 ? (
         <Step1
-          nombre={nombre} setNombre={setNombre}
-          fecha={fecha}   setFecha={setFecha}
-          hora={hora}     setHora={setHora}
+          nombre={nombre}       setNombre={setNombre}
+          fecha={fecha}         setFecha={setFecha}
+          hora={hora}           setHora={setHora}
+          capacidad={capacidad} setCapacidad={setCapacidad}
           doctorFilter={doctorFilter} setDoctorFilter={setDoctorFilter}
           doctorSearch={doctorSearch} setDoctorSearch={setDoctorSearch}
           filteredDoctors={filteredDoctors}
+          loadingDocs={loadingDocs}
           selectedDocs={selectedDocs} toggleDoc={toggleDoc}
           onAddDoctor={() => setShowAddDoctor(true)}
           onSiguiente={() => setStep(2)}
@@ -110,6 +217,7 @@ export default function CrearSesionScreen({ navigation }) {
       ) : (
         <Step2
           filteredCaps={filteredCaps}
+          loadingCaps={loadingCaps}
           capSearch={capSearch} setCapSearch={setCapSearch}
           selectedCaps={selectedCaps} toggleCap={toggleCap}
           onAddCap={() => setShowAddCap(true)}
@@ -119,6 +227,7 @@ export default function CrearSesionScreen({ navigation }) {
           addBomberoEmail={addBomberoEmail}
           onCancelar={() => setStep(1)}
           onCrear={handleCrearSesion}
+          saving={saving}
         />
       )}
 
@@ -135,6 +244,10 @@ export default function CrearSesionScreen({ navigation }) {
         onClose={() => setShowAddCap(false)}
         actionLabel="Enviar Invitación"
       />
+      <SuccessModal
+        data={successData}
+        onClose={() => navigation.goBack()}
+      />
 
     </SafeAreaView>
   );
@@ -144,8 +257,9 @@ export default function CrearSesionScreen({ navigation }) {
 
 function Step1({
   nombre, setNombre, fecha, setFecha, hora, setHora,
+  capacidad, setCapacidad,
   doctorFilter, setDoctorFilter, doctorSearch, setDoctorSearch,
-  filteredDoctors, selectedDocs, toggleDoc, onAddDoctor, onSiguiente,
+  filteredDoctors, loadingDocs, selectedDocs, toggleDoc, onAddDoctor, onSiguiente,
 }) {
   return (
     <View style={s.body}>
@@ -185,6 +299,17 @@ function Step1({
                 placeholderTextColor="#B0B7C3"
               />
             </View>
+            <View style={s.infoField}>
+              <Text style={s.fieldLabel}>Capacidad Planeada</Text>
+              <TextInput
+                style={s.input}
+                value={capacidad}
+                onChangeText={setCapacidad}
+                placeholder="Ej: 10"
+                placeholderTextColor="#B0B7C3"
+                keyboardType="numeric"
+              />
+            </View>
           </View>
         </View>
 
@@ -222,12 +347,10 @@ function Step1({
           </View>
 
           {/* Grid de doctores */}
-          <PersonGrid
-            people={filteredDoctors}
-            selected={selectedDocs}
-            onToggle={toggleDoc}
-            cols={COLS}
-          />
+          {loadingDocs
+            ? <ActivityIndicator size="small" color="#E85D27" style={{ marginVertical: 8 }} />
+            : <PersonGrid people={filteredDoctors} selected={selectedDocs} onToggle={toggleDoc} cols={COLS} />
+          }
 
           {/* Seleccionados */}
           {selectedDocs.length > 0 && (
@@ -251,10 +374,10 @@ function Step1({
 // ── Step 2 ────────────────────────────────────────────────────────────────────
 
 function Step2({
-  filteredCaps, capSearch, setCapSearch,
+  filteredCaps, loadingCaps, capSearch, setCapSearch,
   selectedCaps, toggleCap, onAddCap,
   bomberoEmails, updateBomberoEmail, removeBomberoEmail, addBomberoEmail,
-  onCancelar, onCrear,
+  onCancelar, onCrear, saving,
 }) {
   return (
     <View style={s.body}>
@@ -281,12 +404,10 @@ function Step2({
             />
           </View>
 
-          <PersonGrid
-            people={filteredCaps}
-            selected={selectedCaps}
-            onToggle={toggleCap}
-            cols={COLS}
-          />
+          {loadingCaps
+            ? <ActivityIndicator size="small" color="#E85D27" style={{ marginVertical: 8 }} />
+            : <PersonGrid people={filteredCaps} selected={selectedCaps} onToggle={toggleCap} cols={COLS} />
+          }
 
           {selectedCaps.length > 0 && (
             <SelectedTags people={selectedCaps} onRemove={cap => toggleCap(cap)} />
@@ -334,9 +455,12 @@ function Step2({
         <TouchableOpacity style={s.cancelBtn} onPress={onCancelar} activeOpacity={0.8}>
           <Text style={s.cancelBtnText}>Cancelar</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={s.crearBtn} onPress={onCrear} activeOpacity={0.85}>
-          <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
-          <Text style={s.crearBtnText}>Crear Sesión</Text>
+        <TouchableOpacity style={[s.crearBtn, saving && { opacity: 0.6 }]} onPress={saving ? undefined : onCrear} activeOpacity={0.85}>
+          {saving
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+          }
+          <Text style={s.crearBtnText}>{saving ? 'Creando...' : 'Crear Sesión'}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -467,6 +591,49 @@ function AddEmailModal({ visible, title, onClose, actionLabel }) {
 
         </Pressable>
       </Pressable>
+    </Modal>
+  );
+}
+
+// ── Modal de éxito ───────────────────────────────────────────────────────────
+
+function SuccessModal({ data, onClose }) {
+  return (
+    <Modal visible={!!data} transparent animationType="fade">
+      <View style={m.overlay}>
+        <View style={m.box}>
+
+          {/* Icono */}
+          <View style={sc.iconCircle}>
+            <Ionicons name="checkmark-circle" size={48} color="#22C55E" />
+          </View>
+
+          <Text style={sc.title}>¡Sesión Creada!</Text>
+          <Text style={sc.sessionName}>{data?.title}</Text>
+
+          <View style={sc.divider} />
+
+          <View style={sc.infoRow}>
+            <Ionicons name="calendar-outline" size={16} color="#697282" />
+            <Text style={sc.infoText}>La sesión fue registrada exitosamente</Text>
+          </View>
+
+          {data?.invites > 0 && (
+            <View style={sc.infoRow}>
+              <Ionicons name="mail-outline" size={16} color="#697282" />
+              <Text style={sc.infoText}>
+                {data.invites} invitación{data.invites > 1 ? 'es enviadas' : ' enviada'} a bomberos
+              </Text>
+            </View>
+          )}
+
+          <TouchableOpacity style={sc.btn} onPress={onClose} activeOpacity={0.85}>
+            <Ionicons name="arrow-back-outline" size={16} color="#fff" />
+            <Text style={sc.btnText}>Ver Sesiones</Text>
+          </TouchableOpacity>
+
+        </View>
+      </View>
     </Modal>
   );
 }
@@ -625,4 +792,34 @@ const m = StyleSheet.create({
     paddingVertical: 14, alignItems: 'center',
   },
   submitText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+});
+
+const sc = StyleSheet.create({
+  iconCircle: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: '#F0FDF4',
+    alignItems: 'center', justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  title: {
+    fontSize: 20, fontWeight: '800', color: '#1A1A1A',
+    textAlign: 'center',
+  },
+  sessionName: {
+    fontSize: 14, color: '#697282', textAlign: 'center',
+    fontWeight: '600',
+  },
+  divider: {
+    height: 1, backgroundColor: '#F0F0F0', marginVertical: 4,
+  },
+  infoRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+  },
+  infoText: { fontSize: 13, color: '#495565' },
+  btn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, backgroundColor: '#E85D27', borderRadius: 10,
+    paddingVertical: 14, marginTop: 4,
+  },
+  btnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

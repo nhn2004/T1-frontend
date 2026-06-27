@@ -26,6 +26,7 @@ import PersonasSesionesScreen from '../screens/people/PersonasSesionesScreen';
 // Screens ya construidas
 import SessionsScreen                from '../screens/sessions/SessionsScreen';
 import SessionDetailScreen           from '../screens/sessions/SessionDetailScreen';
+import SettingsScreen                from '../screens/settings/SettingsScreen';
 import ResultadosIndividualesScreen  from '../screens/resultados/ResultadosIndividualesScreen';
 import EvaluacionBomberoScreen       from '../screens/resultados/EvaluacionBomberoScreen';
 import ResultadosBomberoScreen       from '../screens/resultados/ResultadosBomberoScreen';
@@ -33,7 +34,6 @@ import CrearSesionScreen             from '../screens/sessions/CrearSesionScreen
 import TrainingScheduleScreen        from '../screens/schedule/TrainingScheduleScreen';
 import ProgressHistoryScreen         from '../screens/progress/ProgressHistoryScreen';
 import ValidationQueueScreen         from '../screens/dashboard/ValidationQueueScreen';
-import SettingsScreen                from '../screens/settings/SettingsScreen';
 
 const Stack = createStackNavigator();
 
