@@ -1,37 +1,65 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import useAuthStore from '../../store/authStore';
-
-const STATS = [
-  { id: 's1', label: 'Capacitaciones\nEn Curso',   value: '2',  icon: 'flame',          iconLib: 'mci', color: '#E85D27', bg: '#FFF0EA' },
-  { id: 's2', label: 'Capacitaciones\nPendientes', value: '5',  icon: 'time-outline',    iconLib: 'ion', color: '#8F949B', bg: '#F4F4F4' },
-  { id: 's3', label: 'Total\nBomberos',             value: '48', icon: 'people-outline',  iconLib: 'ion', color: '#1E88E5', bg: '#EAF3FD' },
-  { id: 's4', label: 'Capacitadores\nActivos',      value: '6',  icon: 'account-group',   iconLib: 'mci', color: '#08C65A', bg: '#E8FAF0' },
-];
-
-const UPCOMING = [
-  { id: 'u1', title: 'Capacitación G5', date: '10 Nov 2025', time: '09:00 AM', bomberos: 9,  status: 'PLANNED' },
-  { id: 'u2', title: 'Capacitación G6', date: '12 Nov 2025', time: '07:30 AM', bomberos: 7,  status: 'PLANNED' },
-  { id: 'u3', title: 'Capacitación G4', date: '8 Nov 2025',  time: '11:00 AM', bomberos: 14, status: 'ACTIVE'  },
-];
-
-const RECENT = [
-  { id: 'r1', icon: 'checkmark-circle', color: '#08C65A', text: 'Capacitación B3 completada — 15 bomberos evaluados', time: '20 Oct' },
-  { id: 'r2', icon: 'person-add',       color: '#1E88E5', text: 'Nuevo bombero incorporado: Rafael Medina',            time: '18 Oct' },
-  { id: 'r3', icon: 'close-circle',     color: '#D83B35', text: 'Capacitación C2 cancelada',                           time: '15 Sep' },
-  { id: 'r4', icon: 'create-outline',   color: '#E85D27', text: 'Nueva capacitación creada: Capacitación G7',          time: '14 Nov' },
-];
+import { sessionService } from '../../services';
+import { traineeService } from '../../services/traineeService';
+import api from '../../services/api';
 
 const STATUS_BADGE = {
-  ACTIVE:  { label: 'En Curso', bg: '#1E88E5' },
+  ACTIVE:  { label: 'En Curso',  bg: '#1E88E5' },
   PLANNED: { label: 'Pendiente', bg: '#8F949B' },
 };
 
 export default function FireChiefDashboard({ navigation }) {
   const user = useAuthStore(s => s.user);
   const nombre = user?.name ?? 'Jefe de Bomberos';
+
+  const [sessions,       setSessions]       = useState([]);
+  const [traineeCount,   setTraineeCount]   = useState(null);
+  const [personnelCount, setPersonnelCount] = useState(null);
+  const [loading,        setLoading]        = useState(true);
+
+  useEffect(() => {
+    Promise.allSettled([
+      sessionService.getAll(),
+      traineeService.getAll(),
+      api.get('/health-personnel'),
+    ]).then(([sessR, traineeR, hpR]) => {
+      if (sessR.status    === 'fulfilled') setSessions(sessR.value);
+      if (traineeR.status === 'fulfilled') setTraineeCount(traineeR.value.length);
+      if (hpR.status      === 'fulfilled') setPersonnelCount((hpR.value.data.data ?? []).length);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const activeSessions  = sessions.filter(s => s.status === 'ACTIVE').length;
+  const plannedSessions = sessions.filter(s => s.status === 'PLANNED').length;
+  const fmt = n => (loading && n === null) ? '—' : String(n ?? 0);
+
+  const STATS = [
+    { id: 's1', label: 'Capacitaciones\nEn Curso',   value: loading ? '—' : String(activeSessions),  icon: 'flame',          iconLib: 'mci', color: '#E85D27', bg: '#FFF0EA' },
+    { id: 's2', label: 'Capacitaciones\nPendientes', value: loading ? '—' : String(plannedSessions), icon: 'time-outline',    iconLib: 'ion', color: '#8F949B', bg: '#F4F4F4' },
+    { id: 's3', label: 'Total\nBomberos',             value: fmt(traineeCount),                        icon: 'people-outline',  iconLib: 'ion', color: '#1E88E5', bg: '#EAF3FD' },
+    { id: 's4', label: 'Capacitadores\nActivos',      value: fmt(personnelCount),                      icon: 'account-group',   iconLib: 'mci', color: '#08C65A', bg: '#E8FAF0' },
+  ];
+
+  const upcoming = [...sessions]
+    .filter(s => s.status === 'PLANNED' || s.status === 'ACTIVE')
+    .sort((a, b) => new Date(a.scheduledStart) - new Date(b.scheduledStart))
+    .slice(0, 5);
+
+  const recent = [...sessions]
+    .filter(s => s.status === 'COMPLETED' || s.status === 'CANCELLED')
+    .sort((a, b) => new Date(b.scheduledStart) - new Date(a.scheduledStart))
+    .slice(0, 4)
+    .map(s => ({
+      id:    s.id,
+      icon:  s.status === 'COMPLETED' ? 'checkmark-circle' : 'close-circle',
+      color: s.status === 'COMPLETED' ? '#08C65A' : '#D83B35',
+      text:  `Capacitación "${s.title}" ${s.status === 'COMPLETED' ? 'completada' : 'cancelada'}`,
+      time:  new Date(s.scheduledStart).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+    }));
 
   return (
     <SafeAreaView style={styles.root}>
@@ -43,14 +71,17 @@ export default function FireChiefDashboard({ navigation }) {
             <Text style={styles.greeting}>Bienvenido, {nombre}</Text>
             <Text style={styles.subtitle}>Jefatura de Bomberos · Panel de Control</Text>
           </View>
-          <TouchableOpacity
-            style={styles.crearBtn}
-            onPress={() => navigation.navigate('CrearSesion')}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="add-circle-outline" size={18} color="#fff" />
-            <Text style={styles.crearBtnText}>Crear Sesión</Text>
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            {loading && <ActivityIndicator size="small" color="#E85D27" />}
+            <TouchableOpacity
+              style={styles.crearBtn}
+              onPress={() => navigation.navigate('CrearSesion')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="add-circle-outline" size={18} color="#fff" />
+              <Text style={styles.crearBtnText}>Crear Sesión</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── Middle row ── */}
@@ -67,7 +98,10 @@ export default function FireChiefDashboard({ navigation }) {
               <MaterialCommunityIcons name="fire" size={18} color="#E85D27" />
               <Text style={styles.panelTitle}>Próximas Capacitaciones</Text>
             </View>
-            {UPCOMING.map(u => {
+            {!loading && upcoming.length === 0 && (
+              <Text style={styles.emptyText}>No hay capacitaciones próximas</Text>
+            )}
+            {upcoming.map(u => {
               const badge = STATUS_BADGE[u.status] ?? STATUS_BADGE.PLANNED;
               return (
                 <TouchableOpacity
@@ -78,7 +112,7 @@ export default function FireChiefDashboard({ navigation }) {
                 >
                   <View style={styles.upcomingLeft}>
                     <Text style={styles.upcomingTitle}>{u.title}</Text>
-                    <Text style={styles.upcomingMeta}>{u.date} · {u.time} · {u.bomberos} bomberos</Text>
+                    <Text style={styles.upcomingMeta}>{u.date} · {u.time} · {u.capacityCount} bomberos</Text>
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
                     <Text style={styles.statusBadgeText}>{badge.label}</Text>
@@ -101,8 +135,11 @@ export default function FireChiefDashboard({ navigation }) {
         {/* ── Recent activity ── */}
         <View style={styles.panel}>
           <Text style={styles.panelTitle}>Actividad Reciente</Text>
+          {!loading && recent.length === 0 && (
+            <Text style={styles.emptyText}>No hay actividad reciente</Text>
+          )}
           <View style={styles.recentList}>
-            {RECENT.map(r => (
+            {recent.map(r => (
               <View key={r.id} style={styles.recentRow}>
                 <Ionicons name={r.icon} size={18} color={r.color} />
                 <Text style={styles.recentText} numberOfLines={1}>{r.text}</Text>
@@ -144,6 +181,7 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 20, fontWeight: '800', color: '#1A1A1A' },
   subtitle: { fontSize: 12, color: '#697282', marginTop: 2 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   crearBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: '#E85D27', borderRadius: 10,
@@ -175,6 +213,8 @@ const styles = StyleSheet.create({
   },
   panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 2 },
   panelTitle: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
+
+  emptyText: { color: '#9AA3B0', fontSize: 13, textAlign: 'center', marginVertical: 8 },
 
   upcomingRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
