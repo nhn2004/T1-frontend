@@ -9,6 +9,13 @@ import { COLORS } from '../../constants';
 import useAuthStore from '../../store/authStore';
 import { authService } from '../../services';
 
+const DEMO_USERS = [
+  { label: 'Médico',    icon: 'medkit-outline',   email: 'medico@smab.app',   bg: '#E8F4FD', border: '#90CAF9', color: '#1565C0' },
+  { label: 'Bombero',   icon: 'shield-outline',    email: 'bombero@smab.app',  bg: '#FFF3E0', border: '#FFCC80', color: '#E65100' },
+  { label: 'Jefe',      icon: 'star-outline',      email: 'jefe@smab.app',     bg: '#F3E5F5', border: '#CE93D8', color: '#6A1B9A' },
+];
+const DEMO_PASS = 'Smab2026!';
+
 export default function LoginScreen({ navigation }) {
   const setAuth = useAuthStore((s) => s.setAuth);
 
@@ -17,6 +24,12 @@ export default function LoginScreen({ navigation }) {
   const [showPass, setShowPass] = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  function fillDemo(user) {
+    setEmail(user.email);
+    setPassword(DEMO_PASS);
+    setErrorMsg('');
+  }
 
   async function handleLogin() {
     setErrorMsg('');
@@ -135,6 +148,28 @@ export default function LoginScreen({ navigation }) {
             {loading ? 'Ingresando...' : 'Ingresar'}
           </Text>
         </TouchableOpacity>
+
+        {/* ── Acceso rápido demo ── */}
+        <View style={styles.demoSection}>
+          <View style={styles.demoDividerRow}>
+            <View style={styles.demoDivider} />
+            <Text style={styles.demoLabel}>Acceso rápido — pruebas</Text>
+            <View style={styles.demoDivider} />
+          </View>
+          <View style={styles.demoChips}>
+            {DEMO_USERS.map(u => (
+              <TouchableOpacity
+                key={u.email}
+                style={[styles.demoChip, { backgroundColor: u.bg, borderColor: u.border }]}
+                onPress={() => fillDemo(u)}
+                activeOpacity={0.75}
+              >
+                <Ionicons name={u.icon} size={15} color={u.color} />
+                <Text style={[styles.demoChipText, { color: u.color }]}>{u.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       </KeyboardAvoidingView>
 
     </SafeAreaView>
@@ -211,4 +246,15 @@ const styles = StyleSheet.create({
   },
   loginBtnDisabled: { backgroundColor: '#BDBDBD' },
   loginBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+
+  demoSection: { gap: 10, marginTop: 4 },
+  demoDividerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  demoDivider: { flex: 1, height: 1, backgroundColor: '#E8EBF0' },
+  demoLabel: { fontSize: 11, color: '#9AA3B0', fontWeight: '600' },
+  demoChips: { flexDirection: 'row', gap: 8 },
+  demoChip: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5,
+  },
+  demoChipText: { fontSize: 13, fontWeight: '700' },
 });

@@ -42,7 +42,7 @@ export default function TraineeDashboard({ navigation }) {
       invitationService.getAll(),
       sessionService.getAll(),
     ])
-      .then(([invs, sessions]) => {
+      .then(async ([invs, sessions]) => {
         // Invitación pendiente para este usuario
         const myRaw = invs.find(
           i => i.targetEmail === user.email && i.status === 'Pending'
