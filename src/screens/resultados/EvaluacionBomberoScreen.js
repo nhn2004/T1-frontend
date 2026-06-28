@@ -1,75 +1,108 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  ScrollView, Modal, Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import Step1SignosVitales from './components/Step1SignosVitales';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SINTOMAS_LIST } from './__mocks__/resultadosData';
 import { vitalSignsService } from '../../services/vitalSignsService';
 import { healthPersonnelService } from '../../services/healthPersonnelService';
 import { useAuth } from '../../hooks';
 
-// ── Etapas ───────────────────────────────────────────────────────────────────
+// ── Etapas ────────────────────────────────────────────────────────────────────
 const S = {
-  INITIAL:        'initial',
-  PRE_FORM:       'pre_form',
-  NO_APTO:        'no_apto',
-  APTO:           'apto',
-  PRIMER_TIEMPO:  'primer_tiempo',
-  T2_FORM:        't2_form',
-  ENTRE_TIEMPOS:  'entre_tiempos',
-  SEGUNDO_TIEMPO: 'segundo_tiempo',
-  T3_FORM:        't3_form',
-  EVAL_FINAL:     'eval_final',
-  LISTO:          'listo',
+  PRE_SESION:   'pre_sesion',
+  NO_APTO:      'no_apto',
+  APTO:         'apto',
+  QUEMA_ACTIVA: 'quema_activa',
+  POST_QUEMA:   'post_quema',
+  CIERRE:       'cierre',
+  LISTO:        'listo',
 };
 
-const EMPTY_VITALS = {
-  horaInicio: '', horaFin: '',
+const ROLES_BOMBERO = ['Portero', 'Speaker', 'Seguridad', 'Observador'];
+
+const EMPTY_PRE = {
+  rol: '', esFumador: null, expuestoHumo: null,
   temperatura: '', presionSistolica: '', presionDiastolica: '',
-  frecuenciaCardiaca: '', nivelOxigeno: '',
-  nivelCO: '', tiempoTranscurrido: '',
-  sintomasSeleccionados: [],
+  frecuenciaCardiaca: '', nivelOxigeno: '', nivelCO: '',
+  sintomas: [],
+};
+const EMPTY_POST_QUEMA = {
+  duracionMin: '', duracionSeg: '',
+  temperatura: '', presionSistolica: '', presionDiastolica: '',
+  frecuenciaCardiaca: '', nivelOxigeno: '', nivelCO: '',
+  sintomas: [],
+};
+const EMPTY_CIERRE = {
+  temperatura: '', presionSistolica: '', presionDiastolica: '',
+  frecuenciaCardiaca: '', nivelOxigeno: '', nivelCO: '',
+  sintomas: [], eventosEspeciales: '',
+};
+const EMPTY_INVESTIGACION = {
+  lactato_pre: '', lactato_post: '',
+  bioimpedancia_grasa: '', bioimpedancia_musculo: '', bioimpedancia_edad_metabolica: '',
+  stroop_tiempo: '', stroop_errores: '',
 };
 
-function vitalsComplete(form) {
-  return !!(form.temperatura && form.presionSistolica && form.presionDiastolica && form.frecuenciaCardiaca && form.nivelOxigeno && form.nivelCO);
+// ── Semáforo: verde = normal, naranja = fuera de rango ───────────────────────
+function getSemaforoColor(field, rawVal) {
+  const val = parseFloat(rawVal);
+  if (isNaN(val) || rawVal === '') return null;
+  switch (field) {
+    case 'temperatura':
+      return (val >= 35 && val <= 38) ? 'green' : 'orange';
+    case 'presionSistolica':
+      return (val >= 90 && val <= 140) ? 'green' : 'orange';
+    case 'presionDiastolica':
+      return (val >= 60 && val <= 90) ? 'green' : 'orange';
+    case 'frecuenciaCardiaca':
+      return (val >= 60 && val <= 100) ? 'green' : 'orange';
+    case 'nivelOxigeno':
+      return val >= 95 ? 'green' : 'orange';
+    case 'nivelCO':
+      return val < 10 ? 'green' : 'orange';
+    default: return null;
+  }
 }
 
-function secsToDisplay(secs) {
-  const mm = Math.floor(secs / 60).toString().padStart(2, '0');
-  const ss = (secs % 60).toString().padStart(2, '0');
-  return `${mm}:${ss}`;
-}
+const SEM_BORDER = { green: '#27AE60', orange: '#E85D27' };
+const SEM_BG     = { green: '#F0FFF4', orange: '#FFF5F0' };
 
-// Umbrales de aptitud
+// ── Aptitud ───────────────────────────────────────────────────────────────────
 function verificarAptitud(form) {
   const spo2  = parseFloat(form.nivelOxigeno);
   const temp  = parseFloat(form.temperatura);
   const pulso = parseFloat(form.frecuenciaCardiaca);
   const co    = parseFloat(form.nivelCO);
+  const sist  = parseFloat(form.presionSistolica);
+  const diast = parseFloat(form.presionDiastolica);
   const razones = [];
-  if (!isNaN(spo2)  && spo2  < 95)  razones.push(`SpO₂ = ${spo2}% — mínimo requerido: 95%`);
-  if (!isNaN(temp)  && temp  > 38)  razones.push(`Temperatura = ${temp}°C — máximo permitido: 38°C`);
-  if (!isNaN(pulso) && pulso > 110) razones.push(`Pulso = ${pulso} lpm — máximo permitido: 110 lpm`);
-  if (!isNaN(co)    && co    > 20)  razones.push(`CO = ${co} ppm — máximo permitido: 20 ppm`);
+  if (!isNaN(spo2)  && spo2  < 92)               razones.push('SpO₂ baja');
+  if (!isNaN(temp)  && (temp > 39 || temp < 35))  razones.push('Temperatura fuera de rango');
+  if (!isNaN(pulso) && pulso > 130)               razones.push('Frecuencia cardíaca alta');
+  if (!isNaN(co)    && co > 20)                   razones.push('Nivel de CO elevado');
+  if (!isNaN(sist)  && (sist > 160 || sist < 80)) razones.push('Presión sistólica fuera de rango');
+  if (!isNaN(diast) && (diast > 100 || diast < 50)) razones.push('Presión diastólica fuera de rango');
   return { apto: razones.length === 0, razones };
 }
 
-// ── Pantalla ──────────────────────────────────────────────────────────────────
-export default function EvaluacionBomberoScreen({ navigation, route }) {
-  const bomberoName      = route?.params?.bomberoName      ?? 'Bombero';
-  const participantId    = route?.params?.bomberoId        ?? null;
-  const { user }         = useAuth();
-  const hpIdRef          = React.useRef(null);
+function vitalsComplete(form) {
+  return !!(form.temperatura && form.presionSistolica && form.presionDiastolica
+         && form.frecuenciaCardiaca && form.nivelOxigeno && form.nivelCO);
+}
 
-  const [stage,     setStage]     = React.useState(S.INITIAL);
-  const [preForm,   setPreForm]   = React.useState(EMPTY_VITALS);
-  const [t2Form,    setT2Form]    = React.useState(EMPTY_VITALS);
-  const [t3Form,    setT3Form]    = React.useState(EMPTY_VITALS);
-  const [finalSintomas, setFinalSintomas] = React.useState([]);
-  const [aptitud,   setAptitud]   = React.useState(null);
+// ── Pantalla principal ────────────────────────────────────────────────────────
+export default function EvaluacionBomberoScreen({ navigation, route }) {
+  const bomberoName   = route?.params?.bomberoName ?? 'Bombero';
+  const participantId = route?.params?.bomberoId   ?? null;
+  const numQuemas     = route?.params?.numQuemas   ?? 2;
+  const { user }      = useAuth();
+  const hpIdRef       = React.useRef(null);
+
+  const [stage,        setStage]        = useState(S.PRE_SESION);
+  const [currentQuema, setCurrentQuema] = useState(1);
 
   // Resolver HealthPersonnelId del médico logueado
   React.useEffect(() => {
@@ -86,162 +119,214 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
     try { await vitalSignsService.submit(participantId, hpIdRef.current, form); } catch {}
   }
 
-  const updatePre = (f, v) => setPreForm(p => ({ ...p, [f]: v }));
-  const updateT2  = (f, v) => setT2Form(p  => ({ ...p, [f]: v }));
-  const updateT3  = (f, v) => setT3Form(p  => ({ ...p, [f]: v }));
+  const [preData,       setPreData]       = useState(EMPTY_PRE);
+  const [quemasData,    setQuemasData]    = useState(() =>
+    Array.from({ length: numQuemas }, () => ({ ...EMPTY_POST_QUEMA }))
+  );
+  const [cierreData,    setCierreData]    = useState(EMPTY_CIERRE);
+  const [aptitud,       setAptitud]       = useState(null);
+  const [isNoApto,      setIsNoApto]      = useState(false);
+  const [esInvestigacion, setEsInvestigacion] = useState(false);
+  const [invData,       setInvData]       = useState(EMPTY_INVESTIGACION);
 
-  function toggleSintoma(form, setForm, sintoma) {
-    setForm(p => {
-      const prev = p.sintomasSeleccionados || [];
-      const next = prev.includes(sintoma) ? prev.filter(s => s !== sintoma) : [...prev, sintoma];
-      return { ...p, sintomasSeleccionados: next };
+  // Validación de campos vacíos (mostrar rojo al hacer click en Evaluar)
+  const [showPreErrors, setShowPreErrors]   = useState(false);
+  const [showPostErrors, setShowPostErrors] = useState(false);
+
+  const [quemaSecs, setQuemaSecs] = useState(0);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (stage === S.QUEMA_ACTIVA) {
+      setQuemaSecs(0);
+      timerRef.current = setInterval(() => setQuemaSecs(s => s + 1), 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [stage, currentQuema]);
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function secsToMM(s) { return pad(Math.floor(s / 60)); }
+  function secsToSS(s) { return pad(s % 60); }
+
+  // Updaters
+  const updatePre    = (f, v) => setPreData(p => ({ ...p, [f]: v }));
+  const updateCierre = (f, v) => setCierreData(p => ({ ...p, [f]: v }));
+  const updateInv    = (f, v) => setInvData(p => ({ ...p, [f]: v }));
+
+  function updateQuema(f, v) {
+    setQuemasData(prev => {
+      const next = [...prev];
+      next[currentQuema - 1] = { ...next[currentQuema - 1], [f]: v };
+      return next;
     });
   }
 
+  function toggleSintomaPre(s) {
+    setPreData(p => {
+      const sins = p.sintomas.includes(s) ? p.sintomas.filter(x => x !== s) : [...p.sintomas, s];
+      return { ...p, sintomas: sins };
+    });
+  }
+  function toggleSintomaQuema(s) {
+    setQuemasData(prev => {
+      const next = [...prev];
+      const cur = next[currentQuema - 1];
+      const sins = cur.sintomas.includes(s) ? cur.sintomas.filter(x => x !== s) : [...cur.sintomas, s];
+      next[currentQuema - 1] = { ...cur, sintomas: sins };
+      return next;
+    });
+  }
+  function toggleSintomaCierre(s) {
+    setCierreData(p => {
+      const sins = p.sintomas.includes(s) ? p.sintomas.filter(x => x !== s) : [...p.sintomas, s];
+      return { ...p, sintomas: sins };
+    });
+  }
+
+  // Evaluar aptitud — siempre disponible; valida campos vacíos primero
   function handleEvaluarPre() {
-    const result = verificarAptitud(preForm);
+    if (!vitalsComplete(preData) || !preData.rol) {
+      setShowPreErrors(true);
+      return;
+    }
+    setShowPreErrors(false);
+    const result = verificarAptitud(preData);
     setAptitud(result);
-    submitVitals(preForm);
+    submitVitals(preData);
     setStage(result.apto ? S.APTO : S.NO_APTO);
   }
 
-  // Pre-prueba: "Ahora Fin" habilitado cuando horaInicio llenado + todos los vitales
-  const preFinEnabled = !!preForm.horaInicio && vitalsComplete(preForm);
+  function handleFinalizarQuema() {
+    setQuemasData(prev => {
+      const next = [...prev];
+      next[currentQuema - 1] = {
+        ...next[currentQuema - 1],
+        duracionMin: secsToMM(quemaSecs),
+        duracionSeg: secsToSS(quemaSecs),
+      };
+      return next;
+    });
+    setStage(S.POST_QUEMA);
+  }
+
+  function handleGuardarPostQuema() {
+    if (!vitalsComplete(quemasData[currentQuema - 1])) {
+      setShowPostErrors(true);
+      return;
+    }
+    setShowPostErrors(false);
+    if (currentQuema < numQuemas) {
+      setCurrentQuema(q => q + 1);
+      setStage(S.QUEMA_ACTIVA);
+    } else {
+      setStage(S.CIERRE);
+    }
+  }
+
+  const curQuemaData = quemasData[currentQuema - 1];
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+    <SafeAreaView style={st.root} edges={['top', 'bottom']}>
 
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
+      {/* ── Header ── */}
+      <View style={st.header}>
+        <View style={st.headerLeft}>
+          <View style={st.avatar}>
+            <Text style={st.avatarText}>
               {bomberoName.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
             </Text>
           </View>
           <View>
-            <Text style={styles.bomberName}>{bomberoName}</Text>
-            <Text style={styles.bomberSub}>Bombero voluntario · Casa de Fuego</Text>
+            <Text style={st.bomberName}>{bomberoName}</Text>
+            <Text style={st.bomberSub}>Evaluación · {numQuemas} quema{numQuemas > 1 ? 's' : ''}</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.volverBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={st.volverBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={15} color="#2E2E2E" />
-          <Text style={styles.volverText}>Volver</Text>
+          <Text style={st.volverText}>Volver</Text>
         </TouchableOpacity>
       </View>
 
-      <TimelineBar stage={stage} />
+      {/* ── Timeline ── */}
+      <TimelineBar stage={stage} currentQuema={currentQuema} numQuemas={numQuemas} />
 
-      <View style={styles.body}>
-        <View style={styles.card}>
+      {/* ── No Apto Banner ── */}
+      {isNoApto && stage !== S.NO_APTO && stage !== S.LISTO && (
+        <View style={st.noAptoBanner}>
+          <Ionicons name="warning" size={15} color="#fff" />
+          <Text style={st.noAptoBannerText}>Bombero marcado NO APTO — Completa el cierre</Text>
+        </View>
+      )}
 
-          {stage === S.INITIAL && (
-            <InitialPanel onStart={() => setStage(S.PRE_FORM)} />
-          )}
+      {/* ── Body ── */}
+      <View style={st.body}>
+        <View style={st.card}>
 
-          {/* PRE-PRUEBA: Ahora Fin auto-evalúa; sin botón extra */}
-          {stage === S.PRE_FORM && (
-            <FormPanel
-              titulo="Pre-Prueba — Signos Vitales"
-              formData={preForm}
-              updateField={updatePre}
-              showTiempo={false}
-              finEnabled={preFinEnabled}
-              onHoraFinCapture={handleEvaluarPre}
-              onToggleSintoma={s => toggleSintoma(preForm, setPreForm, s)}
-              showFooter={false}
+          {stage === S.PRE_SESION && (
+            <PreSesionPanel
+              data={preData}
+              onChange={updatePre}
+              onToggleSintoma={toggleSintomaPre}
+              showErrors={showPreErrors}
+              onEvaluar={handleEvaluarPre}
             />
           )}
 
           {stage === S.NO_APTO && (
             <NoAptoPanel
+              data={preData}
               razones={aptitud?.razones ?? []}
               onTerminar={() => navigation.goBack()}
-              onReintentar={() => { setPreForm(EMPTY_VITALS); setStage(S.PRE_FORM); }}
+              onReintentar={() => setStage(S.PRE_SESION)}
             />
           )}
 
           {stage === S.APTO && (
             <AptoPanel
-              formData={preForm}
-              onIniciar={() => setStage(S.PRIMER_TIEMPO)}
+              data={preData}
+              onIniciar={() => setStage(S.QUEMA_ACTIVA)}
             />
           )}
 
-          {/* 1er TIEMPO — cronómetro */}
-          {stage === S.PRIMER_TIEMPO && (
-            <TiempoActivoPanel
-              label="1er Tiempo"
-              color="#E85D27"
-              btnLabel="Finalizar 1er Tiempo"
-              onFinalizar={(secs) => {
-                setT2Form(f => ({ ...f, tiempoTranscurrido: secsToDisplay(secs) }));
-                setStage(S.T2_FORM);
-              }}
+          {stage === S.QUEMA_ACTIVA && (
+            <QuemaActivaPanel
+              quemaNum={currentQuema}
+              secs={quemaSecs}
+              toMM={secsToMM} toSS={secsToSS}
+              onFinalizar={handleFinalizarQuema}
             />
           )}
 
-          {/* REGISTRO T2 */}
-          {stage === S.T2_FORM && (
-            <FormPanel
-              titulo="Registro — Después del 1er Tiempo"
-              formData={t2Form}
-              updateField={updateT2}
-              showTiempo
-              onToggleSintoma={s => toggleSintoma(t2Form, setT2Form, s)}
-              showFooter
-              btnLabel="Guardar T2"
-              btnColor="#E85D27"
-              btnEnabled={vitalsComplete(t2Form)}
-              onGuardar={() => { submitVitals(t2Form); setStage(S.ENTRE_TIEMPOS); }}
+          {stage === S.POST_QUEMA && (
+            <PostQuemaPanel
+              quemaNum={currentQuema}
+              numQuemas={numQuemas}
+              data={curQuemaData}
+              onChange={updateQuema}
+              onToggleSintoma={toggleSintomaQuema}
+              showErrors={showPostErrors}
+              onGuardar={handleGuardarPostQuema}
             />
           )}
 
-          {stage === S.ENTRE_TIEMPOS && (
-            <EntrePanel
-              onSegundoTiempo={() => setStage(S.SEGUNDO_TIEMPO)}
-              onGuardar={() => setStage(S.EVAL_FINAL)}
-            />
-          )}
-
-          {/* 2do TIEMPO — cronómetro */}
-          {stage === S.SEGUNDO_TIEMPO && (
-            <TiempoActivoPanel
-              label="2do Tiempo"
-              color="#C62828"
-              btnLabel="Finalizar 2do Tiempo"
-              onFinalizar={(secs) => {
-                setT3Form(f => ({ ...f, tiempoTranscurrido: secsToDisplay(secs) }));
-                setStage(S.T3_FORM);
-              }}
-            />
-          )}
-
-          {/* REGISTRO T3 */}
-          {stage === S.T3_FORM && (
-            <FormPanel
-              titulo="Registro — Después del 2do Tiempo"
-              formData={t3Form}
-              updateField={updateT3}
-              showTiempo
-              onToggleSintoma={s => toggleSintoma(t3Form, setT3Form, s)}
-              showFooter
-              btnLabel="Guardar T3"
-              btnColor="#C62828"
-              btnEnabled={vitalsComplete(t3Form)}
-              onGuardar={() => { submitVitals(t3Form); setStage(S.EVAL_FINAL); }}
-            />
-          )}
-
-          {stage === S.EVAL_FINAL && (
-            <EvaluacionFinalPanel
-              sintomas={finalSintomas}
-              onToggle={s => setFinalSintomas(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s])}
-              onGuardar={() => setStage(S.LISTO)}
+          {stage === S.CIERRE && (
+            <CierrePanel
+              data={cierreData}
+              isNoApto={isNoApto}
+              onChange={updateCierre}
+              onToggleSintoma={toggleSintomaCierre}
+              esInvestigacion={esInvestigacion}
+              setEsInvestigacion={setEsInvestigacion}
+              invData={invData}
+              updateInv={updateInv}
+              onFinalizar={() => setStage(S.LISTO)}
             />
           )}
 
           {stage === S.LISTO && (
-            <ListoPanel onVolver={() => navigation.goBack()} />
+            <ListoPanel isNoApto={isNoApto} onVolver={() => navigation.goBack()} />
           )}
 
         </View>
@@ -252,41 +337,50 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
 
 // ── TimelineBar ───────────────────────────────────────────────────────────────
 
-function TimelineBar({ stage }) {
-  const pasos = [
-    { key: 'pre',    label: 'PRE',          stages: [S.PRE_FORM] },
-    { key: 't1',     label: '1er Tiempo',   stages: [S.PRIMER_TIEMPO] },
-    { key: 't2',     label: 'Registro',     stages: [S.T2_FORM] },
-    { key: 'entre',  label: 'Decisión',     stages: [S.ENTRE_TIEMPOS] },
-    { key: 't3',     label: '2do Registro', stages: [S.SEGUNDO_TIEMPO, S.T3_FORM] },
-    { key: 'final',  label: 'Final',        stages: [S.EVAL_FINAL, S.LISTO] },
-  ];
+function TimelineBar({ stage, currentQuema, numQuemas }) {
+  const preStages    = [S.PRE_SESION, S.NO_APTO, S.APTO];
+  const cierreStages = [S.CIERRE, S.LISTO];
+  const quemaStages  = [S.QUEMA_ACTIVA, S.POST_QUEMA];
 
-  const ORDER = [
-    S.INITIAL, S.PRE_FORM, S.NO_APTO, S.APTO, S.PRIMER_TIEMPO,
-    S.T2_FORM, S.ENTRE_TIEMPOS, S.SEGUNDO_TIEMPO, S.T3_FORM, S.EVAL_FINAL, S.LISTO,
+  function isDone(idx) {
+    if (idx === 0) return !preStages.includes(stage);
+    if (idx === numQuemas + 1) return stage === S.LISTO;
+    if (cierreStages.includes(stage)) return true;
+    if (quemaStages.includes(stage)) return currentQuema > idx;
+    return false;
+  }
+  function isActive(idx) {
+    if (idx === 0) return preStages.includes(stage);
+    if (idx === numQuemas + 1) return cierreStages.includes(stage);
+    return quemaStages.includes(stage) && currentQuema === idx;
+  }
+
+  const steps = [
+    { key: 'pre', label: 'Pre-sesión' },
+    ...Array.from({ length: numQuemas }, (_, i) => ({ key: `q${i + 1}`, label: `Quema ${i + 1}` })),
+    { key: 'cierre', label: 'Cierre' },
   ];
-  const currentIdx = ORDER.indexOf(stage);
 
   return (
     <View style={tl.bar}>
-      {pasos.map((paso, i) => {
-        const pasoIdx  = ORDER.indexOf(paso.stages[0]);
-        const isDone   = pasoIdx < currentIdx && !paso.stages.includes(stage);
-        const isActive = paso.stages.includes(stage);
-        const isLast   = i === pasos.length - 1;
+      {steps.map((step, i) => {
+        const done   = isDone(i);
+        const active = isActive(i);
+        const isLast = i === steps.length - 1;
         return (
-          <View key={paso.key} style={tl.stepWrap}>
-            <View style={[tl.dot, isDone && tl.dotDone, isActive && tl.dotActive]}>
-              {isDone
-                ? <Ionicons name="checkmark" size={10} color="#fff" />
-                : <Text style={[tl.dotNum, isActive && tl.dotNumActive]}>{i + 1}</Text>
-              }
+          <View key={step.key} style={tl.stepWrap}>
+            <View style={tl.dotRow}>
+              <View style={[tl.dot, done && tl.dotDone, active && tl.dotActive]}>
+                {done
+                  ? <Ionicons name="checkmark" size={10} color="#fff" />
+                  : <Text style={[tl.dotText, (active || done) && { color: '#fff' }]}>{i + 1}</Text>
+                }
+              </View>
+              {!isLast && <View style={[tl.line, done && tl.lineDone]} />}
             </View>
-            <Text style={[tl.label, isActive && tl.labelActive, isDone && tl.labelDone]}>
-              {paso.label}
+            <Text style={[tl.label, active && tl.labelActive, done && tl.labelDone]} numberOfLines={1}>
+              {step.label}
             </Text>
-            {!isLast && <View style={[tl.line, isDone && tl.lineDone]} />}
           </View>
         );
       })}
@@ -294,415 +388,740 @@ function TimelineBar({ stage }) {
   );
 }
 
-// ── Panels ────────────────────────────────────────────────────────────────────
+// ── PreSesionPanel ────────────────────────────────────────────────────────────
 
-function InitialPanel({ onStart }) {
+function PreSesionPanel({ data, onChange, onToggleSintoma, showErrors, onEvaluar }) {
+  const errRol    = showErrors && !data.rol;
+  const errHumo1  = showErrors && data.esFumador === null;
+  const errHumo2  = showErrors && data.expuestoHumo === null;
+
   return (
-    <View style={p.center}>
-      <View style={p.iconCircle}>
-        <Ionicons name="medical-outline" size={48} color="#E85D27" />
-      </View>
-      <Text style={p.bigTitle}>Evaluación Pre-Prueba</Text>
-      <Text style={p.bigSub}>
-        Registra los signos vitales del bombero antes de ingresar al área de entrenamiento.
-        Los valores determinarán si puede realizar la prueba.
-      </Text>
-      <TouchableOpacity style={[p.bigBtn, { backgroundColor: '#E85D27' }]} onPress={onStart}>
-        <Ionicons name="clipboard-outline" size={18} color="#fff" />
-        <Text style={p.bigBtnText}>Iniciar Pre-Prueba</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
+    <View style={p.twoCol}>
 
-function FormPanel({
-  titulo, formData, updateField, showTiempo,
-  finEnabled, onHoraFinCapture, onToggleSintoma,
-  showFooter, btnLabel, btnColor, btnEnabled = true, onGuardar,
-}) {
-  return (
-    <View style={{ flex: 1 }}>
-      <View style={p.formHeader}>
-        <Text style={p.formTitle}>{titulo}</Text>
-      </View>
+      {/* ── Izquierda: Rol + Exposición ── */}
+      <View style={p.leftCol}>
+        <View style={p.panelHeader}>
+          <Ionicons name="person-outline" size={18} color="#E85D27" />
+          <Text style={p.panelTitle}>Pre-sesión</Text>
+        </View>
 
-      <View style={{ flex: 1 }}>
-        <Step1SignosVitales
-          formData={formData}
-          updateField={updateField}
-          showTiempo={showTiempo}
-          finEnabled={finEnabled}
-          onHoraFinCapture={onHoraFinCapture}
-          sintomas={SINTOMAS_LIST}
-          onToggleSintoma={onToggleSintoma}
+        <Text style={[p.secLabel, errRol && { color: '#D83B35' }]}>
+          Rol en la práctica {errRol && '— requerido'}
+        </Text>
+        <View style={p.chipGrid}>
+          {ROLES_BOMBERO.map(rol => (
+            <TouchableOpacity
+              key={rol}
+              style={[p.roleChip, data.rol === rol && p.roleChipActive, errRol && p.roleChipErr]}
+              onPress={() => onChange('rol', rol)}
+              activeOpacity={0.8}
+            >
+              <Text style={[p.roleChipText, data.rol === rol && p.roleChipTextActive]}>{rol}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={[p.secLabel, { marginTop: 6 }]}>Exposición al humo</Text>
+        <YesNoField
+          label="¿Es fumador habitual?"
+          value={data.esFumador}
+          hasError={errHumo1}
+          onChange={v => onChange('esFumador', v)}
         />
+        <YesNoField
+          label="¿Expuesto a humo últimas 48h?"
+          value={data.expuestoHumo}
+          hasError={errHumo2}
+          onChange={v => onChange('expuestoHumo', v)}
+        />
+
+        <Text style={[p.secLabel, { marginTop: 6 }]}>Síntomas — inicio del día</Text>
+        <SintomasChips selected={data.sintomas} onToggle={onToggleSintoma} />
       </View>
 
-      {showFooter && (
-        <View style={p.formFooter}>
-          <TouchableOpacity
-            style={[p.footerBtn, { backgroundColor: btnColor }, !btnEnabled && p.footerBtnDisabled]}
-            onPress={btnEnabled ? onGuardar : undefined}
-            activeOpacity={btnEnabled ? 0.8 : 1}
-          >
-            <Text style={p.footerBtnText}>{btnLabel}</Text>
-            <Ionicons name="arrow-forward" size={14} color="#fff" />
+      {/* ── Derecha: Vitales ── */}
+      <View style={p.rightCol}>
+        <Text style={p.secLabel}>Signos Vitales — Antes de entrar</Text>
+        <VitalesForm data={data} onChange={onChange} showErrors={showErrors} />
+
+        {/* ── Botón Evaluar (siempre activo, centrado abajo) ── */}
+        <View style={p.evalBtnWrap}>
+          <TouchableOpacity style={p.evalBtn} onPress={onEvaluar} activeOpacity={0.85}>
+            <Ionicons name="pulse-outline" size={17} color="#fff" />
+            <Text style={p.evalBtnText}>Evaluar Aptitud</Text>
+            <Ionicons name="arrow-forward" size={17} color="#fff" />
           </TouchableOpacity>
         </View>
-      )}
-    </View>
-  );
-}
-
-function NoAptoPanel({ razones, onTerminar, onReintentar }) {
-  return (
-    <View style={[p.center, { padding: 40, gap: 16 }]}>
-      <View style={p.noAptoIconBox}>
-        <Ionicons name="close-circle" size={64} color="#C62828" />
-      </View>
-      <Text style={p.noAptoTitle}>No puede realizar la prueba</Text>
-      <Text style={p.noAptoSub}>Los siguientes parámetros están fuera del rango permitido:</Text>
-      <View style={p.razonesBox}>
-        {razones.map((r, i) => (
-          <View key={i} style={p.razonRow}>
-            <Ionicons name="warning-outline" size={16} color="#C62828" />
-            <Text style={p.razonText}>{r}</Text>
-          </View>
-        ))}
-      </View>
-      <Text style={p.noAptoNote}>
-        El bombero debe recibir atención médica antes de participar en cualquier ejercicio.
-      </Text>
-      <View style={p.noAptoBtns}>
-        <TouchableOpacity style={p.reintentarBtn} onPress={onReintentar}>
-          <Ionicons name="refresh-outline" size={14} color="#495565" />
-          <Text style={p.reintentarText}>Reingresar valores</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={p.terminarBtn} onPress={onTerminar}>
-          <Ionicons name="checkmark-outline" size={14} color="#fff" />
-          <Text style={p.terminarText}>Terminar prueba</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-function AptoPanel({ formData, onIniciar }) {
-  const bp = (formData.presionSistolica && formData.presionDiastolica)
-    ? `${formData.presionSistolica}/${formData.presionDiastolica}`
-    : '—';
-  const campos = [
-    { label: 'Temperatura',  value: formData.temperatura        ? `${formData.temperatura}°C`          : '—' },
-    { label: 'Tensión Art.', value: bp },
-    { label: 'Pulso',        value: formData.frecuenciaCardiaca ? `${formData.frecuenciaCardiaca} lpm` : '—' },
-    { label: 'SpO₂',         value: formData.nivelOxigeno       ? `${formData.nivelOxigeno}%`          : '—' },
-    { label: 'CO',           value: formData.nivelCO            ? `${formData.nivelCO} ppm`            : '—' },
-  ];
+// ── NoAptoPanel ───────────────────────────────────────────────────────────────
+
+function NoAptoPanel({ data, razones, onTerminar, onReintentar }) {
   return (
-    <View style={p.center}>
-      <View style={[p.iconCircle, { backgroundColor: '#E8F5E9' }]}>
-        <Ionicons name="checkmark-circle" size={56} color="#2E7D32" />
+    <View style={p.centered}>
+      <View style={[p.resultBadge, { backgroundColor: '#FFF0EE', borderColor: '#FFCCCC' }]}>
+        <Ionicons name="close-circle" size={48} color="#D83B35" />
+        <Text style={[p.resultTitle, { color: '#D83B35' }]}>NO APTO</Text>
+        <Text style={p.resultSub}>El bombero no cumple los parámetros mínimos para la práctica.</Text>
       </View>
-      <Text style={[p.bigTitle, { color: '#2E7D32' }]}>Bombero APTO</Text>
-      <Text style={p.bigSub}>Todos los parámetros están dentro del rango normal.</Text>
-      <View style={p.valoresRow}>
-        {campos.map(c => (
-          <View key={c.label} style={p.valorChip}>
-            <Text style={p.valorLabel}>{c.label}</Text>
-            <Text style={p.valorValue}>{c.value}</Text>
-          </View>
-        ))}
+
+      {/* Vitales mostradas limpiamente */}
+      <View style={p.vitalesSummaryNoApto}>
+        <VitalStatItem
+          label="Temp." value={`${data.temperatura}°C`}
+          bad={razones.some(r => r.includes('Temperatura'))}
+        />
+        <VitalStatItem
+          label="PA" value={`${data.presionSistolica}/${data.presionDiastolica}`}
+          bad={razones.some(r => r.includes('sistólica') || r.includes('diastólica'))}
+        />
+        <VitalStatItem
+          label="Pulso" value={`${data.frecuenciaCardiaca} lpm`}
+          bad={razones.some(r => r.includes('cardíaca'))}
+        />
+        <VitalStatItem
+          label="SpO₂" value={`${data.nivelOxigeno}%`}
+          bad={razones.some(r => r.includes('SpO₂'))}
+        />
+        <VitalStatItem
+          label="CO" value={`${data.nivelCO} ppm`}
+          bad={razones.some(r => r.includes('CO'))}
+        />
+        <VitalStatItem label="Rol" value={data.rol} bad={false} />
       </View>
-      <TouchableOpacity style={[p.bigBtn, { backgroundColor: '#E85D27' }]} onPress={onIniciar}>
-        <Ionicons name="play-circle-outline" size={20} color="#fff" />
-        <Text style={p.bigBtnText}>Iniciar Primer Tiempo</Text>
+
+      <View style={p.btnRow}>
+        <TouchableOpacity style={p.outlineBtn} onPress={onReintentar} activeOpacity={0.8}>
+          <Ionicons name="create-outline" size={15} color="#E85D27" />
+          <Text style={p.outlineBtnText}>Corregir datos</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[p.mainBtn, { backgroundColor: '#697282' }]} onPress={onTerminar} activeOpacity={0.85}>
+          <Text style={p.mainBtnText}>Terminar evaluación</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// ── AptoPanel ─────────────────────────────────────────────────────────────────
+
+function AptoPanel({ data, onIniciar }) {
+  return (
+    <View style={p.centered}>
+      <View style={[p.resultBadge, { backgroundColor: '#F0FFF4', borderColor: '#C3E6CB' }]}>
+        <Ionicons name="checkmark-circle" size={48} color="#27AE60" />
+        <Text style={[p.resultTitle, { color: '#27AE60' }]}>APTO</Text>
+        <Text style={p.resultSub}>Parámetros dentro del rango. El bombero puede iniciar la práctica.</Text>
+      </View>
+
+      <View style={p.vitalesSummary}>
+        <VitalStatItem label="Temp."  value={`${data.temperatura}°C`} bad={false} />
+        <VitalStatItem label="PA"     value={`${data.presionSistolica}/${data.presionDiastolica}`} bad={false} />
+        <VitalStatItem label="Pulso"  value={`${data.frecuenciaCardiaca} lpm`} bad={false} />
+        <VitalStatItem label="SpO₂"   value={`${data.nivelOxigeno}%`} bad={false} />
+        <VitalStatItem label="CO"     value={`${data.nivelCO} ppm`} bad={false} />
+        <VitalStatItem label="Rol"    value={data.rol} bad={false} />
+      </View>
+
+      <View style={p.btnRow}>
+        <TouchableOpacity style={[p.mainBtn, { paddingHorizontal: 36 }]} onPress={onIniciar} activeOpacity={0.85}>
+          <MaterialCommunityIcons name="fire" size={18} color="#fff" />
+          <Text style={p.mainBtnText}>Iniciar Quema 1</Text>
+          <Ionicons name="arrow-forward" size={16} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+// ── QuemaActivaPanel ──────────────────────────────────────────────────────────
+
+function QuemaActivaPanel({ quemaNum, secs, toMM, toSS, onFinalizar }) {
+  return (
+    <View style={p.centered}>
+      <Text style={p.quemaLabel}>Quema {quemaNum} en progreso</Text>
+
+      {/* Círculo de fuego */}
+      <View style={p.fireCircleOuter}>
+        <View style={p.fireCircle}>
+          <MaterialCommunityIcons name="fire" size={54} color="#fff" />
+        </View>
+        <View style={p.fireNumBadge}>
+          <Text style={p.fireNumText}>#{quemaNum}</Text>
+        </View>
+      </View>
+
+      {/* Timer */}
+      <View style={p.timerBox}>
+        <Text style={p.timerText}>{toMM(secs)}:{toSS(secs)}</Text>
+        <Text style={p.timerSub}>min &nbsp; : &nbsp; seg</Text>
+      </View>
+
+      <TouchableOpacity style={[p.mainBtn, { backgroundColor: '#C62828', marginTop: 8 }]} onPress={onFinalizar} activeOpacity={0.85}>
+        <Ionicons name="stop-circle-outline" size={18} color="#fff" />
+        <Text style={p.mainBtnText}>Finalizar Quema {quemaNum}</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
-// Cronómetro en vivo — muestra tiempo alrededor del ícono de fuego
-function TiempoActivoPanel({ label, color, btnLabel, onFinalizar }) {
-  const [secs, setSecs] = React.useState(0);
-  const timerRef = React.useRef(null);
+// ── PostQuemaPanel ────────────────────────────────────────────────────────────
 
-  React.useEffect(() => {
-    timerRef.current = setInterval(() => setSecs(s => s + 1), 1000);
-    return () => clearInterval(timerRef.current);
-  }, []);
-
-  const mm = Math.floor(secs / 60).toString().padStart(2, '0');
-  const ss = (secs % 60).toString().padStart(2, '0');
-
-  function handleFinalizar() {
-    clearInterval(timerRef.current);
-    onFinalizar(secs);
-  }
-
+function PostQuemaPanel({ quemaNum, numQuemas, data, onChange, onToggleSintoma, showErrors, onGuardar }) {
+  const isLast = quemaNum === numQuemas;
   return (
-    <View style={p.center}>
-      <View style={[p.pulseRing, { borderColor: color }]}>
-        <View style={[p.iconCircle, { backgroundColor: color + '20' }]}>
-          <Ionicons name="flame" size={52} color={color} />
+    <View style={p.twoCol}>
+
+      {/* ── Izquierda: Duración + Síntomas ── */}
+      <View style={p.leftCol}>
+        <View style={p.panelHeader}>
+          <Ionicons name="timer-outline" size={18} color="#E85D27" />
+          <Text style={p.panelTitle}>Registro — Quema {quemaNum}</Text>
         </View>
-      </View>
-      <Text style={[p.timerDisplay, { color }]}>{mm}:{ss}</Text>
-      <Text style={[p.bigTitle, { color }]}>{label} en progreso</Text>
-      <Text style={p.bigSub}>
-        El bombero está en el área de entrenamiento.{'\n'}
-        Cuando finalice, presiona el botón para registrar la medición.
-      </Text>
-      <TouchableOpacity style={[p.bigBtn, { backgroundColor: color }]} onPress={handleFinalizar}>
-        <Ionicons name="stop-circle-outline" size={20} color="#fff" />
-        <Text style={p.bigBtnText}>{btnLabel}</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
 
-function EntrePanel({ onSegundoTiempo, onGuardar }) {
-  return (
-    <View style={p.center}>
-      <View style={[p.iconCircle, { backgroundColor: '#FFF3E0' }]}>
-        <Ionicons name="time-outline" size={48} color="#E85D27" />
+        <Text style={p.secLabel}>Duración en quema</Text>
+        <View style={p.duracionRow}>
+          <View style={p.duracionField}>
+            <Text style={p.duracionUnit}>min</Text>
+            <Text style={p.duracionValue}>{data.duracionMin || '--'}</Text>
+          </View>
+          <Text style={p.duracionSep}>:</Text>
+          <View style={p.duracionField}>
+            <Text style={p.duracionUnit}>seg</Text>
+            <Text style={p.duracionValue}>{data.duracionSeg || '--'}</Text>
+          </View>
+        </View>
+
+        <Text style={[p.secLabel, { marginTop: 8 }]}>Síntomas — durante la práctica</Text>
+        <SintomasChips selected={data.sintomas} onToggle={onToggleSintoma} />
       </View>
-      <Text style={p.bigTitle}>1er Tiempo completado</Text>
-      <Text style={p.bigSub}>¿El bombero realizará un segundo tiempo de entrenamiento?</Text>
-      <View style={p.entreRow}>
-        <TouchableOpacity style={[p.entreBtn, { borderColor: '#C62828' }]} onPress={onSegundoTiempo}>
-          <Ionicons name="play-circle-outline" size={20} color="#C62828" />
-          <Text style={[p.entreBtnText, { color: '#C62828' }]}>Iniciar 2do Tiempo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[p.entreBtn, { backgroundColor: '#2E7D32', borderColor: '#2E7D32' }]} onPress={onGuardar}>
-          <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
-          <Text style={[p.entreBtnText, { color: '#fff' }]}>Guardar Evaluación</Text>
-        </TouchableOpacity>
+
+      {/* ── Derecha: Vitales + Botón ── */}
+      <View style={p.rightCol}>
+        <Text style={p.secLabel}>Signos Vitales — Después de la quema</Text>
+        <VitalesForm data={data} onChange={onChange} showErrors={showErrors} />
+
+        <View style={p.evalBtnWrap}>
+          <TouchableOpacity style={p.evalBtn} onPress={onGuardar} activeOpacity={0.85}>
+            <Text style={p.evalBtnText}>
+              {isLast ? 'Ir al Cierre' : `Guardar y continuar a Quema ${quemaNum + 1}`}
+            </Text>
+            <Ionicons name={isLast ? 'flag-outline' : 'arrow-forward'} size={16} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 }
 
-function EvaluacionFinalPanel({ sintomas, onToggle, onGuardar }) {
+// ── CierrePanel ───────────────────────────────────────────────────────────────
+
+function CierrePanel({
+  data, isNoApto, onChange, onToggleSintoma,
+  esInvestigacion, setEsInvestigacion, invData, updateInv, onFinalizar,
+}) {
   return (
-    <View style={{ flex: 1 }}>
-      <View style={p.formHeader}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Ionicons name="clipboard-outline" size={16} color="#2E7D32" />
-          <Text style={p.formTitle}>Final de la Prueba</Text>
-        </View>
-        <Text style={{ fontSize: 12, color: '#697282', marginTop: 2 }}>
-          Registra los síntomas finales del bombero
-        </Text>
-      </View>
+    <View style={p.twoCol}>
 
-      <View style={ef.body}>
-        <Text style={ef.colTitle}>Registrar síntomas finales:</Text>
-        <View style={ef.chips}>
-          {SINTOMAS_LIST.map(sint => {
-            const sel = sintomas.includes(sint);
-            return (
-              <TouchableOpacity
-                key={sint}
-                style={[ef.chip, sel && ef.chipOn]}
-                onPress={() => onToggle(sint)}
-                activeOpacity={0.7}
-              >
-                <Text style={[ef.chipText, sel && ef.chipTextOn]}>{sint}</Text>
-              </TouchableOpacity>
-            );
-          })}
+      {/* ── Izquierda: Síntomas + Observaciones + Investigación ── */}
+      <View style={p.leftCol}>
+        <View style={p.panelHeader}>
+          <Ionicons name="flag-outline" size={18} color="#2E7D32" />
+          <Text style={p.panelTitle}>Cierre del día</Text>
         </View>
-      </View>
 
-      <View style={p.formFooter}>
+        {isNoApto && (
+          <View style={p.noAptoNote}>
+            <Ionicons name="warning-outline" size={14} color="#D83B35" />
+            <Text style={p.noAptoNoteText}>Bombero NO APTO — Completa el registro de cierre.</Text>
+          </View>
+        )}
+
+        <Text style={p.secLabel}>Síntomas — al final del día</Text>
+        <SintomasChips selected={data.sintomas} onToggle={onToggleSintoma} />
+
+        <Text style={[p.secLabel, { marginTop: 8 }]}>Eventos especiales / Observaciones</Text>
+        <TextInput
+          style={p.textArea}
+          value={data.eventosEspeciales}
+          onChangeText={v => onChange('eventosEspeciales', v)}
+          placeholder="Describe cualquier evento relevante durante la práctica..."
+          placeholderTextColor="#B0B7C3"
+          multiline
+          numberOfLines={4}
+          textAlignVertical="top"
+        />
+
+        {/* ── Sección de investigación (opcional) ── */}
         <TouchableOpacity
-          style={[p.footerBtn, { backgroundColor: '#2E7D32' }]}
-          onPress={onGuardar}
+          style={p.invToggleRow}
+          onPress={() => setEsInvestigacion(v => !v)}
           activeOpacity={0.8}
         >
-          <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
-          <Text style={p.footerBtnText}>Finalizar Prueba</Text>
+          <View style={[p.invCheckbox, esInvestigacion && p.invCheckboxActive]}>
+            {esInvestigacion && <Ionicons name="checkmark" size={12} color="#fff" />}
+          </View>
+          <Text style={p.invToggleText}>Sesión de investigación (I+D+i)</Text>
+        </TouchableOpacity>
+
+        {esInvestigacion && (
+          <InvestigacionSection data={invData} onChange={updateInv} />
+        )}
+      </View>
+
+      {/* ── Derecha: Vitales + Botón ── */}
+      <View style={p.rightCol}>
+        <Text style={p.secLabel}>Signos Vitales — Fin del día</Text>
+        <VitalesForm data={data} onChange={onChange} showErrors={false} />
+
+        <View style={p.evalBtnWrap}>
+          <TouchableOpacity style={[p.evalBtn, { backgroundColor: '#2E7D32' }]} onPress={onFinalizar} activeOpacity={0.85}>
+            <Ionicons name="checkmark-circle-outline" size={17} color="#fff" />
+            <Text style={p.evalBtnText}>Finalizar Evaluación</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// ── InvestigacionSection ──────────────────────────────────────────────────────
+
+function InvestigacionSection({ data, onChange }) {
+  return (
+    <View style={p.invSection}>
+      <Text style={p.invSectionTitle}>Marcadores de Investigación</Text>
+
+      <Text style={p.invGroupLabel}>Lactato (mmol/L)</Text>
+      <View style={p.invRow}>
+        <InvField label="Pre-quema"  value={data.lactato_pre}  onChange={v => onChange('lactato_pre', v)} />
+        <InvField label="Post-quema" value={data.lactato_post} onChange={v => onChange('lactato_post', v)} />
+      </View>
+
+      <Text style={p.invGroupLabel}>Bioimpedancia</Text>
+      <View style={p.invRow}>
+        <InvField label="% Grasa"       value={data.bioimpedancia_grasa}         onChange={v => onChange('bioimpedancia_grasa', v)} />
+        <InvField label="% Músculo"     value={data.bioimpedancia_musculo}       onChange={v => onChange('bioimpedancia_musculo', v)} />
+        <InvField label="Edad metab."   value={data.bioimpedancia_edad_metabolica} onChange={v => onChange('bioimpedancia_edad_metabolica', v)} />
+      </View>
+
+      <Text style={p.invGroupLabel}>Prueba de Stroop</Text>
+      <View style={p.invRow}>
+        <InvField label="Tiempo (seg)" value={data.stroop_tiempo}  onChange={v => onChange('stroop_tiempo', v)} />
+        <InvField label="Errores"      value={data.stroop_errores} onChange={v => onChange('stroop_errores', v)} />
+      </View>
+    </View>
+  );
+}
+
+function InvField({ label, value, onChange }) {
+  return (
+    <View style={p.invField}>
+      <Text style={p.invFieldLabel}>{label}</Text>
+      <TextInput
+        style={p.invInput}
+        value={value} onChangeText={onChange}
+        keyboardType="number-pad" placeholder="—"
+        placeholderTextColor="#B0B7C3"
+      />
+    </View>
+  );
+}
+
+// ── ListoPanel ────────────────────────────────────────────────────────────────
+
+function ListoPanel({ isNoApto, onVolver }) {
+  return (
+    <View style={p.centered}>
+      <View style={[p.resultBadge, { backgroundColor: isNoApto ? '#FFF0EE' : '#F0FFF4', borderColor: isNoApto ? '#FFCCCC' : '#C3E6CB' }]}>
+        <Ionicons
+          name={isNoApto ? 'close-circle' : 'checkmark-circle'}
+          size={52}
+          color={isNoApto ? '#D83B35' : '#27AE60'}
+        />
+        <Text style={[p.resultTitle, { color: isNoApto ? '#D83B35' : '#27AE60' }]}>
+          Evaluación Guardada
+        </Text>
+        <Text style={p.resultSub}>
+          {isNoApto
+            ? 'El registro fue guardado. El bombero fue marcado NO APTO.'
+            : 'Todos los datos de la sesión fueron registrados correctamente.'
+          }
+        </Text>
+      </View>
+      <TouchableOpacity style={[p.mainBtn, { paddingHorizontal: 36 }]} onPress={onVolver} activeOpacity={0.85}>
+        <Ionicons name="arrow-back" size={16} color="#fff" />
+        <Text style={p.mainBtnText}>Volver a la lista</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ── Vitales Form ──────────────────────────────────────────────────────────────
+
+function VitalesForm({ data, onChange, showErrors }) {
+  return (
+    <View style={vi.grid}>
+      <SemaforoInput
+        field="temperatura" label="Temperatura (°C)"
+        value={data.temperatura} onChangeText={v => onChange('temperatura', v)}
+        showError={showErrors && !data.temperatura}
+      />
+      <View style={vi.bpWrap}>
+        <Text style={vi.bpLabel}>Presión Arterial (mmHg)</Text>
+        <View style={vi.bpRow}>
+          <SemaforoInput
+            field="presionSistolica" label="" isCompact
+            value={data.presionSistolica} onChangeText={v => onChange('presionSistolica', v)}
+            showError={showErrors && !data.presionSistolica}
+            placeholder="Sis."
+          />
+          <Text style={vi.bpSlash}>/</Text>
+          <SemaforoInput
+            field="presionDiastolica" label="" isCompact
+            value={data.presionDiastolica} onChangeText={v => onChange('presionDiastolica', v)}
+            showError={showErrors && !data.presionDiastolica}
+            placeholder="Dias."
+          />
+        </View>
+        {showErrors && (!data.presionSistolica || !data.presionDiastolica) && (
+          <Text style={vi.errorText}>Campo obligatorio</Text>
+        )}
+      </View>
+      <SemaforoInput
+        field="frecuenciaCardiaca" label="Frec. Cardíaca (lpm)"
+        value={data.frecuenciaCardiaca} onChangeText={v => onChange('frecuenciaCardiaca', v)}
+        showError={showErrors && !data.frecuenciaCardiaca}
+      />
+      <SemaforoInput
+        field="nivelOxigeno" label="SpO₂ (%)"
+        value={data.nivelOxigeno} onChangeText={v => onChange('nivelOxigeno', v)}
+        showError={showErrors && !data.nivelOxigeno}
+      />
+      <SemaforoInput
+        field="nivelCO" label="Nivel CO (ppm)"
+        value={data.nivelCO} onChangeText={v => onChange('nivelCO', v)}
+        showError={showErrors && !data.nivelCO}
+      />
+    </View>
+  );
+}
+
+function SemaforoInput({ field, label, value, onChangeText, showError, placeholder, isCompact }) {
+  const color = getSemaforoColor(field, value);
+  const borderColor = showError ? '#D83B35'
+    : color ? SEM_BORDER[color]
+    : '#E8EBF0';
+  const bgColor = showError ? '#FFF5F5'
+    : color ? SEM_BG[color]
+    : '#F3F3F5';
+  return (
+    <View style={[vi.fieldWrap, isCompact && { flex: 1 }]}>
+      {!!label && (
+        <View style={vi.labelRow}>
+          <Text style={vi.label}>{label}</Text>
+          {color && !showError && <SemaforoIndicator color={color} />}
+        </View>
+      )}
+      <TextInput
+        style={[vi.input, { borderColor, borderWidth: (color || showError) ? 1.5 : 1, backgroundColor: bgColor }]}
+        value={value}
+        onChangeText={onChangeText}
+        keyboardType="number-pad"
+        placeholder={placeholder || (showError ? 'Obligatorio' : '—')}
+        placeholderTextColor={showError ? '#D83B35' : '#B0B7C3'}
+      />
+      {showError && !isCompact && <Text style={vi.errorText}>Campo obligatorio</Text>}
+    </View>
+  );
+}
+
+function SemaforoIndicator({ color }) {
+  return <View style={[vi.dot, { backgroundColor: SEM_BORDER[color] }]} />;
+}
+
+function SintomasChips({ selected, onToggle }) {
+  return (
+    <View style={vi.sintomasGrid}>
+      {SINTOMAS_LIST.map(s => {
+        const isSel = selected.includes(s);
+        return (
+          <TouchableOpacity
+            key={s}
+            style={[vi.sintomaChip, isSel && vi.sintomaChipActive]}
+            onPress={() => onToggle(s)}
+            activeOpacity={0.8}
+          >
+            <Text style={[vi.sintomaChipText, isSel && vi.sintomaChipTextActive]}>{s}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+function YesNoField({ label, value, hasError, onChange }) {
+  return (
+    <View style={vi.yesNoWrap}>
+      <Text style={[vi.yesNoLabel, hasError && { color: '#D83B35' }]}>{label}</Text>
+      <View style={vi.yesNoRow}>
+        <TouchableOpacity
+          style={[vi.yesNoBtn, value === true && vi.yesNoBtnActive, hasError && vi.yesNoBtnErr]}
+          onPress={() => onChange(true)} activeOpacity={0.8}
+        >
+          <Text style={[vi.yesNoBtnText, value === true && { color: '#fff' }]}>Sí</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[vi.yesNoBtn, value === false && vi.yesNoBtnActive, hasError && vi.yesNoBtnErr]}
+          onPress={() => onChange(false)} activeOpacity={0.8}
+        >
+          <Text style={[vi.yesNoBtnText, value === false && { color: '#fff' }]}>No</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-function ListoPanel({ onVolver }) {
+function VitalStatItem({ label, value, bad }) {
   return (
-    <View style={p.center}>
-      <View style={[p.iconCircle, { backgroundColor: '#E8F5E9' }]}>
-        <Ionicons name="ribbon-outline" size={52} color="#2E7D32" />
-      </View>
-      <Text style={[p.bigTitle, { color: '#2E7D32' }]}>Evaluación guardada</Text>
-      <Text style={p.bigSub}>
-        Todos los datos de la sesión han sido registrados correctamente.
-      </Text>
-      <TouchableOpacity style={[p.bigBtn, { backgroundColor: '#2E7D32' }]} onPress={onVolver}>
-        <Ionicons name="arrow-back-outline" size={18} color="#fff" />
-        <Text style={p.bigBtnText}>Volver a la sesión</Text>
-      </TouchableOpacity>
+    <View style={[p.vitalStat, bad && p.vitalStatBad]}>
+      <Text style={p.vitalStatLabel}>{label}</Text>
+      <Text style={[p.vitalStatValue, bad && { color: '#D83B35' }]}>{value}</Text>
     </View>
   );
 }
 
 // ── Estilos ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#fff' },
+const st = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#F4F6F8' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#fff', paddingHorizontal: 20, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.07)',
-    elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06, shadowRadius: 3,
+    paddingHorizontal: 20, paddingVertical: 12,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: '#E85D27', alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { color: '#fff', fontWeight: '800', fontSize: 16 },
-  bomberName: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
-  bomberSub:  { fontSize: 11, color: '#697282' },
+  avatarText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  bomberName: { fontSize: 17, fontWeight: '800', color: '#1A1A1A' },
+  bomberSub:  { fontSize: 11, color: '#697282', marginTop: 2 },
   volverBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: '#fff', borderRadius: 8,
     paddingHorizontal: 14, paddingVertical: 8,
     borderWidth: 1, borderColor: '#E0E0E0',
   },
-  volverText: { fontSize: 14, fontWeight: '600', color: '#2E2E2E' },
-  body: { flex: 1, padding: 14 },
+  volverText: { fontSize: 13, fontWeight: '600', color: '#2E2E2E' },
+  noAptoBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#D83B35', paddingHorizontal: 20, paddingVertical: 8,
+  },
+  noAptoBannerText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  body: { flex: 1, paddingHorizontal: 16, paddingBottom: 14 },
   card: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 16,
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)',
-    overflow: 'hidden', elevation: 3,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 8,
+    flex: 1, backgroundColor: '#fff', borderRadius: 14,
+    borderWidth: 1, borderColor: '#E8EBF0', padding: 22,
+    shadowColor: '#000', shadowOpacity: 0.04,
+    shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: 2,
   },
 });
 
 const tl = StyleSheet.create({
-  bar: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', paddingHorizontal: 20, paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
-  },
-  stepWrap: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  bar: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 20, paddingVertical: 10 },
+  stepWrap: { flex: 1, alignItems: 'center', gap: 4 },
+  dotRow:   { flexDirection: 'row', alignItems: 'center', width: '100%' },
   dot: {
-    width: 22, height: 22, borderRadius: 11,
-    backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center',
-    marginRight: 5,
+    width: 28, height: 28, borderRadius: 14,
+    backgroundColor: '#E8EBF0', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
   dotActive: { backgroundColor: '#E85D27' },
-  dotDone:   { backgroundColor: '#2E7D32' },
-  dotNum:    { fontSize: 10, fontWeight: '700', color: '#9AA3B0' },
-  dotNumActive: { color: '#fff' },
-  label:       { fontSize: 10, fontWeight: '600', color: '#9AA3B0' },
-  labelActive: { color: '#E85D27' },
-  labelDone:   { color: '#2E7D32' },
-  line:     { flex: 1, height: 2, backgroundColor: '#E5E7EB', marginHorizontal: 6 },
-  lineDone: { backgroundColor: '#2E7D32' },
+  dotDone:   { backgroundColor: '#27AE60' },
+  dotText:   { fontSize: 11, fontWeight: '700', color: '#9AA3B0' },
+  line:      { flex: 1, height: 2, backgroundColor: '#E8EBF0' },
+  lineDone:  { backgroundColor: '#27AE60' },
+  label:     { fontSize: 10, color: '#9AA3B0', textAlign: 'center' },
+  labelActive:{ color: '#E85D27', fontWeight: '700' },
+  labelDone:  { color: '#27AE60' },
 });
 
 const p = StyleSheet.create({
-  center: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    padding: 40, gap: 16,
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 22 },
+  twoCol:   { flex: 1, flexDirection: 'row', gap: 22 },
+  leftCol:  { flex: 0.9, gap: 10 },
+  rightCol: { flex: 1.1, gap: 10 },
+
+  panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  panelTitle:  { fontSize: 16, fontWeight: '800', color: '#1A1A1A' },
+  secLabel:    { fontSize: 12, fontWeight: '700', color: '#495565' },
+
+  // Rol chips
+  chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  roleChip: {
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8,
+    borderWidth: 1.5, borderColor: '#D0D5DD', backgroundColor: '#F9FAFB',
   },
-  iconCircle: {
-    width: 100, height: 100, borderRadius: 50,
-    backgroundColor: '#FFF3E0',
+  roleChipActive: { backgroundColor: '#E85D27', borderColor: '#E85D27' },
+  roleChipErr:    { borderColor: '#D83B35' },
+  roleChipText:   { fontSize: 13, fontWeight: '600', color: '#697282' },
+  roleChipTextActive: { color: '#fff' },
+
+  // Result badge
+  resultBadge: {
+    alignItems: 'center', gap: 10, borderRadius: 16, padding: 28,
+    borderWidth: 1,
+  },
+  resultTitle: { fontSize: 26, fontWeight: '900' },
+  resultSub:   { fontSize: 13, color: '#697282', textAlign: 'center', maxWidth: 360 },
+
+  // Vitales summary
+  vitalesSummary: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center',
+  },
+  vitalesSummaryNoApto: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center',
+  },
+  vitalStat: {
+    backgroundColor: '#F9FAFB', borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 10,
+    alignItems: 'center', minWidth: 80,
+    borderWidth: 1, borderColor: '#E8EBF0',
+  },
+  vitalStatBad: { borderColor: '#FFCCCC', backgroundColor: '#FFF5F5' },
+  vitalStatLabel: { fontSize: 10, color: '#697282', fontWeight: '600' },
+  vitalStatValue: { fontSize: 15, fontWeight: '800', color: '#1A1A1A', marginTop: 2 },
+
+  // Fire circle (quema activa)
+  quemaLabel: { fontSize: 16, fontWeight: '700', color: '#697282' },
+  fireCircleOuter: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
+  fireCircle: {
+    width: 120, height: 120, borderRadius: 60,
+    backgroundColor: '#E85D27',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#E85D27', shadowOpacity: 0.4,
+    shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 8,
+  },
+  fireNumBadge: {
+    position: 'absolute', bottom: -6, right: -6,
+    backgroundColor: '#C62828', borderRadius: 16,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderWidth: 2, borderColor: '#fff',
+  },
+  fireNumText: { color: '#fff', fontSize: 14, fontWeight: '900' },
+
+  timerBox:  { alignItems: 'center', gap: 4 },
+  timerText: { fontSize: 68, fontWeight: '900', color: '#C62828', letterSpacing: 2 },
+  timerSub:  { fontSize: 12, color: '#9AA3B0', letterSpacing: 6 },
+
+  // Duración
+  duracionRow:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  duracionField:{ alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 10, padding: 12, flex: 1, borderWidth: 1, borderColor: '#E8EBF0' },
+  duracionUnit: { fontSize: 10, color: '#697282', fontWeight: '600' },
+  duracionValue:{ fontSize: 28, fontWeight: '900', color: '#2E2E2E' },
+  duracionSep:  { fontSize: 24, fontWeight: '300', color: '#9AA3B0' },
+
+  // No Apto note
+  noAptoNote: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#FFF5F5', borderRadius: 8, padding: 10,
+    borderWidth: 1, borderColor: '#FFCCCC',
+  },
+  noAptoNoteText: { flex: 1, fontSize: 12, color: '#D83B35', fontWeight: '600' },
+
+  // Investigacion
+  invToggleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
+  invCheckbox: {
+    width: 20, height: 20, borderRadius: 4,
+    borderWidth: 1.5, borderColor: '#D0D5DD',
     alignItems: 'center', justifyContent: 'center',
   },
-  pulseRing: {
-    padding: 8, borderRadius: 62,
-    borderWidth: 2, borderStyle: 'dashed',
+  invCheckboxActive: { backgroundColor: '#E85D27', borderColor: '#E85D27' },
+  invToggleText: { fontSize: 13, fontWeight: '600', color: '#495565' },
+  invSection: {
+    backgroundColor: '#F9FAFB', borderRadius: 10,
+    borderWidth: 1, borderColor: '#E8EBF0', padding: 12, gap: 8,
   },
-  timerDisplay: {
-    fontSize: 40, fontWeight: '800', letterSpacing: 2,
-    fontVariant: ['tabular-nums'],
+  invSectionTitle: { fontSize: 12, fontWeight: '700', color: '#E85D27', marginBottom: 4 },
+  invGroupLabel:   { fontSize: 11, fontWeight: '700', color: '#697282' },
+  invRow:          { flexDirection: 'row', gap: 8 },
+  invField:        { flex: 1, gap: 4 },
+  invFieldLabel:   { fontSize: 10, color: '#697282', fontWeight: '600' },
+  invInput: {
+    backgroundColor: '#fff', borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 8,
+    fontSize: 13, color: '#2E2E2E',
+    borderWidth: 1, borderColor: '#E8EBF0',
+    textAlign: 'center', fontWeight: '600',
   },
-  bigTitle: { fontSize: 24, fontWeight: '800', color: '#1A1A1A', textAlign: 'center' },
-  bigSub: { fontSize: 14, color: '#697282', textAlign: 'center', lineHeight: 22, maxWidth: 500 },
-  bigBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12, marginTop: 8,
-  },
-  bigBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 
-  valoresRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', justifyContent: 'center' },
-  valorChip: {
+  // Text area
+  textArea: {
     backgroundColor: '#F3F3F5', borderRadius: 10,
-    paddingHorizontal: 14, paddingVertical: 8, alignItems: 'center', gap: 2,
+    paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 13, color: '#2E2E2E', minHeight: 80,
   },
-  valorLabel: { fontSize: 10, fontWeight: '700', color: '#9AA3B0', letterSpacing: 0.5 },
-  valorValue: { fontSize: 14, fontWeight: '800', color: '#1A1A1A' },
 
-  noAptoIconBox: { marginBottom: 4 },
-  noAptoTitle: { fontSize: 24, fontWeight: '800', color: '#C62828', textAlign: 'center' },
-  noAptoSub:   { fontSize: 14, color: '#697282', textAlign: 'center' },
-  razonesBox: {
-    backgroundColor: '#FFEBEE', borderRadius: 12, padding: 16,
-    gap: 10, width: '100%', maxWidth: 520,
-  },
-  razonRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  razonText: { fontSize: 13, fontWeight: '600', color: '#C62828', flex: 1 },
-  noAptoNote: {
-    fontSize: 13, color: '#697282', textAlign: 'center',
-    fontStyle: 'italic', maxWidth: 480,
-  },
-  noAptoBtns: { flexDirection: 'row', gap: 12, marginTop: 8 },
-  reintentarBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 18, paddingVertical: 12, borderRadius: 10,
-    borderWidth: 1.5, borderColor: '#D0D5DD',
-  },
-  reintentarText: { fontSize: 13, fontWeight: '600', color: '#495565' },
-  terminarBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 18, paddingVertical: 12, borderRadius: 10,
-    backgroundColor: '#C62828',
-  },
-  terminarText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-
-  entreRow: { flexDirection: 'row', gap: 16, marginTop: 8 },
-  entreBtn: {
+  // Evaluar btn (bottom-right)
+  evalBtnWrap: { marginTop: 'auto', alignItems: 'flex-end' },
+  evalBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12, borderWidth: 1.5,
+    backgroundColor: '#E85D27', borderRadius: 12,
+    paddingHorizontal: 24, paddingVertical: 13,
   },
-  entreBtnText: { fontSize: 14, fontWeight: '700' },
+  evalBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 
-  formHeader: {
-    paddingHorizontal: 24, paddingTop: 18, paddingBottom: 12,
-    borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
+  // Generic buttons
+  mainBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: '#E85D27', borderRadius: 12,
+    paddingHorizontal: 24, paddingVertical: 13,
   },
-  formTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
-  formFooter: {
-    flexDirection: 'row', justifyContent: 'flex-end',
-    borderTopWidth: 1, borderTopColor: '#F0F0F0',
-    paddingHorizontal: 20, paddingVertical: 14,
+  mainBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  outlineBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 24, paddingVertical: 13, borderRadius: 12,
+    borderWidth: 1.5, borderColor: '#E85D27',
   },
-  footerBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 20, paddingVertical: 11, borderRadius: 10,
-  },
-  footerBtnDisabled: { opacity: 0.4 },
-  footerBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  outlineBtnText: { fontSize: 14, fontWeight: '600', color: '#E85D27' },
+  btnRow: { flexDirection: 'row', gap: 12 },
 });
 
-const ef = StyleSheet.create({
-  body: {
-    flex: 1, paddingHorizontal: 24, paddingVertical: 18, gap: 16,
+const vi = StyleSheet.create({
+  grid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  fieldWrap:{ width: '47%', gap: 4 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  label:    { fontSize: 11, fontWeight: '600', color: '#495565' },
+  dot:      { width: 10, height: 10, borderRadius: 5 },
+  input: {
+    borderRadius: 8, paddingHorizontal: 10, paddingVertical: 9,
+    fontSize: 14, color: '#2E2E2E', fontWeight: '600',
   },
-  colTitle: { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  chip: {
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 8, borderWidth: 1,
-    borderColor: '#D0D5DD', backgroundColor: '#F9FAFB',
+  errorText: { fontSize: 10, color: '#D83B35', marginTop: 1 },
+  bpWrap:  { width: '47%', gap: 4 },
+  bpLabel: { fontSize: 11, fontWeight: '600', color: '#495565' },
+  bpRow:   { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  bpSlash: { fontSize: 20, fontWeight: '300', color: '#9AA3B0' },
+  sintomasGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  sintomaChip: {
+    paddingHorizontal: 11, paddingVertical: 6, borderRadius: 8,
+    borderWidth: 1, borderColor: '#D0D5DD', backgroundColor: '#F9FAFB',
   },
-  chipOn:     { backgroundColor: '#E85D27', borderColor: '#E85D27' },
-  chipText:   { fontSize: 13, fontWeight: '500', color: '#495565' },
-  chipTextOn: { color: '#fff', fontWeight: '600' },
+  sintomaChipActive:    { backgroundColor: '#E85D27', borderColor: '#E85D27' },
+  sintomaChipText:      { fontSize: 12, color: '#697282' },
+  sintomaChipTextActive:{ color: '#fff', fontWeight: '600' },
+  yesNoWrap:  { gap: 4 },
+  yesNoLabel: { fontSize: 12, color: '#495565', lineHeight: 16 },
+  yesNoRow:   { flexDirection: 'row', gap: 8 },
+  yesNoBtn: {
+    flex: 1, paddingVertical: 8, borderRadius: 8,
+    borderWidth: 1.5, borderColor: '#D0D5DD',
+    alignItems: 'center', backgroundColor: '#F9FAFB',
+  },
+  yesNoBtnActive: { backgroundColor: '#E85D27', borderColor: '#E85D27' },
+  yesNoBtnErr:    { borderColor: '#D83B35' },
+  yesNoBtnText:   { fontSize: 13, fontWeight: '600', color: '#697282' },
 });

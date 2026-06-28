@@ -2,9 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Image, Pressable, Animated, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const HIGHLIGHT = '#F15A00';
-const NORMAL_COLOR = '#4CAF50';
-const ALERT_COLOR = '#D32F2F';
+const FALLBACK_COLOR = '#27B8A1';
 const NORMAL_STATUSES = ['Normal', 'Seguro'];
 const IMAGE_ASPECT_RATIO = 446 / 740;
 
@@ -25,7 +23,7 @@ const METRIC_LABELS = {
 // nothing to tap, so there's never a dead zone pretending to be clickable.
 // An alert pulses red with a warning icon on its own, no tap required;
 // tapping it opens the info strip below with the real value.
-function PulsingRing() {
+function PulsingRing({ color }) {
   const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -42,20 +40,33 @@ function PulsingRing() {
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.8] });
   const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.6, 0] });
 
-  return <Animated.View style={[styles.pulseRing, { transform: [{ scale }], opacity }]} />;
+  return (
+    <Animated.View
+      style={[styles.pulseRing, { backgroundColor: color, transform: [{ scale }], opacity }]}
+    />
+  );
 }
 
-function Hotspot({ style, alert, selected, onPress }) {
-  if (!alert) {
-    return <View style={[styles.hotspot, style]} pointerEvents="none" />;
-  }
+function Hotspot({ style, metric, alert, selected, onPress }) {
+  const color = metric?.color ?? FALLBACK_COLOR;
+  const icon = alert ? 'warning' : (metric?.icon ?? 'ellipse');
 
   return (
-    <Pressable style={[styles.hotspot, style, selected && styles.hotspotSelected]} onPress={onPress}>
+    <Pressable
+      style={[styles.hotspot, style]}
+      onPress={(event) => {
+        event.stopPropagation?.();
+        onPress();
+      }}
+    >
       <View style={styles.markerWrapper}>
-        <PulsingRing />
-        <View style={styles.alertMarker}>
-          <Ionicons name="warning" size={12} color="#fff" />
+        {alert && <PulsingRing color={color} />}
+        <View style={[styles.marker, selected && styles.markerSelected, { backgroundColor: color }]}>
+          <Ionicons
+            name={icon}
+            size={selected ? 15 : 13}
+            color="#fff"
+          />
         </View>
       </View>
     </Pressable>
@@ -93,6 +104,7 @@ export default function BodyDiagram2D({ metrics = {}, activeMetric, onSelectMetr
           <Hotspot
             key={`${key}-${index}`}
             style={style}
+            metric={metrics[key]}
             alert={isAlert(key)}
             selected={isSelected(key)}
             onPress={() => onSelectMetric(key)}
@@ -103,12 +115,12 @@ export default function BodyDiagram2D({ metrics = {}, activeMetric, onSelectMetr
       {selectedData && (
         <View style={[styles.infoStrip, selectedAlert && styles.infoStripAlert]}>
           <Ionicons
-            name={selectedAlert ? 'warning' : 'checkmark-circle'}
+            name={selectedAlert ? 'warning' : (selectedData.icon ?? 'information-circle-outline')}
             size={16}
-            color={selectedAlert ? ALERT_COLOR : NORMAL_COLOR}
+            color={selectedData.color ?? FALLBACK_COLOR}
           />
           <Text style={styles.infoLabel}>{METRIC_LABELS[activeMetric]}</Text>
-          <Text style={[styles.infoValue, selectedAlert && styles.infoValueAlert]}>
+          <Text style={[styles.infoValue, { color: selectedData.color ?? FALLBACK_COLOR }]}>
             {selectedData.value}{selectedData.unit} · {selectedData.status}
           </Text>
         </View>
@@ -120,14 +132,21 @@ export default function BodyDiagram2D({ metrics = {}, activeMetric, onSelectMetr
 const styles = StyleSheet.create({
   wrapper: {
     width: '100%',
-    maxWidth: 260,
+    maxWidth: 410,
   },
   container: {
     width: '100%',
     aspectRatio: IMAGE_ASPECT_RATIO,
     borderRadius: 20,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 5 },
+    shadowRadius: 12,
+    elevation: 3,
   },
   bodyImage: {
     width: '100%',
@@ -141,30 +160,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  hotspotSelected: {
-    backgroundColor: 'rgba(241, 90, 0, 0.2)',
-    borderColor: HIGHLIGHT,
-  },
   markerWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   pulseRing: {
     position: 'absolute',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: ALERT_COLOR,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
-  alertMarker: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: ALERT_COLOR,
-    borderWidth: 1.5,
+  marker: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
     borderColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  markerSelected: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    shadowOpacity: 0.28,
+    shadowRadius: 6,
+    elevation: 4,
   },
   infoStrip: {
     marginTop: 12,
@@ -188,10 +214,6 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 12,
     fontWeight: '700',
-    color: NORMAL_COLOR,
-  },
-  infoValueAlert: {
-    color: ALERT_COLOR,
   },
   // All positions are % of the image's own box, measured against the actual
   // photo — see src/assets/anatomy/full-body.png.

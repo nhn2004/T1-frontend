@@ -25,6 +25,7 @@ const PER_PAGE = COLS * ROWS;
 export default function PersonasScreen({ navigation }) {
   const { role } = useAuth();
   const isFireChief = role === ROLES.FIRE_CHIEF;
+  const isAdmin     = role === ROLES.ADMIN;
   const [query, setQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('Todos');
   const [searchExpanded, setSearchExpanded] = useState(false);
@@ -101,7 +102,7 @@ export default function PersonasScreen({ navigation }) {
       {/* Título */}
       <View style={styles.titleRow}>
         <Text style={styles.pageTitle}>
-          {isFireChief ? 'Personal' : 'Personal Médico'}
+          {isAdmin ? 'Todo el Personal' : isFireChief ? 'Personal' : 'Personal Médico'}
         </Text>
         <Pressable style={styles.addButton} onPress={emptyLink}>
           <Text style={styles.addButtonText}>+ Agregar Personal</Text>

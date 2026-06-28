@@ -1,6 +1,6 @@
 # FireHealth App — SMAB Frontend
 
-Sistema de Monitoreo y Análisis de Bomberos. Plataforma web y móvil para evaluación médica y monitoreo fisiológico de bomberos en entrenamiento (Ecuador y Francia).
+Sistema de Monitoreo y Análisis de Bomberos. Plataforma web y móvil para evaluación médica y monitoreo fisiológico de bomberos en entrenamiento (Ecuador y Francia), construida con **Expo (SDK 54)**, **React 19** y **React Native 0.81**. Corre en Android, iOS y web (`react-native-web`) desde un único código base.
 
 ---
 
@@ -8,7 +8,7 @@ Sistema de Monitoreo y Análisis de Bomberos. Plataforma web y móvil para evalu
 
 Instala esto antes de empezar:
 
-- [Node.js 18+](https://nodejs.org)
+- [Node.js 20+](https://nodejs.org) (requerido por las herramientas de build de Expo/Metro)
 - [Git](https://git-scm.com)
 - [Expo Go](https://expo.dev/client) en tu celular (Android o iOS)
 
@@ -53,6 +53,39 @@ Luego:
 - **Celular**: escanea el QR con la app Expo Go
 - **Navegador**: presiona `w`
 - **Android emulador**: presiona `a`
+- **iOS simulador**: presiona `i`
+
+### Scripts disponibles
+
+| Script | Comando | Uso |
+|---|---|---|
+| `npm start` | `expo start` | Levanta Metro y el menú de Expo (QR, web, emuladores) |
+| `npm run android` | `expo run:android` | Compila y corre en un emulador/dispositivo Android nativo |
+| `npm run ios` | `expo run:ios` | Compila y corre en un simulador/dispositivo iOS nativo |
+| `npm run web` | `expo start --web` | Levanta directamente en el navegador |
+
+---
+
+## Integración Continua (CI)
+
+El repositorio tiene un workflow de GitHub Actions en [`.github/workflows/ci.yml`](.github/workflows/ci.yml) que corre automáticamente en cada `push` y `pull_request` hacia `main` y hacia ramas `feature/**`.
+
+**Qué valida en cada ejecución:**
+
+1. **Instala dependencias** con `npm ci` (usa `package-lock.json`, instalación limpia y reproducible).
+2. **Lint** — corre `npm run lint` solo si ese script existe en `package.json`; si no existe, lo omite sin romper el pipeline. Lo mismo aplica para `npm test`.
+3. **Build de validación** — corre `npx expo export --platform web`, que compila todo el bundle de la app para web. Si hay un error de sintaxis, un import roto, o cualquier problema que impida compilar, el pipeline falla aquí.
+
+No despliega nada: solo confirma que el código compila correctamente antes de hacer merge.
+
+### Cómo verificar que el CI corrió bien
+
+1. Haz push a tu rama `feature/*` o abre un Pull Request hacia `main`.
+2. Ve a la pestaña **Actions** del repositorio en GitHub — debe aparecer un run llamado **CI**.
+3. En un PR, el resultado (✅ o ❌) aparece directamente en la conversación del PR, como check requerido antes de mergear.
+4. Si el job falla, revisa el log del step que truena — usualmente apunta justo al archivo y línea del error de compilación.
+
+> Nota: corre en Node 20 en CI (`actions/setup-node`). Si en tu máquina tienes una versión distinta y algo se comporta diferente, prioriza lo que diga el pipeline.
 
 ---
 
@@ -84,7 +117,7 @@ git push origin feature/tu-rama
 
 ### Cuando termines una funcionalidad
 
-Abre un Pull Request en GitHub desde tu rama hacia `main`. No hagas merge directo a `main`.
+Abre un Pull Request en GitHub desde tu rama hacia `main`. No hagas merge directo a `main`. El PR debe pasar el check de CI antes de mergear.
 
 ---
 
@@ -92,35 +125,58 @@ Abre un Pull Request en GitHub desde tu rama hacia `main`. No hagas merge direct
 
 ```
 src/
-├── constants/          # Valores globales que todos usan
-│   ├── roles.js        # Los 5 roles del sistema
-│   ├── colors.js       # Paleta de colores (tema fuego)
-│   └── routes.js       # Nombres de todas las rutas/pantallas
+├── constants/              # Valores globales que todos usan
+│   ├── roles.js             # Los 7 roles del sistema
+│   ├── colors.js            # Paleta de colores (tema fuego)
+│   ├── routes.js            # Nombres de todas las rutas/pantallas
+│   └── index.js
 │
-├── store/
-│   └── authStore.js    # Estado global: usuario, rol, token, isAuthenticated
+├── store/                   # Estado global (Zustand)
+│   ├── authStore.js          # Usuario, rol, token, isAuthenticated
+│   ├── settingsStore.js      # Preferencias: tema, idioma, notificaciones, auto-sync
+│   └── index.js
 │
 ├── navigation/
-│   ├── index.js        # Navegador raíz: decide qué mostrar según el rol
-│   └── guards.js       # Permisos por rol: qué puede hacer cada uno
+│   ├── index.js              # RootNavigator: stack de auth vs. stack por rol
+│   └── guards.js              # Mapa de permisos (PERMISSIONS) y helper can(role, permiso)
 │
 ├── services/
-│   └── api.js          # Instancia de axios con token automático
+│   ├── api.js                 # Instancia de axios con token automático
+│   └── index.js
 │
 ├── hooks/
-│   ├── useAuth.js          # Hook principal de autenticación
-│   ├── useOfflineSync.js   # Cola de datos offline (Sprint 4)
-│   └── useAuditTrail.js    # Log de acceso a datos médicos
+│   ├── useAuth.js              # Hook principal de autenticación y permisos
+│   ├── useOfflineSync.js       # Cola de operaciones cuando no hay internet
+│   ├── useAuditTrail.js        # Log de acceso a datos médicos (auditoría)
+│   ├── useTheme.js             # Tokens de color light/dark según settingsStore
+│   ├── useTranslation.js       # Acceso a STRINGS según el idioma activo
+│   └── index.js
 │
-├── components/         # Componentes UI reutilizables (botones, cards, inputs)
+├── i18n/
+│   └── strings.js              # Diccionario es/en de toda la interfaz (chrome de la UI)
+│
+├── components/               # Componentes UI compartidos
+│   ├── MainLayout.js           # Layout con Sidebar + contenido, usado por casi toda pantalla autenticada
+│   ├── Sidebar.js              # Navegación lateral (iconos, logout, colapsable)
+│   ├── ConfirmDialog.js         # Modal de confirmación genérico
+│   ├── Toast.js                 # Notificaciones tipo toast
+│   └── index.js
+│
+├── assets/
+│   ├── anatomy/                # Imágenes para el diagrama corporal (evaluación médica)
+│   └── people/                  # Avatares / fotos de personas
 │
 └── screens/
-    ├── auth/           # Login, ForgotPassword
-    ├── dashboard/      # Un dashboard por cada rol
-    ├── sessions/       # Gestión de sesiones de entrenamiento
-    ├── medical/        # Registros médicos, signos vitales, bioimpedancia
-    ├── profile/        # Perfil y configuración del usuario
-    └── researcher/     # Exportaciones anonimizadas y reportes
+    ├── auth/                    # LoginScreen, ForgotPasswordScreen
+    ├── dashboard/                # Un dashboard por rol + componentes (StatCard, WelcomeBanner, ValidationCard, etc.)
+    ├── sessions/                  # Listado, detalle y creación de sesiones de entrenamiento (CarouselGrid, AgendaTimeline, FilterTabs)
+    ├── resultados/                 # Evaluación médica por pasos: signos vitales, síntomas, nutrición, certificados, diagrama corporal 2D
+    ├── schedule/                   # Cronograma mensual de capacitaciones (MonthCalendar, DayAgendaPanel)
+    ├── progress/                    # Historial de progreso del bombero (gráficas de síntomas y línea de tiempo)
+    ├── people/                       # Gestión de personas / participantes por sesión
+    ├── settings/                      # Configuración de la app (tema, idioma, notificaciones)
+    ├── profile/                        # Perfil del usuario
+    └── researcher/                      # Exportaciones anonimizadas y reportes (investigador)
 ```
 
 ---
@@ -129,24 +185,61 @@ src/
 
 Definidos en `src/constants/roles.js`:
 
-| Constante | Descripción |
-|---|---|
-| `SYSTEM_ADMIN` | Gestión global de usuarios, permisos y auditoría |
-| `ADMIN` | Crea y gestiona sesiones, invita participantes (Sara Flores / Rep. Francia) |
-| `FIREFIGHTER_TRAINEE` | Participa en sesiones, ve sus propios resultados |
-| `MEDICAL` | Registra signos vitales, historial médico, bioimpedancia, emite alertas |
-| `RESEARCHER` | Accede a datos anonimizados, genera reportes estadísticos |
+| Constante | Label | Descripción |
+|---|---|---|
+| `SYSTEM_ADMIN` | Administrador del Sistema | Gestión global de usuarios, permisos y auditoría |
+| `ADMIN` | Administrador | Crea y gestiona sesiones, invita participantes |
+| `FIREFIGHTER_TRAINEE` | Bombero Aspirante | Participa en sesiones, ve sus propios resultados y progreso |
+| `CAPACITATOR` | Capacitador | Imparte capacitaciones, gestiona agenda y asistencia |
+| `MEDICAL` | Médico | Registra signos vitales, historial médico, evaluaciones y certificados |
+| `RESEARCHER` | Investigador | Accede a datos anonimizados, genera reportes estadísticos |
+| `FIRE_CHIEF` | Jefe de Bomberos | Gestiona personal (bomberos y capacitadores), crea sesiones |
+
+### Permisos (`src/navigation/guards.js`)
+
+```
+createSession          → ADMIN, SYSTEM_ADMIN, CAPACITATOR, FIRE_CHIEF
+manageInvitations      → ADMIN, SYSTEM_ADMIN, CAPACITATOR, FIRE_CHIEF
+viewAllSessions        → ADMIN, SYSTEM_ADMIN, CAPACITATOR, MEDICAL, RESEARCHER, FIRE_CHIEF
+viewOwnSessions        → FIREFIGHTER_TRAINEE
+createMedicalRecord    → MEDICAL
+readMedicalRecord      → MEDICAL, ADMIN, SYSTEM_ADMIN
+readOwnMedicalRecord   → FIREFIGHTER_TRAINEE
+manageUsers            → SYSTEM_ADMIN
+manageAuditLog         → SYSTEM_ADMIN
+exportAnonymizedData   → RESEARCHER, SYSTEM_ADMIN
+generateReports        → RESEARCHER, ADMIN, SYSTEM_ADMIN, CAPACITATOR, FIRE_CHIEF
+manageFirefighters     → FIRE_CHIEF, ADMIN, SYSTEM_ADMIN
+manageCapacitators     → FIRE_CHIEF, ADMIN, SYSTEM_ADMIN
+```
+
+```js
+import { useAuth } from '../hooks';
+
+const { role, isAuthenticated, can } = useAuth();
+
+if (can('createSession')) {
+  // mostrar botón de crear sesión
+}
+```
 
 ---
 
-## Colores del diseño
+## Navegación
+
+`src/navigation/index.js` define el `RootNavigator`: si no hay sesión (`isAuthenticated` en `authStore` es `false`) se muestra el `AuthStack` (Login / ForgotPassword); si hay sesión, se monta un `RoleNavigator` cuyas pantallas disponibles varían según el rol (creación de sesión, "Personas", cola de validación, etc.). La mayoría de pantallas se envuelven con `MainLayout` (Sidebar + contenido) mediante el helper `withMainLayout`.
+
+---
+
+## Tema, colores e i18n
+
+### Colores
 
 Definidos en `src/constants/colors.js`. Úsalos siempre desde ahí, nunca pongas colores hardcodeados:
 
 ```js
 import { COLORS } from '../constants';
 
-// Ejemplos
 COLORS.primary        // #E85D27 — naranja fuego principal
 COLORS.background     // #1A1A1A — fondo oscuro
 COLORS.textPrimary    // #FFFFFF — texto principal
@@ -154,174 +247,29 @@ COLORS.danger         // #D32F2F — alertas críticas
 COLORS.success        // #4CAF50 — confirmaciones
 ```
 
----
+### Tema claro/oscuro
 
-## Guía por desarrollador
-
----
-
-### Dev 1 — `feature/auth`
-
-**Tu objetivo**: pantallas de login y recuperación de contraseña, más las llamadas al API de autenticación.
-
-**Archivos que modificas**:
-
-```
-src/screens/auth/LoginScreen.js         ← pantalla principal de login
-src/screens/auth/ForgotPasswordScreen.js ← recuperar contraseña
-src/services/authService.js             ← CREAR este archivo
-```
-
-**Diseño de LoginScreen** (según prototipo):
-- Layout dividido: panel izquierdo con logo y branding, panel derecho con formulario
-- El formulario recibe un token de invitación (no es registro abierto)
-- Fondo oscuro, botón naranja `COLORS.primary`
-
-**Cómo hacer el login** — llama esto cuando el backend responda OK:
+El modo oscuro vive en `useSettingsStore` (Zustand) y se consume con `useTheme()`, que devuelve el set de tokens (`light`/`dark`) correspondiente — fondo, texto, bordes, badges de estado, etc. Cualquier componente puede llamarlo directo, sin prop drilling:
 
 ```js
-import useAuthStore from '../../store/authStore';
+import { useTheme } from '../hooks';
 
-const { setAuth } = useAuthStore();
-
-// Después de recibir respuesta del API:
-setAuth({
-  user: { id: '...', name: 'Sara Flores', email: '...' },
-  role: 'ADMIN',   // usa las constantes de roles.js
-  token: 'jwt-token-aqui',
-});
-// El navigator automáticamente redirige al dashboard correcto
+const theme = useTheme();
+// theme.background, theme.textPrimary, theme.badge.success, ...
 ```
 
-**Crea `src/services/authService.js`** con esta estructura:
+### Internacionalización (i18n)
+
+`src/i18n/strings.js` centraliza los textos de toda la interfaz (menús, títulos, botones, validaciones, mensajes de estado) en español e inglés. El idioma activo también vive en `settingsStore` y se lee con `useTranslation()`:
 
 ```js
-import api from './api';
+import { useTranslation } from '../hooks';
 
-export const authService = {
-  login: (invitationToken, password) =>
-    api.post('/auth/login', { invitationToken, password }),
-
-  forgotPassword: (email) =>
-    api.post('/auth/forgot-password', { email }),
-
-  logout: () =>
-    api.post('/auth/logout'),
-};
+const { t } = useTranslation();
+t('sidebar.dashboard'); // "Inicio" o "Home" según el idioma
 ```
 
----
-
-### Dev 2 — `feature/navigation`
-
-**Tu objetivo**: sidebar de navegación con iconos y protección de rutas por rol.
-
-**Archivos que modificas**:
-
-```
-src/navigation/index.js          ← agregar el sidebar navigator
-src/components/Sidebar.js        ← CREAR este componente  ← ES TUYO
-src/components/index.js          ← exportar Sidebar aquí
-```
-
-> **Importante**: el Sidebar vive en `src/components/`, no dentro de ninguna carpeta de screen.
-> Los dashboards (Dev 3) tienen un slot reservado `{Sidebar && <Sidebar />}` esperándote.
-> Cuando termines tu componente, el navigator lo inyecta así:
->
-> ```js
-> // En navigation/index.js — Dev 2 hace esto
-> import Sidebar from '../components/Sidebar';
-> <Stack.Screen name={ROUTES.DASHBOARD}>
->   {(props) => <MedicalDashboard {...props} Sidebar={Sidebar} />}
-> </Stack.Screen>
-> ```
-
-**Diseño del Sidebar** (según prototipo):
-- Vertical, solo iconos (sin texto)
-- Logo de la app arriba
-- Iconos: dashboard (grid), sesiones (fuego), calendario, configuración (engranaje)
-- Ícono de logout abajo del todo
-- Fondo `COLORS.sidebarBg`, ícono activo `COLORS.sidebarIconActive`
-
-**Cómo leer el rol y proteger rutas**:
-
-```js
-import { useAuth } from '../hooks';
-import { can } from './guards';
-
-const { role, isAuthenticated } = useAuth();
-
-// Verificar un permiso:
-if (can(role, 'createSession')) {
-  // mostrar botón de crear sesión
-}
-```
-
-**Permisos disponibles en `guards.js`**:
-
-```
-createSession          → ADMIN, SYSTEM_ADMIN
-manageInvitations      → ADMIN, SYSTEM_ADMIN
-viewAllSessions        → ADMIN, SYSTEM_ADMIN, MEDICAL, RESEARCHER
-viewOwnSessions        → FIREFIGHTER_TRAINEE
-createMedicalRecord    → MEDICAL
-readMedicalRecord      → MEDICAL, ADMIN, SYSTEM_ADMIN
-exportAnonymizedData   → RESEARCHER, SYSTEM_ADMIN
-```
-
----
-
-### Dev 3 — `feature/dashboard` (tú)
-
-**Tu objetivo**: implementar los 5 dashboards, uno por cada rol.
-
-**Archivos que modificas**:
-
-```
-src/screens/dashboard/AdminDashboard.js
-src/screens/dashboard/TraineeDashboard.js
-src/screens/dashboard/MedicalDashboard.js
-src/screens/dashboard/ResearcherDashboard.js
-src/screens/dashboard/SystemAdminDashboard.js
-```
-
-**Regla importante**: el rol llega del store, nunca lo hardcodees:
-
-```js
-import { useAuth } from '../../hooks';
-
-export default function AdminDashboard() {
-  const { user, role } = useAuth();
-  // user.name, user.email, etc.
-}
-```
-
-**Diseño del Dashboard** (según prototipo):
-- Banner hero con saludo al usuario: *"Welcome back, [nombre]"*
-- Card "Immediate Action Required" — muestra invitaciones a sesiones pendientes
-- Panel derecho con el horario semanal
-- El contenido cambia según el rol
-
-**Qué muestra cada dashboard**:
-
-| Dashboard | Contenido principal |
-|---|---|
-| `AdminDashboard` | Sesiones activas, invitaciones pendientes, estadísticas generales |
-| `TraineeDashboard` | Mis invitaciones, mis sesiones, mis estadísticas personales |
-| `MedicalDashboard` | Panel de vitales en tiempo real, cola de alertas, trainees asignados |
-| `ResearcherDashboard` | Exportaciones disponibles, generador de reportes estadísticos |
-| `SystemAdminDashboard` | Gestión de usuarios, log de auditoría, permisos globales |
-
----
-
-## Reglas que todos deben seguir
-
-1. **Nunca hardcodear colores** — usa siempre `COLORS.algo` de `constants/colors.js`
-2. **Nunca hardcodear el rol** — léelo siempre desde `useAuth()`
-3. **Nunca hardcodear rutas** — usa siempre `ROUTES.algo` de `constants/routes.js`
-4. **Las pantallas médicas** deben llamar `useAuditTrail` al montarse (requerimiento de auditoría)
-5. **No crear lógica de API dentro de los screens** — ponla en `src/services/`
-6. **No hacer merge directo a `main`** — siempre Pull Request
+> El contenido mock de negocio (nombres de capacitaciones, instructores, direcciones) no se traduce — solo el "chrome" de la UI que controla este código.
 
 ---
 
@@ -360,27 +308,57 @@ const { enqueue } = useOfflineSync();
 enqueue({ endpoint: '/vitals', method: 'POST', payload: data });
 ```
 
+### `useTheme()` — tokens de color según modo claro/oscuro
+
+```js
+import { useTheme } from '../hooks';
+
+const theme = useTheme();
+```
+
+### `useTranslation()` — textos según idioma activo
+
+```js
+import { useTranslation } from '../hooks';
+
+const { t } = useTranslation();
+```
+
 ---
 
-## Sprints y responsabilidades
+## Módulos por pantalla
 
-| Sprint | Qué se construye | Quién |
+| Módulo (`src/screens/...`) | Qué hace | Componentes propios destacados |
 |---|---|---|
-| 1 (actual) | Estructura base, constantes, store, navegación, placeholders | Todos traen este main |
-| 2 | Módulos System Admin (usuarios, auditoría, permisos) | TBD |
-| 3 | Gestión de sesiones, invitaciones, participantes | TBD |
-| 4 | Módulos Trainee (acceso, sesiones, perfil) | TBD |
-| 5 | Módulos Medical (vitales, bioimpedancia, ambiente) | TBD |
-| 6 | Módulos Researcher (exportación, análisis) | TBD |
-| 7 | Validación de requisitos no funcionales | Todos |
-| 8 | Testing con usuarios, bugs, documentación final | Todos |
+| `auth/` | Login con token de invitación, recuperación de contraseña | — |
+| `dashboard/` | Un dashboard por rol con banner de bienvenida, estadísticas e invitaciones pendientes | `WelcomeBanner`, `StatCard`, `PerformanceStatCard`, `InvitationCard`, `ValidationCard`, `WeekScheduleCard`, `ActivityRow` |
+| `sessions/` | Listado, filtro, detalle y creación de sesiones de entrenamiento | `SessionCard`, `FilterTabs`, `AgendaTimeline`, `CarouselGrid`, `TrainingCenterSidebar` |
+| `resultados/` | Evaluación médica por pasos (signos vitales → síntomas → nutrición → certificados) y resultados individuales/generales | `Step1SignosVitales`...`Step4Certificados`, `StepProgress`, `BodyDiagram2D` |
+| `schedule/` | Cronograma mensual de capacitaciones | `MonthCalendar`, `DayAgendaPanel` |
+| `progress/` | Historial de progreso del bombero (síntomas y evolución en el tiempo) | `InteractiveLineChart`, `SymptomFrequencyChart`, `SymptomHistoryItem` |
+| `people/` | Gestión de personas/participantes asociados a una sesión | — |
+| `settings/` | Preferencias de la app: tema, idioma, notificaciones, auto-sync | `SettingsCard`, `ToggleRow`, `FormField` |
+| `profile/` | Perfil del usuario autenticado | — |
+| `researcher/` | Exportaciones anonimizadas y reportes estadísticos | — |
+
+---
+
+## Reglas que todos deben seguir
+
+1. **Nunca hardcodear colores** — usa siempre `COLORS.algo` de `constants/colors.js`, o `useTheme()` si el componente debe soportar modo claro/oscuro.
+2. **Nunca hardcodear el rol** — léelo siempre desde `useAuth()`.
+3. **Nunca hardcodear rutas** — usa siempre `ROUTES.algo` de `constants/routes.js`.
+4. **Nunca hardcodear textos de interfaz** — usa `useTranslation()` y agrega la clave en `src/i18n/strings.js` (es/en).
+5. **Las pantallas médicas** deben llamar `useAuditTrail` al montarse (requerimiento de auditoría).
+6. **No crear lógica de API dentro de los screens** — ponla en `src/services/`.
+7. **No hacer merge directo a `main`** — siempre Pull Request, y debe pasar el check de CI.
 
 ---
 
 ## Preguntas frecuentes
 
 **¿Dónde pongo una nueva pantalla?**
-En la carpeta de screens que corresponda (`sessions/`, `medical/`, etc.) y la exportas desde el `index.js` de esa carpeta.
+En la carpeta de `screens/` que corresponda y la exportas desde el `index.js` de esa carpeta.
 
 **¿Cómo agrego un nuevo componente compartido?**
 Créalo en `src/components/NombreComponente.js` y expórtalo en `src/components/index.js`.
@@ -397,3 +375,6 @@ const response = await api.get('/sessions');
 const { can } = useAuth();
 if (can('createSession')) { /* mostrar botón */ }
 ```
+
+**¿Por qué falló el CI en mi PR?**
+Revisa el log del job en la pestaña Actions. Lo más común es un error de compilación detectado por `expo export --platform web` (import roto, sintaxis inválida) o un `package-lock.json` desincronizado con `package.json` — en ese caso corre `npm install` localmente y comitea el lockfile actualizado.
