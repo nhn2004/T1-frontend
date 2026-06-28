@@ -1,300 +1,439 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  View, Text, StyleSheet, ActivityIndicator,
-  TouchableOpacity, ScrollView,
+  Alert,
+  Image,
+  ImageBackground,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { COLORS } from '../../constants/colors';
 import { useAuth } from '../../hooks';
-import { sessionService }  from '../../services';
-import { traineeService }  from '../../services/traineeService';
-import api                 from '../../services/api';
+import { sessionService } from '../../services';
+import { traineeService } from '../../services/traineeService';
 
-const STATUS_CFG = {
-  COMPLETED: { label: 'Finalizadas', color: '#08C65A', bg: '#E8FAF0', icon: 'checkmark-circle-outline' },
-  ACTIVE:    { label: 'En Curso',    color: '#1E88E5', bg: '#EAF3FD', icon: 'play-circle-outline'      },
-  PLANNED:   { label: 'Pendientes',  color: '#8F45D4', bg: '#F3EAFD', icon: 'time-outline'              },
-  CANCELLED: { label: 'Canceladas',  color: '#D83B35', bg: '#FEF2F2', icon: 'close-circle-outline'      },
-};
+const HERO_IMAGE = require('../../assets/fondocarro.jpg');
+const BODY_IMAGE = require('../../assets/anatomy/full-body.png');
 
-export default function ResearcherDashboard({ navigation }) {
+const DATASETS = [
+  { id: 'DS-A42-2023', format: 'CSV', size: '2.4MB', date: '14 Oct 2023' },
+  { id: 'DS-B09-2024', format: 'JSON', size: '812KB', date: '02 Ene 2024' },
+  { id: 'DS-C15-AGG', format: 'XLSX', size: '5.1MB', date: '18 Mar 2024' },
+];
+
+const REPORT_TYPES = ['Estadistico', 'Comparativo', 'Tendencias'];
+const GROUPS = ['Todos los Batallones', 'Quito Centro', 'Guayaquil Norte'];
+
+function formatNumber(value, fallback, prefix = '') {
+  return value === null || value === undefined ? `${prefix}${fallback}` : `${prefix}${value}`;
+}
+
+export default function ResearcherDashboard() {
   const { user } = useAuth();
+  const { width } = useWindowDimensions();
+  const isCompact = width < 920;
 
-  const [loading,      setLoading]      = useState(true);
-  const [sessions,     setSessions]     = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sessions, setSessions] = useState([]);
   const [traineeCount, setTraineeCount] = useState(null);
-  const [participants, setParticipants] = useState([]);
+  const [reportType, setReportType] = useState(REPORT_TYPES[0]);
+  const [group, setGroup] = useState(GROUPS[0]);
+  const [selectedTypes, setSelectedTypes] = useState({
+    medica: true,
+    fisica: false,
+    psicologica: false,
+    tecnica: false,
+  });
 
   useEffect(() => {
+    if (user?.isPreview) {
+      setLoading(false);
+      return;
+    }
+
     Promise.allSettled([
       sessionService.getAll(),
       traineeService.getAll(),
-      api.get('/session-participants'),
-    ]).then(([sessR, trainR, partR]) => {
-      if (sessR.status  === 'fulfilled') setSessions(sessR.value);
+    ]).then(([sessR, trainR]) => {
+      if (sessR.status === 'fulfilled') setSessions(sessR.value);
       if (trainR.status === 'fulfilled') setTraineeCount(trainR.value.length);
-      if (partR.status  === 'fulfilled') setParticipants(partR.value.data?.data ?? []);
     }).finally(() => setLoading(false));
-  }, []);
+  }, [user?.isPreview]);
 
-  // Conteo de participantes por sesión
-  const participantsBySession = useMemo(() => {
-    const map = {};
-    participants.forEach(p => {
-      map[p.trainingSessionId] = (map[p.trainingSessionId] ?? 0) + 1;
-    });
-    return map;
-  }, [participants]);
+  const completedSessions = useMemo(
+    () => sessions.filter(s => s.status === 'COMPLETED').length,
+    [sessions]
+  );
 
-  // Distribución por estado
-  const byStatus = useMemo(() => {
-    const counts = { COMPLETED: 0, ACTIVE: 0, PLANNED: 0, CANCELLED: 0 };
-    sessions.forEach(s => { if (counts[s.status] !== undefined) counts[s.status]++; });
-    return counts;
-  }, [sessions]);
-
-  const totalParticipations = participants.length;
-  const completedSessions   = sessions.filter(s => s.status === 'COMPLETED');
-  const completionRate      = sessions.length > 0
-    ? Math.round((byStatus.COMPLETED / sessions.length) * 100)
-    : 0;
-
-  const fmt = v => (loading && v === null) ? '—' : String(v ?? 0);
-
-  const STATS = [
-    { id: 'sessions',  label: 'Total\nSesiones',      value: loading ? '—' : String(sessions.length),   icon: 'calendar-outline',    color: '#1E88E5', bg: '#EAF3FD' },
-    { id: 'completed', label: 'Sesiones\nFinalizadas', value: loading ? '—' : String(byStatus.COMPLETED), icon: 'checkmark-done-outline', color: '#08C65A', bg: '#E8FAF0' },
-    { id: 'trainees',  label: 'Aspirantes\nRegistrados', value: fmt(traineeCount),                       icon: 'people-outline',      color: '#E85D27', bg: '#FFF0EA' },
-    { id: 'parts',     label: 'Total\nParticipaciones', value: loading ? '—' : String(totalParticipations), icon: 'stats-chart-outline', color: '#8F45D4', bg: '#F3EAFD' },
-    { id: 'rate',      label: 'Tasa de\nCompletitud',  value: loading ? '—' : `${completionRate}%`,     icon: 'trending-up-outline', color: '#F59E0B', bg: '#FFFBEB' },
+  const stats = [
+    {
+      id: 'datasets',
+      label: 'DATASETS\nDISPONIBLES',
+      value: '82',
+      icon: 'server-outline',
+      color: '#E85D27',
+      bg: '#FFE5DD',
+    },
+    {
+      id: 'sample',
+      label: 'ASPIRANTES EN\nMUESTRA',
+      value: formatNumber(traineeCount, 1240, 'n='),
+      icon: 'people-outline',
+      color: '#00A7D8',
+      bg: '#DDF5FF',
+    },
+    {
+      id: 'sessions',
+      label: 'SESIONES\nANALIZADAS',
+      value: sessions.length ? String(completedSessions || sessions.length) : '456',
+      icon: 'analytics-outline',
+      color: '#6B86B8',
+      bg: '#EAF1FF',
+    },
+    {
+      id: 'export',
+      label: 'ULTIMA EXPORTACION',
+      value: 'Hace 2h',
+      icon: 'download-outline',
+      color: '#E85D27',
+      bg: '#FFE5DD',
+    },
   ];
+
+  function cycleReportType() {
+    const nextIndex = (REPORT_TYPES.indexOf(reportType) + 1) % REPORT_TYPES.length;
+    setReportType(REPORT_TYPES[nextIndex]);
+  }
+
+  function cycleGroup() {
+    const nextIndex = (GROUPS.indexOf(group) + 1) % GROUPS.length;
+    setGroup(GROUPS[nextIndex]);
+  }
+
+  function toggleType(key) {
+    setSelectedTypes(prev => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function generateReport() {
+    Alert.alert('Generar reporte', `Reporte ${reportType.toLowerCase()} preparado con datos anonimizados.`);
+  }
 
   return (
     <SafeAreaView style={styles.root}>
       <ScrollView contentContainerStyle={styles.content}>
-
-        {/* ── Header ── */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Panel de Investigación</Text>
-            <Text style={styles.subtitle}>Bienvenido, {user?.name ?? 'Investigador'} · Datos agregados del sistema</Text>
+        <ImageBackground source={HERO_IMAGE} style={styles.hero} imageStyle={styles.heroImage}>
+          <View style={styles.heroOverlay} />
+          <View style={styles.heroScanlines} />
+          <Image source={BODY_IMAGE} style={styles.bodyImage} resizeMode="contain" />
+          <View style={styles.heroContent}>
+            <Text style={styles.heroTitle}>BIENVENIDO, INVESTIGADOR</Text>
+            <Text style={styles.heroSubtitle}>Acceso a Datos Anonimizados | Sistema de Monitoreo de Aptitud Bomberil</Text>
           </View>
-          {loading && <ActivityIndicator size="small" color={COLORS.primary} />}
-        </View>
+        </ImageBackground>
 
-        {/* ── Stats ── */}
-        <View style={styles.statsRow}>
-          {STATS.map(st => (
-            <View key={st.id} style={[styles.statCard, { backgroundColor: st.bg }]}>
-              <View style={[styles.statIcon, { backgroundColor: st.color + '22' }]}>
-                <Ionicons name={st.icon} size={20} color={st.color} />
-              </View>
-              <Text style={[styles.statValue, { color: st.color }]}>{st.value}</Text>
-              <Text style={styles.statLabel}>{st.label}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* ── Distribución por estado ── */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="pie-chart-outline" size={18} color="#1A1A1A" />
-            <Text style={styles.cardTitle}>Distribución de Sesiones</Text>
-          </View>
-
-          <View style={styles.distRow}>
-            {Object.entries(STATUS_CFG).map(([key, cfg]) => {
-              const count = byStatus[key] ?? 0;
-              const pct   = sessions.length > 0 ? Math.round((count / sessions.length) * 100) : 0;
-              return (
-                <View key={key} style={[styles.distCard, { backgroundColor: cfg.bg }]}>
-                  <Ionicons name={cfg.icon} size={18} color={cfg.color} />
-                  <Text style={[styles.distValue, { color: cfg.color }]}>
-                    {loading ? '—' : count}
-                  </Text>
-                  <Text style={styles.distLabel}>{cfg.label}</Text>
-                  <Text style={[styles.distPct, { color: cfg.color }]}>
-                    {loading ? '' : `${pct}%`}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-
-          {/* Barra de progreso proporcional */}
-          {!loading && sessions.length > 0 && (
-            <View style={styles.barRow}>
-              {Object.entries(STATUS_CFG).map(([key, cfg]) => {
-                const pct = (byStatus[key] ?? 0) / sessions.length;
-                if (pct === 0) return null;
-                return (
-                  <View
-                    key={key}
-                    style={[styles.barSegment, { flex: pct, backgroundColor: cfg.color }]}
-                  />
-                );
-              })}
-            </View>
-          )}
-        </View>
-
-        {/* ── Sesiones con datos (completadas) ── */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="document-text-outline" size={18} color="#1A1A1A" />
-            <Text style={styles.cardTitle}>Sesiones con Datos de Evaluación</Text>
-            <Text style={styles.cardCount}>{completedSessions.length}</Text>
-          </View>
-
-          {loading ? (
-            <ActivityIndicator size="large" color={COLORS.primary} style={{ marginVertical: 20 }} />
-          ) : completedSessions.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Ionicons name="analytics-outline" size={32} color="#C0C8D2" />
-              <Text style={styles.emptyText}>Sin sesiones finalizadas aún</Text>
-            </View>
-          ) : (
-            completedSessions
-              .sort((a, b) => new Date(b.scheduledStart) - new Date(a.scheduledStart))
-              .map(s => {
-                const nPart = participantsBySession[s.id] ?? 0;
-                return (
-                  <TouchableOpacity
-                    key={s.id}
-                    style={styles.sessionRow}
-                    onPress={() => navigation?.navigate('SessionDetail', { id: s.id })}
-                    activeOpacity={0.75}
-                  >
-                    <View style={styles.sessionLeft}>
-                      <View style={styles.sessionDot} />
-                      <View style={styles.sessionInfo}>
-                        <Text style={styles.sessionTitle} numberOfLines={1}>{s.title}</Text>
-                        <Text style={styles.sessionMeta}>{s.date} · {s.time}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.sessionRight}>
-                      <View style={styles.partBadge}>
-                        <Ionicons name="people-outline" size={12} color="#08C65A" />
-                        <Text style={styles.partCount}>{nPart}</Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={15} color="#C0C8D2" />
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
-          )}
-        </View>
-
-        {/* ── Exportación (placeholder) ── */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="download-outline" size={18} color="#1A1A1A" />
-            <Text style={styles.cardTitle}>Exportar Datos</Text>
-          </View>
-          <Text style={styles.exportNote}>
-            Exportación de datos anonimizados disponible próximamente.
+        <View style={styles.privacyBanner}>
+          <Ionicons name="information-circle-outline" size={19} color="#27759E" />
+          <Text style={styles.privacyText}>
+            Datos anonimizados - No se incluye informacion personal identificable conforme a protocolos de privacidad de datos sensibles.
           </Text>
-          {[
-            { label: 'Signos Vitales (CSV)',       icon: 'pulse-outline',     color: '#E85D27' },
-            { label: 'Resumen de Sesiones (PDF)',   icon: 'document-outline',  color: '#1E88E5' },
-            { label: 'Historial de Síntomas (JSON)',icon: 'warning-outline',   color: '#F59E0B' },
-          ].map(btn => (
-            <View key={btn.label} style={styles.exportBtn}>
-              <Ionicons name={btn.icon} size={16} color={btn.color} />
-              <Text style={[styles.exportBtnText, { color: btn.color }]}>{btn.label}</Text>
-              <View style={styles.comingSoon}>
-                <Text style={styles.comingSoonText}>Próximamente</Text>
+        </View>
+
+        <View style={styles.statsRow}>
+          {stats.map(stat => (
+            <View key={stat.id} style={[styles.statCard, { borderLeftColor: stat.color }]}>
+              <View style={styles.statTextBox}>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+                <Text style={styles.statValue}>{loading && stat.id !== 'datasets' && stat.id !== 'export' ? '-' : stat.value}</Text>
+              </View>
+              <View style={[styles.statIcon, { backgroundColor: stat.bg }]}>
+                <Ionicons name={stat.icon} size={20} color={stat.color} />
               </View>
             </View>
           ))}
         </View>
 
+        <View style={[styles.mainGrid, isCompact && styles.mainGridCompact]}>
+          <View style={styles.reportPanel}>
+            <View style={styles.panelHeader}>
+              <Text style={styles.panelTitle}>Generador de Reportes</Text>
+              <Ionicons name="stats-chart-outline" size={18} color="#9A6B4E" />
+            </View>
+
+            <View style={styles.formGrid}>
+              <View style={styles.formField}>
+                <Text style={styles.fieldLabel}>TIPO DE REPORTE</Text>
+                <TouchableOpacity style={styles.selectBox} onPress={cycleReportType} activeOpacity={0.8}>
+                  <Text style={styles.selectText}>{reportType}</Text>
+                  <Ionicons name="chevron-down" size={15} color="#8B96A5" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.formField}>
+                <Text style={styles.fieldLabel}>RANGO DE FECHAS</Text>
+                <TouchableOpacity style={styles.selectBox} activeOpacity={0.8}>
+                  <Text style={styles.placeholderText}>mm/dd/yyyy</Text>
+                  <Ionicons name="calendar-outline" size={15} color="#5C6470" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.formField}>
+                <Text style={styles.fieldLabel}>TIPO DE EVALUACION</Text>
+                <View style={styles.checkboxGrid}>
+                  {[
+                    { key: 'medica', label: 'MEDICA' },
+                    { key: 'fisica', label: 'FISICA' },
+                    { key: 'psicologica', label: 'PSICOLOGICA' },
+                    { key: 'tecnica', label: 'TECNICA' },
+                  ].map(item => {
+                    const selected = selectedTypes[item.key];
+                    return (
+                      <TouchableOpacity
+                        key={item.key}
+                        style={styles.checkboxItem}
+                        onPress={() => toggleType(item.key)}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[styles.checkbox, selected && styles.checkboxChecked]}>
+                          {selected && <Ionicons name="checkmark" size={11} color="#fff" />}
+                        </View>
+                        <Text style={styles.checkboxLabel}>{item.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={styles.formField}>
+                <Text style={styles.fieldLabel}>GRUPO / BATALLON</Text>
+                <TouchableOpacity style={styles.selectBox} onPress={cycleGroup} activeOpacity={0.8}>
+                  <Text style={styles.selectText}>{group}</Text>
+                  <Ionicons name="chevron-down" size={15} color="#8B96A5" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.generateButton} onPress={generateReport} activeOpacity={0.85}>
+              <Ionicons name="sparkles-outline" size={17} color="#fff" />
+              <Text style={styles.generateButtonText}>Generar Reporte</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.datasetsPanel}>
+            <Text style={styles.panelTitle}>Datasets Anonimizados</Text>
+            <View style={styles.datasetList}>
+              {DATASETS.map(dataset => (
+                <View key={dataset.id} style={styles.datasetCard}>
+                  <View style={styles.datasetHeader}>
+                    <Text style={styles.datasetId}>{dataset.id}</Text>
+                    <View style={styles.formatBadge}>
+                      <Text style={styles.formatText}>{dataset.format}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.datasetMeta}>Tamano: {dataset.size}</Text>
+                  <Text style={styles.datasetMeta}>{dataset.date}</Text>
+                  <TouchableOpacity
+                    style={styles.exportButton}
+                    activeOpacity={0.8}
+                    onPress={() => Alert.alert('Exportar dataset', `${dataset.id} listo para exportacion anonima.`)}
+                  >
+                    <Ionicons name="download-outline" size={13} color="#C96B3B" />
+                    <Text style={styles.exportButtonText}>Exportar</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root:    { flex: 1, backgroundColor: '#F4F6F8' },
-  content: { padding: 20, gap: 16 },
+  root: { flex: 1, backgroundColor: '#F6F7F9' },
+  content: { padding: 16, gap: 16 },
 
-  header:   { gap: 2 },
-  greeting: { fontSize: 22, fontWeight: '800', color: '#1A1A1A' },
-  subtitle: { fontSize: 12, color: '#697282' },
+  hero: {
+    minHeight: 190,
+    borderRadius: 8,
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  heroImage: { borderRadius: 8 },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 41, 49, 0.68)',
+  },
+  heroScanlines: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 1,
+    borderColor: 'rgba(99, 223, 231, 0.18)',
+  },
+  bodyImage: {
+    position: 'absolute',
+    right: 18,
+    bottom: -18,
+    width: 230,
+    height: 230,
+    opacity: 0.2,
+  },
+  heroContent: { paddingHorizontal: 32, paddingVertical: 28, gap: 8 },
+  heroTitle: { color: '#fff', fontSize: 32, fontWeight: '900' },
+  heroSubtitle: { color: '#D5F6F8', fontSize: 14, fontWeight: '700' },
 
-  statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  privacyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#D8EEFF',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#BFE4FF',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  privacyText: { flex: 1, color: '#2A5D79', fontSize: 12, fontWeight: '700', lineHeight: 17 },
+
+  statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   statCard: {
-    minWidth: 120, flexGrow: 1,
-    borderRadius: 14, padding: 14, gap: 6,
+    flex: 1,
+    minWidth: 168,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E8EBF0',
+    borderLeftWidth: 4,
+    padding: 14,
   },
+  statTextBox: { flex: 1 },
+  statLabel: { color: '#7A8493', fontSize: 10, fontWeight: '900', lineHeight: 13 },
+  statValue: { color: '#1A1A1A', fontSize: 26, fontWeight: '900', lineHeight: 31 },
   statIcon: {
-    width: 36, height: 36, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 2,
-  },
-  statValue: { fontSize: 24, fontWeight: '900', lineHeight: 28 },
-  statLabel: { fontSize: 11, fontWeight: '700', color: '#697282', lineHeight: 15 },
-
-  card: {
-    backgroundColor: '#fff', borderRadius: 14,
-    borderWidth: 1, borderColor: '#E8EBF0',
-    padding: 16, gap: 10,
-  },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  cardTitle:  { flex: 1, fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
-  cardCount:  {
-    backgroundColor: '#F4F6F8', borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 2,
-    fontSize: 12, fontWeight: '700', color: '#697282',
+    width: 38,
+    height: 38,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  distRow: { flexDirection: 'row', gap: 8 },
-  distCard: {
-    flex: 1, borderRadius: 10, padding: 12,
-    alignItems: 'center', gap: 4,
+  mainGrid: { flexDirection: 'row', gap: 18, alignItems: 'stretch' },
+  mainGridCompact: { flexDirection: 'column' },
+  reportPanel: {
+    flex: 2.25,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E8EBF0',
+    padding: 22,
+    minHeight: 350,
   },
-  distValue: { fontSize: 22, fontWeight: '900' },
-  distLabel: { fontSize: 10, fontWeight: '700', color: '#697282', textAlign: 'center' },
-  distPct:   { fontSize: 11, fontWeight: '800' },
+  datasetsPanel: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E8EBF0',
+    padding: 22,
+    minHeight: 350,
+  },
+  panelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 22,
+  },
+  panelTitle: { color: '#1A1A1A', fontSize: 20, fontWeight: '900', lineHeight: 25 },
 
-  barRow: {
-    flexDirection: 'row', height: 6, borderRadius: 3,
-    overflow: 'hidden', marginTop: 4,
+  formGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  formField: { width: '47%', minWidth: 220, gap: 8 },
+  fieldLabel: { color: '#7C8797', fontSize: 10, fontWeight: '900' },
+  selectBox: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: '#F0E2DC',
+    backgroundColor: '#FFF8F5',
+    paddingHorizontal: 12,
   },
-  barSegment: { height: 6 },
+  selectText: { color: '#5B4D47', fontSize: 13, fontWeight: '700' },
+  placeholderText: { color: '#8C7D76', fontSize: 13, fontWeight: '700' },
 
-  sessionRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderTopWidth: 1, borderTopColor: '#F0F0F0',
+  checkboxGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  checkboxItem: {
+    width: '47%',
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: '#FFF4F0',
+    borderRadius: 5,
+    paddingHorizontal: 8,
   },
-  sessionLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  sessionDot:  { width: 8, height: 8, borderRadius: 4, backgroundColor: '#08C65A' },
-  sessionInfo: { flex: 1 },
-  sessionTitle:{ fontSize: 13, fontWeight: '700', color: '#1A1A1A' },
-  sessionMeta: { fontSize: 11, color: '#9AA3B0', marginTop: 2 },
-  sessionRight:{ flexDirection: 'row', alignItems: 'center', gap: 8 },
-  partBadge:   {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#E8FAF0', borderRadius: 6,
-    paddingHorizontal: 7, paddingVertical: 3,
+  checkbox: {
+    width: 14,
+    height: 14,
+    borderRadius: 2,
+    borderWidth: 1.5,
+    borderColor: '#D9C7BE',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  partCount: { fontSize: 11, fontWeight: '800', color: '#08C65A' },
+  checkboxChecked: {
+    backgroundColor: '#C95623',
+    borderColor: '#C95623',
+  },
+  checkboxLabel: { color: '#5C514B', fontSize: 10, fontWeight: '900' },
+  generateButton: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F25A26',
+    borderRadius: 7,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    marginTop: 28,
+  },
+  generateButtonText: { color: '#fff', fontSize: 13, fontWeight: '900' },
 
-  emptyBox:  { alignItems: 'center', gap: 8, paddingVertical: 20 },
-  emptyText: { fontSize: 13, color: '#9AA3B0' },
-
-  exportNote: { fontSize: 12, color: '#9AA3B0', fontStyle: 'italic' },
-  exportBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 10,
-    borderTopWidth: 1, borderTopColor: '#F0F0F0',
+  datasetList: { gap: 14, marginTop: 14 },
+  datasetCard: {
+    backgroundColor: '#FFF8F5',
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: '#F2DFD6',
+    padding: 14,
+    gap: 6,
   },
-  exportBtnText: { flex: 1, fontSize: 13, fontWeight: '600' },
-  comingSoon: {
-    backgroundColor: '#F4F6F8', borderRadius: 6,
-    paddingHorizontal: 8, paddingVertical: 3,
+  datasetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  datasetId: { color: '#34313A', fontSize: 14, fontWeight: '900' },
+  formatBadge: { backgroundColor: '#FFE6DD', borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3 },
+  formatText: { color: '#C95623', fontSize: 9, fontWeight: '900' },
+  datasetMeta: { color: '#7C8797', fontSize: 10, fontWeight: '700' },
+  exportButton: {
+    marginTop: 8,
+    minHeight: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#D99372',
+    backgroundColor: '#FFFDFB',
   },
-  comingSoonText: { fontSize: 10, fontWeight: '700', color: '#9AA3B0' },
+  exportButtonText: { color: '#C96B3B', fontSize: 11, fontWeight: '900' },
 });
