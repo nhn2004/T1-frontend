@@ -46,8 +46,6 @@ export default function ValidationCard({ item, onApprove, onReject, onReview, bu
 
   return (
     <View style={styles.card} {...a11yGroup(spoken)}>
-      <View style={[styles.accent, { backgroundColor: tone.solid }]} {...a11yDecorative} />
-
       <View style={styles.content}>
         {/* ── Quién ── */}
         <View style={styles.personRow}>
@@ -152,7 +150,6 @@ export default function ValidationCard({ item, onApprove, onReject, onReview, bu
 const makeStyles = (t, compact) =>
   StyleSheet.create({
     card: {
-      flexDirection: 'row',
       backgroundColor: t.card,
       borderRadius: 14,
       borderWidth: 1,
@@ -164,9 +161,9 @@ const makeStyles = (t, compact) =>
       shadowRadius: 6,
       elevation: 2,
     },
-    // Franja de urgencia: transmite prioridad sin teñir toda la tarjeta.
-    accent: { width: 4 },
-    content: { flex: 1, padding: 14, gap: 12 },
+    // La urgencia se comunica solo con el chip de vencimiento; la tarjeta se mantiene
+    // limpia y uniforme.
+    content: { padding: 14, gap: 12 },
 
     personRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     avatar: {

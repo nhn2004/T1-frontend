@@ -140,10 +140,26 @@ export const sessionService = {
     };
   },
 
-  /** Crea una sesión de entrenamiento. Devuelve la sesión normalizada. */
+  /** Crea una sesión de entrenamiento. Devuelve la sesión cruda del backend. */
   async create(payload) {
     const { data: wrapper } = await api.post('/training-sessions', payload);
     return wrapper.data;
+  },
+
+  /**
+   * Marca la sesión como iniciada (Scheduled -> InProgress).
+   * Sin esta llamada la sesión seguía figurando como "Pendiente" en todos los
+   * dashboards aunque el capacitador ya la hubiera arrancado desde la app.
+   */
+  async start(id) {
+    const { data: wrapper } = await api.patch(`/training-sessions/${id}/start`);
+    return toSession(wrapper.data);
+  },
+
+  /** Marca la sesión como finalizada (InProgress -> Finished). */
+  async finish(id) {
+    const { data: wrapper } = await api.patch(`/training-sessions/${id}/finish`);
+    return toSession(wrapper.data);
   },
 
   STATUS_MAP,

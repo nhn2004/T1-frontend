@@ -177,6 +177,15 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
         user?.userId,
         ambiental,
       );
+
+      // Iniciar la capacitación DEBE cambiar su estado en el servidor. Antes solo se
+      // navegaba a la gestión de asistentes y la sesión seguía "Pendiente" para todos
+      // los demás roles, aunque en la práctica ya estuviera en curso.
+      if (session.status === 'PLANNED') {
+        const updated = await sessionService.start(session.id);
+        setSession((prev) => ({ ...prev, ...updated }));
+      }
+
       setShowAmbientalModal(false);
       if (unsupported.length) {
         setLoadError(`Condiciones guardadas. Sin soporte en el servidor: ${unsupported.join(', ')}.`);
@@ -188,7 +197,7 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
     } finally {
       setSavingAmbiental(false);
     }
-  }, [ambiental, navigateToPersonas, session.id, user?.userId]);
+  }, [ambiental, navigateToPersonas, session.id, session.status, user?.userId]);
 
   const handleBack = useCallback(() => {
     if (onBack) onBack();
