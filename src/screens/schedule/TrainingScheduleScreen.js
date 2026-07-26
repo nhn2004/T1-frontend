@@ -22,7 +22,9 @@ function today() {
   return new Date();
 }
 
-function closestSessionDate(sessions, reference) {
+// `reference` toma "hoy" por defecto: se invoca sin segundo argumento desde el
+// efecto de arranque, y sin default reventaba con "getTime of undefined".
+function closestSessionDate(sessions, reference = today()) {
   let best = null;
   let bestDiff = Infinity;
   sessions.forEach((session) => {

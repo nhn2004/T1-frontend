@@ -13,6 +13,10 @@ import api from '../services/api';
 
 const pendingEvents = [];
 
+// El endpoint no existe todavía, así que el aviso se emitiría en cada montaje de cada
+// pantalla médica y ahogaría la consola. Se avisa una sola vez por tipo de fallo.
+const warnedReasons = new Set();
+
 /** Eventos de auditoría que no se pudieron enviar (para diagnóstico/reintento futuro). */
 export function getPendingAuditEvents() {
   return [...pendingEvents];
@@ -42,10 +46,20 @@ export function useAuditTrail(resourceType) {
         // pero tampoco puede silenciarse por completo: se conserva y se avisa en dev.
         pendingEvents.push(event);
         if (__DEV__) {
-          const reason = error?.response?.status === 404
-            ? 'el endpoint /audit no existe en el backend'
+          const missingEndpoint = error?.response?.status === 404;
+          const reason = missingEndpoint
+            ? 'el endpoint POST /audit no existe en el backend'
             : error?.message ?? 'error desconocido';
-          console.warn(`[auditoría] No se registró ${action} sobre ${resourceType}: ${reason}`);
+          // Un 404 es siempre la misma causa: se reporta una vez y luego se cuentan
+          // los eventos en cola (getPendingAuditEvents) sin repetir el mensaje.
+          const key = missingEndpoint ? '404' : reason;
+          if (!warnedReasons.has(key)) {
+            warnedReasons.add(key);
+            console.warn(
+              `[auditoría] Los accesos no se están registrando: ${reason}. `
+              + 'Los eventos quedan en cola; consulta getPendingAuditEvents().',
+            );
+          }
         }
       }
     },

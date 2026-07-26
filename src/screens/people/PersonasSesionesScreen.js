@@ -17,6 +17,7 @@ import { participantService } from '../../services/participantService';
 import { ROUTES } from '../../constants/routes';
 import { a11yButton, a11yDecorative, a11yGroup } from '../../constants/a11y';
 import useTheme from '../../hooks/useTheme';
+import { useAuth } from '../../hooks';
 
 const STATUS_STYLES = {
   COMPLETADO: { label: 'Completado', icon: 'checkmark',    tone: 'success' },
@@ -42,6 +43,10 @@ export default function PersonasSesionesScreen({ navigation, route }) {
   const numQuemas   = route?.params?.numQuemas   ?? 2;
   const theme = useTheme();
   const styles = React.useMemo(() => makeStyles(theme), [theme]);
+  // Solo los roles con acceso a la ficha médica pueden abrir la evaluación; para el
+  // resto el botón se oculta en vez de intentar navegar a una pantalla no montada.
+  const { canAccessRoute } = useAuth();
+  const canEvaluate = canAccessRoute(ROUTES.EVALUATION);
 
   const [people,         setPeople]         = React.useState([]);
   const [loading,        setLoading]        = React.useState(true);
@@ -241,6 +246,7 @@ export default function PersonasSesionesScreen({ navigation, route }) {
                         styles={styles}
                         theme={theme}
                         numQuemas={numQuemas}
+                        canEvaluate={canEvaluate}
                       />
                     ))}
                     {rowCards.length < COLS &&
@@ -288,7 +294,7 @@ export default function PersonasSesionesScreen({ navigation, route }) {
 
 const FALLBACK_PHOTO = require('../../assets/people/bombero.png');
 
-function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuemas }) {
+function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuemas, canEvaluate }) {
   const statusStyle = STATUS_STYLES[person.status] ?? STATUS_STYLES.PENDIENTE;
   const tone = theme.status[statusStyle.tone];
 
@@ -296,6 +302,17 @@ function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuema
     switch (person.status) {
       case 'EN CURSO':
       case 'PENDIENTE':
+        // Registrar signos vitales es un acto médico: la pantalla de evaluación solo
+        // está montada para roles con acceso a la ficha médica, y el guardado exige
+        // que el usuario sea personal de salud. Para el resto (capacitador, jefe) el
+        // botón no se muestra en vez de fallar al navegar.
+        if (!canEvaluate) {
+          return (
+            <View style={[styles.cardBtn, styles.cardBtnDisabled]}>
+              <Text style={styles.cardBtnDisabledText}>Pendiente de evaluación</Text>
+            </View>
+          );
+        }
         return (
           <Pressable
             style={[styles.cardBtn, styles.cardBtnSolid]}

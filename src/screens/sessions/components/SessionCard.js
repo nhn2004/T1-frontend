@@ -110,10 +110,10 @@ const makeStyles = (t) =>
       borderWidth: 1,
       borderColor: t.border,
       backgroundColor: t.card,
-      paddingTop: 10,
-      paddingHorizontal: 12,
-      paddingBottom: 12,
-      gap: 6,
+      paddingTop: 12,
+      paddingHorizontal: 14,
+      paddingBottom: 14,
+      gap: 8,
       shadowColor: t.shadowColor,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: t.shadowOpacity,
@@ -137,7 +137,13 @@ const makeStyles = (t) =>
     },
     badgeText: { fontSize: 10, fontWeight: '700' },
 
-    details: { borderTopWidth: 1, borderTopColor: t.divider, paddingTop: 8, gap: 4 },
+    details: {
+      borderTopWidth: 1,
+      borderTopColor: t.divider,
+      paddingTop: 10,
+      paddingBottom: 4,
+      gap: 5,
+    },
     detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     detailText: { fontSize: 12, flex: 1, color: t.textSecondary },
 
@@ -145,10 +151,14 @@ const makeStyles = (t) =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 4,
+      gap: 6,
       borderRadius: 8,
-      minHeight: MIN_TOUCH_SIZE - 8,
+      minHeight: MIN_TOUCH_SIZE - 6,
+      // `marginTop: 'auto'` empuja el botón al fondo del espacio disponible; el
+      // marginTop mínimo evita que quede pegado a la fila de detalles cuando la
+      // tarjeta es justa de alto.
       marginTop: 'auto',
+      marginBottom: 0,
     },
     btnEnabled:  { backgroundColor: t.primarySolid },
     btnDisabled: { backgroundColor: t.disabledBg, borderWidth: 1, borderColor: t.border },

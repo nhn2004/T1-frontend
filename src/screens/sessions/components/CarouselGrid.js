@@ -8,6 +8,10 @@ import { a11yButton, MIN_TOUCH_SIZE } from '../../../constants/a11y';
 const COLS_WIDE = 3;
 const ROWS_WIDE = 3;
 
+// Alto mínimo que necesita una SessionCard para su contenido (título, 3 filas de
+// detalle y el botón) sin que nada desborde el relleno de la tarjeta.
+const MIN_CARD_HEIGHT = 196;
+
 export default function CarouselGrid({ sessions, onViewDetails }) {
   const theme = useTheme();
   const { width: screenWidth } = useWindowDimensions();
@@ -16,10 +20,19 @@ export default function CarouselGrid({ sessions, onViewDetails }) {
   // En pantallas angostas la rejilla 3x3 deja tarjetas ilegibles; se reduce a 1 o 2
   // columnas y se apilan verticalmente en vez de paginar en horizontal.
   const cols = screenWidth < 640 ? 1 : screenWidth < 1000 ? 2 : COLS_WIDE;
-  const rows = screenWidth < 640 ? 2 : screenWidth < 1000 ? 3 : ROWS_WIDE;
+  const maxRows = screenWidth < 640 ? 2 : screenWidth < 1000 ? 3 : ROWS_WIDE;
 
   const [box, setBox]   = useState({ w: 0, h: 0 });
   const [page, setPage] = useState(0);
+
+  const rowGapRaw = Math.max(8, box.h * 0.02);
+
+  // Cuántas filas caben respetando la altura mínima de tarjeta. Sin este tope, al
+  // repartir una altura pequeña entre 3 filas las tarjetas quedaban más bajas que su
+  // contenido: el botón desbordaba y se pegaba al borde inferior.
+  const rows = box.h > 0
+    ? Math.max(1, Math.min(maxRows, Math.floor((box.h + rowGapRaw) / (MIN_CARD_HEIGHT + rowGapRaw))))
+    : maxRows;
 
   const perPage    = cols * rows;
   const totalPages = Math.max(1, Math.ceil(sessions.length / perPage));
@@ -41,11 +54,15 @@ export default function CarouselGrid({ sessions, onViewDetails }) {
   const hasNext = page < totalPages - 1;
 
   const colGap    = Math.max(8, box.w * 0.012);
-  const rowGap    = Math.max(8, box.h * 0.02);
+  const rowGap    = rowGapRaw;
   const arrowSize = Math.max(MIN_TOUCH_SIZE, box.h * 0.04);
   const gridW     = box.w > 0 ? box.w - 2 * (arrowSize + colGap) : 0;
   const cardW     = gridW > 0 ? (gridW - colGap * (cols - 1)) / cols : 0;
-  const cardH     = box.h > 0 ? (box.h - rowGap * (rows - 1)) / rows : 0;
+  // Suelo de altura: si aun así no cabe, es preferible que la última fila se recorte
+  // levemente a que TODAS las tarjetas queden con el botón encima del borde.
+  const cardH     = box.h > 0
+    ? Math.max(MIN_CARD_HEIGHT, (box.h - rowGap * (rows - 1)) / rows)
+    : 0;
 
   const pageCards = sessions.slice(page * perPage, page * perPage + perPage);
   const gridRows  = [];

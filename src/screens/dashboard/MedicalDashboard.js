@@ -45,7 +45,7 @@ export default function MedicalDashboard({ navigation }) {
   // Requisito de auditoría: esta pantalla lista solicitudes de personal médico.
   useAuditOnMount('MEDICAL_VALIDATION_QUEUE', user?.userId);
 
-  const [rawInvitations, setRawInvitations] = useState([]);
+  const [queue,          setQueue]          = useState([]);
   const [allInvitations, setAllInvitations] = useState([]);
   const [staffCount,     setStaffCount]     = useState(null);
   const [sessionCount,   setSessionCount]   = useState(null);
@@ -62,13 +62,14 @@ export default function MedicalDashboard({ navigation }) {
       invitationService.getAll(),
       healthPersonnelService.getAll(),
       sessionService.getAll(),
+      invitationService.getPendingDetailed(),
     ]);
-    const [invsR, staffR, sessR] = results;
+    const [invsR, staffR, sessR, pendingR] = results;
 
-    if (invsR.status === 'fulfilled') {
-      setAllInvitations(invsR.value);
-      setRawInvitations(invsR.value.filter((i) => i.status === 'Pending'));
-    }
+    if (invsR.status === 'fulfilled') setAllInvitations(invsR.value);
+    // La cola llega enriquecida con la persona y la sesión reales; el listado crudo
+    // solo se usa para la actividad reciente.
+    if (pendingR.status === 'fulfilled') setQueue(pendingR.value);
     if (staffR.status === 'fulfilled') setStaffCount(staffR.value.length);
     if (sessR.status === 'fulfilled')  setSessionCount(sessR.value.length);
 
@@ -79,11 +80,6 @@ export default function MedicalDashboard({ navigation }) {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
-
-  const queue = useMemo(
-    () => rawInvitations.map(invitationService.toValidationItem),
-    [rawInvitations],
-  );
 
   /**
    * Ejecuta una acción sobre una invitación y SOLO actualiza la lista si el servidor
@@ -96,7 +92,7 @@ export default function MedicalDashboard({ navigation }) {
     setToast(null);
     try {
       await action(id);
-      setRawInvitations((prev) => prev.filter((i) => i.invitationId !== id));
+      setQueue((prev) => prev.filter((i) => i.id !== id));
       setToast({ message: successMessage, tone: 'success' });
       setModalVisible(false);
       setSelectedItem(null);
@@ -139,8 +135,20 @@ export default function MedicalDashboard({ navigation }) {
     setSelectedItem(null);
   }, []);
 
+  // ConfirmApprovalModal usa su propio vocabulario; se adapta aquí en vez de
+  // arrastrar nombres de campo antiguos por toda la cola.
+  const modalItem = useMemo(() => (selectedItem ? {
+    id: selectedItem.id,
+    doctorName: selectedItem.name,
+    specialty: selectedItem.profession ?? selectedItem.email,
+    requestedBy: {
+      name: selectedItem.requestedBy ?? 'Administración',
+      role: selectedItem.sessionTitle ?? 'Sesión no disponible',
+    },
+  } : null), [selectedItem]);
+
   const displayQueue   = queue.slice(0, MAX_VISIBLE);
-  const remainingCount = rawInvitations.length;
+  const remainingCount = queue.length;
 
   const director = {
     name: user?.name ?? 'Personal médico',
@@ -226,6 +234,7 @@ export default function MedicalDashboard({ navigation }) {
                   key={item.id}
                   item={item}
                   onApprove={handleApprovePress}
+                  onReject={handleReview}
                   onReview={handleReview}
                   busy={busyId === item.id}
                 />
@@ -277,7 +286,7 @@ export default function MedicalDashboard({ navigation }) {
 
       <ConfirmApprovalModal
         visible={modalVisible}
-        item={selectedItem}
+        item={modalItem}
         onApprove={handleConfirmApproval}
         onReject={handleRejectWithReason}
         onCancel={handleCancelModal}

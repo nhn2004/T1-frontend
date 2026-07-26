@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Pressable, ActivityIndicator } from 'react-native';
+import {
+  View, Text, StyleSheet, TouchableOpacity, Pressable,
+  ActivityIndicator, ScrollView, useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import BodyDiagram2D from './components/BodyDiagram2D';
@@ -9,8 +12,9 @@ import useTheme from '../../hooks/useTheme';
 import Toast from '../../components/Toast';
 import { a11yButton, a11yDecorative } from '../../constants/a11y';
 
+// Ancho máximo del panel del cuerpo; ya no es un ancho fijo, solo un tope para
+// que el diagrama no se agigante en pantallas grandes.
 const BODY_PANEL_WIDTH = 380;
-const BODY_IMAGE_HEIGHT = 630;
 
 // Estado inicial "sin datos". `hasValue: false` es lo que evita que el diagrama
 // corporal pinte los cinco puntos en alerta roja cuando aún no hay mediciones.
@@ -26,7 +30,9 @@ export default function ResultadosBomberoScreen({ route, navigation }) {
   const { bomberoId, bomberoName } = route.params || {};
   const nameToDisplay = bomberoName ?? 'Bombero';
   const theme = useTheme();
-  const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { width } = useWindowDimensions();
+  const isWide = width >= 900;
+  const styles = useMemo(() => makeStyles(theme, isWide), [theme, isWide]);
 
   // Requisito de auditoría: se están consultando datos médicos de un bombero.
   useAuditOnMount('MEDICAL_RECORD', bomberoId, 'READ');
@@ -78,28 +84,36 @@ export default function ResultadosBomberoScreen({ route, navigation }) {
           <ActivityIndicator size="large" color={theme.primary} />
         </View>
       ) : (
-        <Pressable style={styles.body} onPress={() => setActiveMetric(null)}>
-          <View style={styles.contentRow}>
+        // ScrollView: en pantallas de tablet las cinco tarjetas más el cuerpo no caben
+        // en el alto disponible y quedaban recortadas sin forma de desplazarse.
+        <ScrollView
+          style={styles.bodyScroll}
+          contentContainerStyle={styles.body}
+          showsVerticalScrollIndicator
+        >
+          <Pressable style={styles.contentRow} onPress={() => setActiveMetric(null)}>
             <View style={styles.humanBodyContainer}>
-              <Text style={styles.columnTitle}> </Text>
               <BodyDiagram2D
                 metrics={metrics}
                 activeMetric={activeMetric}
                 onSelectMetric={(key) => setActiveMetric(prev => prev === key ? null : key)}
               />
             </View>
+
             <View style={styles.metricsContainer}>
-              <Text style={styles.columnTitle}>Métricas Detalladas</Text>
+              <Text style={styles.columnTitle} accessibilityRole="header">
+                Métricas Detalladas
+              </Text>
               <View style={styles.metricsGrid}>
-                <MetricCard metric={metrics.frecuenciaCardiaca}     title="Frecuencia Cardíaca"       active={activeMetric === 'frecuenciaCardiaca'} styles={styles} theme={theme} />
-                <MetricCard metric={metrics.nivelOxigeno}           title="Nivel de Oxígeno SpO₂"     active={activeMetric === 'nivelOxigeno'} styles={styles} theme={theme} />
-                <MetricCard metric={metrics.frecuenciaRespiratoria} title="Frecuencia Respiratoria"   active={activeMetric === 'frecuenciaRespiratoria'} styles={styles} theme={theme} />
-                <MetricCard metric={metrics.nivelCO}                title="Nivel de CO"               active={activeMetric === 'nivelCO'} styles={styles} theme={theme} />
-                <MetricCard metric={metrics.temperatura}            title="Temperatura Corporal"      active={activeMetric === 'temperatura'} styles={styles} theme={theme} />
+                <MetricCard metric={metrics.frecuenciaCardiaca}     title="Frecuencia Cardíaca"     active={activeMetric === 'frecuenciaCardiaca'}     styles={styles} theme={theme} />
+                <MetricCard metric={metrics.nivelOxigeno}           title="Nivel de Oxígeno SpO₂"   active={activeMetric === 'nivelOxigeno'}           styles={styles} theme={theme} />
+                <MetricCard metric={metrics.frecuenciaRespiratoria} title="Frecuencia Respiratoria" active={activeMetric === 'frecuenciaRespiratoria'} styles={styles} theme={theme} />
+                <MetricCard metric={metrics.nivelCO}                title="Nivel de CO"             active={activeMetric === 'nivelCO'}                styles={styles} theme={theme} />
+                <MetricCard metric={metrics.temperatura}            title="Temperatura Corporal"    active={activeMetric === 'temperatura'}            styles={styles} theme={theme} />
               </View>
             </View>
-          </View>
-        </Pressable>
+          </Pressable>
+        </ScrollView>
       )}
     </SafeAreaView>
   );
@@ -154,7 +168,7 @@ function MetricCard({ metric, title, active, styles, theme }) {
   );
 }
 
-const makeStyles = (t) =>
+const makeStyles = (t, isWide) =>
   StyleSheet.create({
   root: { flex: 1, backgroundColor: t.background },
   noticeWrap: { paddingHorizontal: 20, paddingBottom: 8 },
@@ -199,39 +213,57 @@ const makeStyles = (t) =>
   backButtonText: { fontSize: 13, fontWeight: '600', color: t.textPrimary },
 
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  body: { flex: 1, paddingHorizontal: 26, paddingTop: 14, paddingBottom: 22 },
+
+  bodyScroll: { flex: 1 },
+  // `body` es el contentContainerStyle del ScrollView: nada de flex:1 aquí, o el
+  // contenido se comprime al alto de la ventana y deja de poder desplazarse.
+  body: {
+    paddingHorizontal: isWide ? 26 : 14,
+    paddingTop: 14,
+    paddingBottom: 32,
+  },
 
   contentRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: isWide ? 'row' : 'column',
+    alignItems: isWide ? 'flex-start' : 'stretch',
     justifyContent: 'center',
-    gap: 42,
+    gap: isWide ? 42 : 20,
   },
+  // Sin ancho fijo: la columna se reparte el espacio y el diagrama escala con ella
+  // (BodyDiagram2D ya usa aspectRatio y posiciones en %). El maxWidth evita que en
+  // pantallas grandes el cuerpo crezca hasta ocupar todo.
   humanBodyContainer: {
-    width: BODY_PANEL_WIDTH,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: isWide ? 0 : 'auto',
+    maxWidth: BODY_PANEL_WIDTH,
+    width: '100%',
+    alignSelf: 'center',
     alignItems: 'center',
-    justifyContent: 'flex-start',
   },
 
   metricsContainer: {
-    width: BODY_PANEL_WIDTH,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: isWide ? 0 : 'auto',
+    maxWidth: isWide ? 460 : undefined,
+    width: '100%',
+    alignSelf: 'center',
   },
   columnTitle: {
-    height: 24,
     fontSize: 16,
     fontWeight: '700',
     color: t.textPrimary,
     marginBottom: 8,
   },
+  // Sin alto fijo: las tarjetas miden por su contenido y el ScrollView se encarga
+  // del desbordamiento. Antes un alto de 630px las recortaba en pantallas menores.
   metricsGrid: {
-    height: BODY_IMAGE_HEIGHT,
     flexDirection: 'column',
     gap: 10,
   },
   metricCard: {
     width: '100%',
-    flex: 1,
     backgroundColor: t.card,
     borderRadius: 12,
     borderWidth: 2,
