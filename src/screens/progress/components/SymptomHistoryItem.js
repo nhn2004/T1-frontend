@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
@@ -10,6 +10,7 @@ import { SEVERITY_BADGE_KEY } from '../__mocks__/progressData';
 // tuvieron algo que reportar) — misma idea de jerarquía que el resto de la app.
 export default function SymptomHistoryItem({ entry, onViewSession, viewLabel, noneLabel }) {
   const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { t } = useTranslation();
   const hasSymptoms = (entry.sintomas || []).length > 0;
   const badge = hasSymptoms ? theme.badge[SEVERITY_BADGE_KEY[entry.severidad]] : theme.badge.success;
@@ -50,7 +51,7 @@ export default function SymptomHistoryItem({ entry, onViewSession, viewLabel, no
             accessibilityLabel={`${viewLabel} — ${entry.title}`}
           >
             <Text style={styles.viewLinkText}>{viewLabel}</Text>
-            <Ionicons name="chevron-forward" size={12} color="#E85D27" />
+            <Ionicons name="chevron-forward" size={12} color={theme.primaryText} />
           </TouchableOpacity>
         )}
       </View>
@@ -58,7 +59,8 @@ export default function SymptomHistoryItem({ entry, onViewSession, viewLabel, no
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t) =>
+  StyleSheet.create({
   row: {
     flexDirection: 'row',
     gap: 12,
@@ -129,6 +131,6 @@ const styles = StyleSheet.create({
   viewLinkText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#E85D27',
+    color: t.primaryText,
   },
 });

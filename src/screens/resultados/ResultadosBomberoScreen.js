@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import { vitalSignsService } from '../../services/vitalSignsService';
 import { useAuditOnMount } from '../../hooks/useAuditTrail';
 import useTheme from '../../hooks/useTheme';
 import Toast from '../../components/Toast';
-import { a11yButton } from '../../constants/a11y';
+import { a11yButton, a11yDecorative } from '../../constants/a11y';
 
 const BODY_PANEL_WIDTH = 380;
 const BODY_IMAGE_HEIGHT = 630;
@@ -26,6 +26,7 @@ export default function ResultadosBomberoScreen({ route, navigation }) {
   const { bomberoId, bomberoName } = route.params || {};
   const nameToDisplay = bomberoName ?? 'Bombero';
   const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   // Requisito de auditoría: se están consultando datos médicos de un bombero.
   useAuditOnMount('MEDICAL_RECORD', bomberoId, 'READ');
@@ -61,7 +62,7 @@ export default function ResultadosBomberoScreen({ route, navigation }) {
           onPress={() => navigation.goBack()}
           {...a11yButton('Volver')}
         >
-          <Ionicons name="arrow-back" size={16} color="#111" />
+          <Ionicons name="arrow-back" size={16} color={theme.textPrimary} {...a11yDecorative} />
           <Text style={styles.backButtonText}>Volver</Text>
         </TouchableOpacity>
       </View>
@@ -90,11 +91,11 @@ export default function ResultadosBomberoScreen({ route, navigation }) {
             <View style={styles.metricsContainer}>
               <Text style={styles.columnTitle}>Métricas Detalladas</Text>
               <View style={styles.metricsGrid}>
-                <MetricCard metric={metrics.frecuenciaCardiaca}     title="Frecuencia Cardíaca"       active={activeMetric === 'frecuenciaCardiaca'} />
-                <MetricCard metric={metrics.nivelOxigeno}           title="Nivel de Oxígeno SpO₂"     active={activeMetric === 'nivelOxigeno'} />
-                <MetricCard metric={metrics.frecuenciaRespiratoria} title="Frecuencia Respiratoria"   active={activeMetric === 'frecuenciaRespiratoria'} />
-                <MetricCard metric={metrics.nivelCO}                title="Nivel de CO"               active={activeMetric === 'nivelCO'} />
-                <MetricCard metric={metrics.temperatura}            title="Temperatura Corporal"      active={activeMetric === 'temperatura'} />
+                <MetricCard metric={metrics.frecuenciaCardiaca}     title="Frecuencia Cardíaca"       active={activeMetric === 'frecuenciaCardiaca'} styles={styles} theme={theme} />
+                <MetricCard metric={metrics.nivelOxigeno}           title="Nivel de Oxígeno SpO₂"     active={activeMetric === 'nivelOxigeno'} styles={styles} theme={theme} />
+                <MetricCard metric={metrics.frecuenciaRespiratoria} title="Frecuencia Respiratoria"   active={activeMetric === 'frecuenciaRespiratoria'} styles={styles} theme={theme} />
+                <MetricCard metric={metrics.nivelCO}                title="Nivel de CO"               active={activeMetric === 'nivelCO'} styles={styles} theme={theme} />
+                <MetricCard metric={metrics.temperatura}            title="Temperatura Corporal"      active={activeMetric === 'temperatura'} styles={styles} theme={theme} />
               </View>
             </View>
           </View>
@@ -104,85 +105,98 @@ export default function ResultadosBomberoScreen({ route, navigation }) {
   );
 }
 
-function metricSoftColor(color) {
-  if (typeof color === 'string' && /^#[0-9A-Fa-f]{6}$/.test(color)) {
-    return `${color}18`;
-  }
-  return 'rgba(39, 184, 161, 0.1)';
-}
+/**
+ * Tarjeta de métrica.
+ *
+ * Lee el contrato actual de `vitalSignsService.toMetrics`: `hasValue` indica si hay
+ * medición y `supported` si el backend puede entregar ese dato. Distinguirlos evita
+ * el bug anterior, en el que una métrica sin datos se pintaba como alerta crítica.
+ */
+function MetricCard({ metric, title, active, styles, theme }) {
+  const unavailable = metric.supported === false;
+  const noData      = !metric.hasValue;
 
-function MetricCard({ metric, title, active }) {
-  const statusColor = metric.status === 'Normal' || metric.status === 'Seguro' ? '#27B8A1' : metric.color;
+  const tone = unavailable || noData ? theme.status.neutral : theme.status.success;
+  const statusLabel = unavailable ? 'Sin soporte' : noData ? 'Sin datos' : 'Normal';
 
   return (
-    <View style={[styles.metricCard, active && { borderColor: metric.color }]}>
+    <View style={[styles.metricCard, active && { borderColor: tone.solid }]}>
       <View style={styles.metricMainRow}>
-        <View style={[styles.metricIconBox, { backgroundColor: metricSoftColor(metric.color) }]}>
-          <Ionicons name={metric.icon} size={20} color={metric.color} />
+        <View style={[styles.metricIconBox, { backgroundColor: tone.bg }]} {...a11yDecorative}>
+          <Ionicons name={metric.icon} size={20} color={tone.fg} />
         </View>
 
         <View style={styles.metricTextBlock}>
-          <Text style={styles.metricTitle} numberOfLines={1}>{title}</Text>
-          <View style={[styles.metricStatusBadge, { backgroundColor: metricSoftColor(statusColor) }]}>
-            <Text style={[styles.metricStatus, { color: statusColor }]}>{metric.status}</Text>
+          <Text style={styles.metricTitle} numberOfLines={2}>{title}</Text>
+          <View style={[styles.metricStatusBadge, { backgroundColor: tone.bg }]}>
+            <Text style={[styles.metricStatus, { color: tone.fg }]}>{statusLabel}</Text>
           </View>
         </View>
 
         <View style={styles.metricValueBlock}>
-          <Text style={styles.metricValue}>{metric.value}</Text>
+          <Text style={styles.metricValue}>{metric.hasValue ? metric.value : '—'}</Text>
           <Text style={styles.metricUnit}>{metric.unit}</Text>
         </View>
       </View>
 
       <View style={styles.progressBarBg}>
-        <View style={[styles.progressBarFill, { width: `${metric.progress * 100}%`, backgroundColor: metric.color }]} />
+        <View
+          style={[
+            styles.progressBarFill,
+            {
+              width: `${Math.min(100, Math.max(0, (metric.progress ?? 0) * 100))}%`,
+              backgroundColor: tone.solid,
+            },
+          ]}
+        />
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F1F4F8' },
+const makeStyles = (t) =>
+  StyleSheet.create({
+  root: { flex: 1, backgroundColor: t.background },
   noticeWrap: { paddingHorizontal: 20, paddingBottom: 8 },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#fff',
+    backgroundColor: t.card,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.07)',
+    borderBottomColor: t.border,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: t.shadowColor,
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
+    shadowOpacity: t.shadowOpacity,
     shadowRadius: 3,
   },
   headerLeft: { gap: 4 },
-  pageTitle: { fontSize: 18, fontWeight: '700', color: '#1A1A1A' },
+  pageTitle: { fontSize: 18, fontWeight: '700', color: t.textPrimary },
   sessionInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
   },
-  sessionTitle: { fontSize: 13, fontWeight: '600', color: '#2C323A' },
-  sessionDot: { fontSize: 13, color: '#B0B7C3' },
-  sessionDate: { fontSize: 12, color: '#697282' },
+  sessionTitle: { fontSize: 13, fontWeight: '600', color: t.textPrimary },
+  sessionDot: { fontSize: 13, color: t.textFaint },
+  sessionDate: { fontSize: 12, color: t.textMuted },
 
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: '#DEE3EA',
+    borderColor: t.border,
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 8,
-    backgroundColor: '#fff',
+    backgroundColor: t.card,
   },
-  backButtonText: { fontSize: 13, fontWeight: '600', color: '#111' },
+  backButtonText: { fontSize: 13, fontWeight: '600', color: t.textPrimary },
 
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, paddingHorizontal: 26, paddingTop: 14, paddingBottom: 22 },
@@ -207,7 +221,7 @@ const styles = StyleSheet.create({
     height: 24,
     fontSize: 16,
     fontWeight: '700',
-    color: '#2C323A',
+    color: t.textPrimary,
     marginBottom: 8,
   },
   metricsGrid: {
@@ -218,14 +232,14 @@ const styles = StyleSheet.create({
   metricCard: {
     width: '100%',
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: t.card,
     borderRadius: 12,
     borderWidth: 2,
     borderColor: 'transparent',
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 20,
-    shadowColor: '#000',
+    shadowColor: t.shadowColor,
     shadowOpacity: 0.045,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 10,
@@ -252,7 +266,7 @@ const styles = StyleSheet.create({
   metricTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2C323A',
+    color: t.textPrimary,
   },
   metricStatusBadge: {
     alignSelf: 'flex-start',
@@ -274,16 +288,16 @@ const styles = StyleSheet.create({
   metricValue: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#111',
+    color: t.textPrimary,
   },
   metricUnit: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8E9399',
+    color: t.textMuted,
   },
   progressBarBg: {
     height: 6,
-    backgroundColor: '#F1F4F8',
+    backgroundColor: t.background,
     borderRadius: 3,
     overflow: 'hidden',
   },

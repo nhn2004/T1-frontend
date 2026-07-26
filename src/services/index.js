@@ -6,3 +6,4 @@ export { healthPersonnelService }      from './healthPersonnelService';
 export { invitationService }           from './invitationService';
 export { participantService }          from './participantService';
 export { vitalSignsService }           from './vitalSignsService';
+export { environmentalDataService }    from './environmentalDataService';

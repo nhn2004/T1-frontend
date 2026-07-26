@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,8 @@ import Step4Certificados  from './components/Step4Certificados';
 import { MOMENTOS_CONFIG, SINTOMAS_LIST } from './__mocks__/resultadosData';
 import { vitalSignsService } from '../../services/vitalSignsService';
 import { useAuditOnMount } from '../../hooks/useAuditTrail';
-import { a11yButton } from '../../constants/a11y';
+import { a11yButton, a11yDecorative, MIN_TOUCH_SIZE } from '../../constants/a11y';
+import useTheme from '../../hooks/useTheme';
 import Toast from '../../components/Toast';
 
 const TOTAL_STEPS = 4;
@@ -46,6 +47,9 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
   const healthPersonnelId = route?.params?.healthPersonnelId ?? null;
   const momentoConfig    = MOMENTOS_CONFIG[momento] ?? MOMENTOS_CONFIG.T4;
   const isFullWizard     = momento === 'T4';
+
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   // Requisito de auditoría: la pantalla escribe la ficha médica de un participante.
   useAuditOnMount('MEDICAL_RECORD', participantId, 'WRITE');
@@ -158,8 +162,12 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
               <Text style={styles.momentoSub}>{momentoConfig.sublabel}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.volverBtn} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={15} color="#2E2E2E" />
+          <TouchableOpacity
+            style={styles.volverBtn}
+            onPress={() => navigation.goBack()}
+            {...a11yButton('Volver')}
+          >
+            <Ionicons name="arrow-back" size={15} color={theme.textPrimary} {...a11yDecorative} />
             <Text style={styles.volverText}>Volver</Text>
           </TouchableOpacity>
         </View>
@@ -186,14 +194,19 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
               <TouchableOpacity
                 style={[
                   styles.guardarBtn,
-                  { backgroundColor: saving ? '#8E9399' : momentoConfig.color },
+                  { backgroundColor: saving ? theme.disabledBg : momentoConfig.color },
                 ]}
                 onPress={handleSave}
                 activeOpacity={0.8}
                 disabled={saving}
                 {...a11yButton(momentoConfig.btnLabel, { disabled: saving, busy: saving })}
               >
-                <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={16}
+                  color={saving ? theme.textDisabled : '#FFFFFF'}
+                  {...a11yDecorative}
+                />
                 <Text style={styles.guardarText}>
                   {saving ? 'Guardando…' : momentoConfig.btnLabel}
                 </Text>
@@ -221,7 +234,7 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
             onPress={() => navigation.goBack()}
             {...a11yButton('Volver')}
           >
-            <Ionicons name="arrow-back" size={15} color="#2E2E2E" />
+            <Ionicons name="arrow-back" size={15} color={theme.textPrimary} {...a11yDecorative} />
             <Text style={styles.volverText}>Volver</Text>
           </TouchableOpacity>
         </View>
@@ -251,7 +264,8 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
               <Ionicons
                 name="arrow-back"
                 size={14}
-                color={currentStep === 1 ? '#C0C8D2' : '#2E2E2E'}
+                color={currentStep === 1 ? theme.textDisabled : theme.textPrimary}
+                {...a11yDecorative}
               />
               <Text style={[styles.anteriorText, currentStep === 1 && styles.anteriorTextDisabled]}>
                 Anterior
@@ -268,7 +282,12 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
                 {...a11yButton('Siguiente paso')}
               >
                 <Text style={styles.siguienteText}>Siguiente</Text>
-                <Ionicons name="arrow-forward" size={14} color="#fff" />
+                <Ionicons
+                  name="arrow-forward"
+                  size={14}
+                  color={theme.onPrimarySolid}
+                  {...a11yDecorative}
+                />
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -278,7 +297,12 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
                 disabled={saving}
                 {...a11yButton('Guardar datos', { disabled: saving, busy: saving })}
               >
-                <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={16}
+                  color={theme.status.success.onSolid}
+                  {...a11yDecorative}
+                />
                 <Text style={styles.guardarText}>{saving ? 'Guardando…' : 'Guardar Datos'}</Text>
               </TouchableOpacity>
             )}
@@ -290,97 +314,104 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F0F2F5' },
-  noticeWrap: { paddingHorizontal: 20, paddingBottom: 8 },
-  navSpacer: { flex: 1 },
-  guardarBtnDisabled: { backgroundColor: '#8E9399' },
+const makeStyles = (t) =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: t.background },
+    noticeWrap: { paddingHorizontal: 20, paddingBottom: 8 },
+    navSpacer: { flex: 1 },
+    guardarBtnDisabled: { backgroundColor: t.disabledBg },
 
-  /* Header T1/T2/T3 */
-  momentoBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderLeftWidth: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.07)',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius: 4,
-  },
-  momentoInfo: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  momentoBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  momentoBadgeText: { fontSize: 16, fontWeight: '800', color: '#fff' },
-  momentoTexts: { gap: 2 },
-  momentoLabel: { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
-  momentoSub:   { fontSize: 12, color: '#697282' },
+    /* Header T1/T2/T3 */
+    momentoBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: 10,
+      backgroundColor: t.card,
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderLeftWidth: 5,
+      borderBottomWidth: 1,
+      borderBottomColor: t.border,
+      elevation: 3,
+      shadowColor: t.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: t.shadowOpacity,
+      shadowRadius: 4,
+    },
+    momentoInfo: { flexDirection: 'row', alignItems: 'center', gap: 14, flexShrink: 1 },
+    momentoBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+    // El badge lleva el color del momento (T1..T4), que siempre es un tono saturado:
+    // el texto blanco es legible sobre todos ellos.
+    momentoBadgeText: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
+    momentoTexts: { gap: 2, flexShrink: 1 },
+    momentoLabel: { fontSize: 15, fontWeight: '700', color: t.textPrimary },
+    momentoSub:   { fontSize: 12, color: t.textMuted },
 
-  /* Body */
-  body: { flex: 1, padding: 14, gap: 10 },
-  topRow: { flexDirection: 'row', alignItems: 'center' },
+    /* Body */
+    body: { flex: 1, padding: 14, gap: 10 },
+    topRow: { flexDirection: 'row', alignItems: 'center' },
 
-  volverBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#fff', borderRadius: 8,
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderWidth: 1, borderColor: '#E0E0E0',
-  },
-  volverText: { fontSize: 14, fontWeight: '600', color: '#2E2E2E' },
+    volverBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      backgroundColor: t.card, borderRadius: 8,
+      paddingHorizontal: 14, minHeight: MIN_TOUCH_SIZE - 8,
+      justifyContent: 'center',
+      borderWidth: 1, borderColor: t.border,
+    },
+    volverText: { fontSize: 14, fontWeight: '600', color: t.textPrimary },
 
-  card: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  stepContent: { flex: 1 },
+    card: {
+      flex: 1,
+      backgroundColor: t.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: t.border,
+      overflow: 'hidden',
+      shadowColor: t.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: t.shadowOpacity,
+      shadowRadius: 8,
+      elevation: 3,
+    },
+    stepContent: { flex: 1 },
 
-  /* Bottom nav */
-  bottomNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-  },
-  anteriorBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderRadius: 8, borderWidth: 1, borderColor: '#E0E0E0',
-    backgroundColor: '#fff',
-  },
-  anteriorBtnDisabled: { borderColor: '#F0F0F0', backgroundColor: '#FAFAFA' },
-  anteriorText:         { fontSize: 13, fontWeight: '600', color: '#2E2E2E' },
-  anteriorTextDisabled: { color: '#C0C8D2' },
-  indicatorText:        { fontSize: 13, color: '#697282' },
-  siguienteBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 18, paddingVertical: 10,
-    borderRadius: 8, backgroundColor: '#E85D27',
-  },
-  siguienteText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  guardarBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 18, paddingVertical: 10,
-    borderRadius: 8, backgroundColor: '#2E7D32',
-  },
-  guardarText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-});
+    /* Bottom nav */
+    bottomNav: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: 10,
+      borderTopWidth: 1,
+      borderTopColor: t.divider,
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+    },
+    anteriorBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      paddingHorizontal: 16, minHeight: MIN_TOUCH_SIZE - 6,
+      justifyContent: 'center',
+      borderRadius: 8, borderWidth: 1, borderColor: t.border,
+      backgroundColor: t.card,
+    },
+    anteriorBtnDisabled: { borderColor: t.divider, backgroundColor: t.cardAlt },
+    anteriorText:         { fontSize: 13, fontWeight: '600', color: t.textPrimary },
+    anteriorTextDisabled: { color: t.textDisabled },
+    indicatorText:        { fontSize: 13, color: t.textMuted },
+    siguienteBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      paddingHorizontal: 18, minHeight: MIN_TOUCH_SIZE - 6,
+      justifyContent: 'center',
+      borderRadius: 8, backgroundColor: t.primarySolid,
+    },
+    siguienteText: { fontSize: 13, fontWeight: '700', color: t.onPrimarySolid },
+    guardarBtn: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      paddingHorizontal: 18, minHeight: MIN_TOUCH_SIZE - 6,
+      justifyContent: 'center',
+      borderRadius: 8, backgroundColor: t.status.success.solid,
+    },
+    guardarText: { fontSize: 13, fontWeight: '700', color: t.status.success.onSolid },
+  });

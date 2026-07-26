@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { DOCTOR_FILTERS } from './__mocks__/crearSesionData';
 import { a11yAlert, a11yButton, a11yModal } from '../../constants/a11y';
 import Toast from '../../components/Toast';
+import useTheme from '../../hooks/useTheme';
 import { healthPersonnelService } from '../../services/healthPersonnelService';
 import api from '../../services/api';
 
@@ -19,6 +20,12 @@ const PUNTOS_QUEMA = [
   { key: 'ataque',     label: 'Casa de ataque' },
   { key: 'progresion', label: 'Casa de progresión' },
 ];
+
+/** Entrega las hojas de estilo de la pantalla ya resueltas contra el tema. */
+function useSheets() {
+  const t = useTheme();
+  return useMemo(() => ({ s: makeS(t), m: makeM(t), sc: makeSC(t), t }), [t]);
+}
 
 function parseDatetime(fecha, hora) {
   const parts = fecha.trim().split('/').map(Number);
@@ -32,6 +39,7 @@ function parseDatetime(fecha, hora) {
 }
 
 export default function CrearSesionScreen({ navigation }) {
+  const { s, t } = useSheets();
   const [step, setStep] = useState(1);
 
   // Step 1 — Información de la sesión
@@ -261,7 +269,7 @@ export default function CrearSesionScreen({ navigation }) {
           activeOpacity={0.8}
           {...a11yButton('Volver')}
         >
-          <Ionicons name="arrow-back" size={15} color="#2E2E2E" />
+          <Ionicons name="arrow-back" size={15} color={t.textPrimary} />
           <Text style={s.volverText}>Volver</Text>
         </TouchableOpacity>
       </View>
@@ -362,6 +370,7 @@ function Step1({
   filteredMedicos, loadingMedicos, selectedMedicos, toggleMedico, onAddMedico,
   showErrors, onSiguiente,
 }) {
+  const { s, t } = useSheets();
   const errNombre = showErrors && !nombre.trim();
   const errFecha  = showErrors && !fecha.trim();
   const errPunto  = showErrors && !puntoQuema;
@@ -384,7 +393,7 @@ function Step1({
                 style={[s.input, errNombre && s.inputError]}
                 value={nombre} onChangeText={setNombre}
                 placeholder="Ej: Capacitación G5 — Casa COEPT"
-                placeholderTextColor="#B0B7C3"
+                placeholderTextColor={t.textPlaceholder}
               />
               {errNombre && <Text style={s.errorMsg}>Campo obligatorio</Text>}
             </View>
@@ -396,7 +405,7 @@ function Step1({
               <TextInput
                 style={[s.input, errFecha && s.inputError]}
                 value={fecha} onChangeText={setFecha}
-                placeholder="dd/mm/aaaa" placeholderTextColor="#B0B7C3"
+                placeholder="dd/mm/aaaa" placeholderTextColor={t.textPlaceholder}
               />
               {errFecha && <Text style={s.errorMsg}>Campo obligatorio</Text>}
             </View>
@@ -407,7 +416,7 @@ function Step1({
                 value={capacidad}
                 onChangeText={setCapacidad}
                 placeholder="Ej: 10"
-                placeholderTextColor="#B0B7C3"
+                placeholderTextColor={t.textPlaceholder}
                 keyboardType="numeric"
               />
             </View>
@@ -459,7 +468,7 @@ function Step1({
           <View style={s.cardHeaderRow}>
             <SectionHeader icon="medkit-outline" title="Médicos a Cargo" />
             <TouchableOpacity style={s.addBtn} onPress={onAddMedico} activeOpacity={0.8}>
-              <Ionicons name="person-add-outline" size={14} color="#E85D27" />
+              <Ionicons name="person-add-outline" size={14} color={t.primaryText} />
               <Text style={s.addBtnText}>Añadir</Text>
             </TouchableOpacity>
           </View>
@@ -480,12 +489,12 @@ function Step1({
             <TextInput
               style={s.searchSmall}
               value={medicoSearch} onChangeText={setMedicoSearch}
-              placeholder="Buscar..." placeholderTextColor="#B0B7C3"
+              placeholder="Buscar..." placeholderTextColor={t.textPlaceholder}
             />
           </View>
 
           {loadingMedicos
-            ? <ActivityIndicator size="small" color="#E85D27" style={{ marginVertical: 8 }} />
+            ? <ActivityIndicator size="small" color={t.primaryText} style={{ marginVertical: 8 }} />
             : <PersonGrid people={filteredMedicos} selected={selectedMedicos} onToggle={toggleMedico} cols={COLS} />
           }
           {selectedMedicos.length > 0 && (
@@ -497,7 +506,7 @@ function Step1({
       <View style={s.footer}>
         <TouchableOpacity style={s.sigBtn} onPress={onSiguiente} activeOpacity={0.85}>
           <Text style={s.sigBtnText}>Siguiente</Text>
-          <Ionicons name="arrow-forward" size={16} color="#fff" />
+          <Ionicons name="arrow-forward" size={16} color={t.onPrimarySolid} />
         </TouchableOpacity>
       </View>
     </View>
@@ -513,6 +522,7 @@ function Step2({
   bomberoEmails, updateBomberoEmail, removeBomberoEmail, addBomberoEmail,
   onVolver, onCrear, saving,
 }) {
+  const { s, t } = useSheets();
   const puntoLabel = PUNTOS_QUEMA.find(p => p.key === puntoQuema)?.label ?? '—';
 
   return (
@@ -545,7 +555,7 @@ function Step2({
           <View style={s.cardHeaderRow}>
             <SectionHeader icon="people-outline" title="Capacitadores a Cargo" />
             <TouchableOpacity style={s.addBtn} onPress={onAddCap} activeOpacity={0.8}>
-              <Ionicons name="person-add-outline" size={14} color="#E85D27" />
+              <Ionicons name="person-add-outline" size={14} color={t.primaryText} />
               <Text style={s.addBtnText}>Añadir</Text>
             </TouchableOpacity>
           </View>
@@ -553,11 +563,11 @@ function Step2({
             <TextInput
               style={[s.searchSmall, { flex: 1 }]}
               value={capSearch} onChangeText={setCapSearch}
-              placeholder="Buscar capacitador..." placeholderTextColor="#B0B7C3"
+              placeholder="Buscar capacitador..." placeholderTextColor={t.textPlaceholder}
             />
           </View>
           {loadingCaps
-            ? <ActivityIndicator size="small" color="#E85D27" style={{ marginVertical: 8 }} />
+            ? <ActivityIndicator size="small" color={t.primaryText} style={{ marginVertical: 8 }} />
             : <PersonGrid people={filteredCaps} selected={selectedCaps} onToggle={toggleCap} cols={COLS} />
           }
           {selectedCaps.length > 0 && (
@@ -577,9 +587,9 @@ function Step2({
             >
               <Ionicons
                 name="person-add-outline" size={14}
-                color={bomberoEmails.length >= 20 ? '#B0B7C3' : '#E85D27'}
+                color={bomberoEmails.length >= 20 ? t.textDisabled : t.primaryText}
               />
-              <Text style={[s.addBtnText, bomberoEmails.length >= 20 && { color: '#B0B7C3' }]}>
+              <Text style={[s.addBtnText, bomberoEmails.length >= 20 && { color: t.textDisabled }]}>
                 Añadir
               </Text>
             </TouchableOpacity>
@@ -594,7 +604,7 @@ function Step2({
                     value={email}
                     onChangeText={v => updateBomberoEmail(idx, v)}
                     placeholder={`Bombero ${idx + 1} — correo`}
-                    placeholderTextColor="#B0B7C3"
+                    placeholderTextColor={t.textPlaceholder}
                     keyboardType="email-address"
                     autoCapitalize="none"
                   />
@@ -603,7 +613,7 @@ function Step2({
                     onPress={() => removeBomberoEmail(idx)}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="close" size={16} color="#D83B35" />
+                    <Ionicons name="close" size={16} color={t.status.danger.fg} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -615,13 +625,13 @@ function Step2({
 
       <View style={s.footer}>
         <TouchableOpacity style={s.cancelBtn} onPress={onVolver} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={15} color="#495565" />
+          <Ionicons name="arrow-back" size={15} color={t.textSecondary} />
           <Text style={s.cancelBtnText}>Volver</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[s.crearBtn, saving && { opacity: 0.6 }]} onPress={saving ? undefined : onCrear} activeOpacity={0.85}>
           {saving
-            ? <ActivityIndicator size="small" color="#fff" />
-            : <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+            ? <ActivityIndicator size="small" color={t.onPrimarySolid} />
+            : <Ionicons name="checkmark-circle-outline" size={16} color={t.onPrimarySolid} />
           }
           <Text style={s.crearBtnText}>{saving ? 'Creando...' : 'Crear Sesión'}</Text>
         </TouchableOpacity>
@@ -633,12 +643,13 @@ function Step2({
 // ── Componentes ───────────────────────────────────────────────────────────────
 
 function StepIndicator({ num, label, active, done }) {
+  const { s, t } = useSheets();
   return (
     <View style={s.stepWrap}>
       <View style={[s.stepBubble, active && s.stepBubbleActive, done && s.stepBubbleDone]}>
         {done
-          ? <Ionicons name="checkmark" size={13} color="#fff" />
-          : <Text style={[s.stepNum, (active || done) && { color: '#fff' }]}>{num}</Text>
+          ? <Ionicons name="checkmark" size={13} color={t.onPrimarySolid} />
+          : <Text style={[s.stepNum, (active || done) && { color: t.onPrimarySolid }]}>{num}</Text>
         }
       </View>
       <Text style={[s.stepLabel, active && s.stepLabelActive]}>{label}</Text>
@@ -647,19 +658,21 @@ function StepIndicator({ num, label, active, done }) {
 }
 
 function SectionHeader({ icon, title }) {
+  const { s, t } = useSheets();
   return (
     <View style={s.sectionHeaderRow}>
-      <Ionicons name={icon} size={16} color="#E85D27" />
+      <Ionicons name={icon} size={16} color={t.primaryText} />
       <Text style={s.sectionTitle}>{title}</Text>
     </View>
   );
 }
 
 function SummaryChip({ icon, label, value, wide }) {
+  const { s, t } = useSheets();
   return (
     <View style={[s.summaryChip, wide && s.summaryChipWide]}>
       <View style={s.summaryChipIcon}>
-        <Ionicons name={icon} size={14} color="#E85D27" />
+        <Ionicons name={icon} size={14} color={t.primaryText} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={s.summaryChipLabel}>{label}</Text>
@@ -670,6 +683,7 @@ function SummaryChip({ icon, label, value, wide }) {
 }
 
 function PersonGrid({ people, selected, onToggle, cols }) {
+  const { s, t } = useSheets();
   const rows = [];
   for (let i = 0; i < people.length; i += cols) rows.push(people.slice(i, i + cols));
   return (
@@ -685,7 +699,7 @@ function PersonGrid({ people, selected, onToggle, cols }) {
                 onPress={() => onToggle(p)}
                 activeOpacity={0.8}
               >
-                {isSel && <Ionicons name="checkmark" size={14} color="#E85D27" style={s.checkmarkAbs} />}
+                {isSel && <Ionicons name="checkmark" size={14} color={t.primaryText} style={s.checkmarkAbs} />}
                 <Text style={s.personName} numberOfLines={1}>{p.name}</Text>
                 <Text style={s.personSpec} numberOfLines={1}>{p.specialty}</Text>
                 <Text style={s.personEmail} numberOfLines={1}>{p.email}</Text>
@@ -702,6 +716,7 @@ function PersonGrid({ people, selected, onToggle, cols }) {
 }
 
 function SelectedTags({ people, onRemove }) {
+  const { s } = useSheets();
   return (
     <View style={s.tagsRow}>
       <Text style={s.tagsLabel}>Seleccionados:</Text>
@@ -723,6 +738,7 @@ function SelectedTags({ people, onRemove }) {
  * recibió nada.
  */
 function AddEmailModal({ visible, title, subtitle, onClose, onSubmit, actionLabel }) {
+  const { m, t } = useSheets();
   const [emails, setEmails] = useState(['', '']);
   const [error, setError]   = useState('');
 
@@ -757,7 +773,7 @@ function AddEmailModal({ visible, title, subtitle, onClose, onSubmit, actionLabe
       <Pressable style={m.overlay} onPress={handleClose}>
         <Pressable style={m.box} onPress={(e) => e.stopPropagation()} {...a11yModal(title)}>
           <TouchableOpacity style={m.closeBtn} onPress={handleClose} {...a11yButton('Cerrar')}>
-            <Ionicons name="close" size={20} color="#2E2E2E" />
+            <Ionicons name="close" size={20} color={t.textPrimary} />
           </TouchableOpacity>
           <Text style={m.title} accessibilityRole="header">{title}</Text>
           <Text style={m.subtitle}>{subtitle}</Text>
@@ -774,7 +790,7 @@ function AddEmailModal({ visible, title, subtitle, onClose, onSubmit, actionLabe
                   value={e}
                   onChangeText={(v) => { updateEmail(idx, v); setError(''); }}
                   placeholder="correo@ejemplo.com"
-                  placeholderTextColor="#8A94A6"
+                  placeholderTextColor={t.textPlaceholder}
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -787,7 +803,7 @@ function AddEmailModal({ visible, title, subtitle, onClose, onSubmit, actionLabe
                     activeOpacity={0.8}
                     {...a11yButton(`Quitar correo ${idx + 1}`)}
                   >
-                    <Ionicons name="close" size={14} color="#B3261E" />
+                    <Ionicons name="close" size={14} color={t.status.danger.fg} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -800,7 +816,7 @@ function AddEmailModal({ visible, title, subtitle, onClose, onSubmit, actionLabe
             activeOpacity={0.8}
             {...a11yButton('Añadir otro correo')}
           >
-            <Ionicons name="person-add-outline" size={14} color="#475467" />
+            <Ionicons name="person-add-outline" size={14} color={t.textSecondary} />
             <Text style={m.addMoreText}>Añadir otro correo</Text>
           </TouchableOpacity>
 
@@ -821,6 +837,7 @@ function AddEmailModal({ visible, title, subtitle, onClose, onSubmit, actionLabe
 // ── Modal de éxito ───────────────────────────────────────────────────────────
 
 function SuccessModal({ data, onClose }) {
+  const { m, sc, t } = useSheets();
   return (
     <Modal visible={!!data} transparent animationType="fade">
       <View style={m.overlay}>
@@ -828,7 +845,7 @@ function SuccessModal({ data, onClose }) {
 
           {/* Icono */}
           <View style={sc.iconCircle}>
-            <Ionicons name="checkmark-circle" size={48} color="#22C55E" />
+            <Ionicons name="checkmark-circle" size={48} color={t.status.success.fg} />
           </View>
 
           <Text style={sc.title}>¡Sesión Creada!</Text>
@@ -837,13 +854,13 @@ function SuccessModal({ data, onClose }) {
           <View style={sc.divider} />
 
           <View style={sc.infoRow}>
-            <Ionicons name="calendar-outline" size={16} color="#697282" />
+            <Ionicons name="calendar-outline" size={16} color={t.textMuted} />
             <Text style={sc.infoText}>La sesión fue registrada exitosamente</Text>
           </View>
 
           {data?.invites > 0 && (
             <View style={sc.infoRow}>
-              <Ionicons name="mail-outline" size={16} color="#475467" />
+              <Ionicons name="mail-outline" size={16} color={t.textSecondary} />
               <Text style={sc.infoText}>
                 {data.invites} invitación{data.invites > 1 ? 'es enviadas' : ' enviada'}
               </Text>
@@ -853,7 +870,7 @@ function SuccessModal({ data, onClose }) {
           {/* Fallos parciales: el usuario debe saber que no todas se enviaron. */}
           {data?.failed > 0 && (
             <View style={sc.infoRow}>
-              <Ionicons name="alert-circle-outline" size={16} color="#B3261E" />
+              <Ionicons name="alert-circle-outline" size={16} color={t.status.danger.fg} />
               <Text style={[sc.infoText, sc.infoTextError]}>
                 {data.failed} invitación{data.failed > 1 ? 'es no se pudieron enviar' : ' no se pudo enviar'}
               </Text>
@@ -866,7 +883,7 @@ function SuccessModal({ data, onClose }) {
             activeOpacity={0.85}
             {...a11yButton('Ver sesiones')}
           >
-            <Ionicons name="arrow-back-outline" size={16} color="#fff" />
+            <Ionicons name="arrow-back-outline" size={16} color={t.onPrimarySolid} />
             <Text style={sc.btnText}>Ver Sesiones</Text>
           </TouchableOpacity>
 
@@ -878,8 +895,9 @@ function SuccessModal({ data, onClose }) {
 
 // ── Estilos ───────────────────────────────────────────────────────────────────
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F4F6F8' },
+const makeS = (t) =>
+  StyleSheet.create({
+  root: { flex: 1, backgroundColor: t.background },
 
   errorWrap: { paddingHorizontal: 20, paddingBottom: 8 },
 
@@ -887,56 +905,56 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 24, paddingVertical: 14,
   },
-  pageTitle:    { fontSize: 20, fontWeight: '800', color: '#1A1A1A' },
-  pageSubtitle: { fontSize: 12, color: '#697282', marginTop: 2 },
+  pageTitle:    { fontSize: 20, fontWeight: '800', color: t.textPrimary },
+  pageSubtitle: { fontSize: 12, color: t.textMuted, marginTop: 2 },
   volverBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#fff', borderRadius: 8,
+    backgroundColor: t.card, borderRadius: 8,
     paddingHorizontal: 14, paddingVertical: 8,
-    borderWidth: 1, borderColor: '#E0E0E0',
+    borderWidth: 1, borderColor: t.border,
   },
-  volverText: { fontSize: 13, fontWeight: '600', color: '#2E2E2E' },
+  volverText: { fontSize: 13, fontWeight: '600', color: t.textPrimary },
 
   stepsBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingBottom: 10 },
   stepWrap:        { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  stepBubble:      { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E8EBF0' },
-  stepBubbleActive:{ backgroundColor: '#E85D27' },
-  stepBubbleDone:  { backgroundColor: '#27AE60' },
-  stepNum:         { fontSize: 12, fontWeight: '700', color: '#697282' },
-  stepLabel:       { fontSize: 12, fontWeight: '600', color: '#9AA3B0' },
-  stepLabelActive: { color: '#E85D27' },
-  stepLine:        { flex: 1, height: 2, backgroundColor: '#E8EBF0', marginHorizontal: 10 },
+  stepBubble:      { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: t.border },
+  stepBubbleActive:{ backgroundColor: t.primarySolid },
+  stepBubbleDone:  { backgroundColor: t.status.success.solid },
+  stepNum:         { fontSize: 12, fontWeight: '700', color: t.textMuted },
+  stepLabel:       { fontSize: 12, fontWeight: '600', color: t.iconMuted },
+  stepLabelActive: { color: t.primaryText },
+  stepLine:        { flex: 1, height: 2, backgroundColor: t.border, marginHorizontal: 10 },
 
   body: { flex: 1, paddingHorizontal: 16, paddingBottom: 14, gap: 12 },
   row:  { flex: 1, flexDirection: 'row', gap: 12 },
 
   card: {
-    backgroundColor: '#fff', borderRadius: 14,
-    borderWidth: 1, borderColor: '#E8EBF0',
+    backgroundColor: t.card, borderRadius: 14,
+    borderWidth: 1, borderColor: t.border,
     padding: 16, gap: 12,
-    shadowColor: '#000', shadowOpacity: 0.04,
+    shadowColor: t.shadowColor, shadowOpacity: 0.04,
     shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 2,
   },
   cardHeaderRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionTitle:     { fontSize: 14, fontWeight: '700', color: '#1A1A1A' },
+  sectionTitle:     { fontSize: 14, fontWeight: '700', color: t.textPrimary },
   sectionLabelRow:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  divider:          { height: 1, backgroundColor: '#F0F2F5' },
+  divider:          { height: 1, backgroundColor: t.divider },
 
   // Campos
   infoFields: { gap: 10 },
   infoField:  { gap: 5 },
   labelRow:   { flexDirection: 'row', alignItems: 'center' },
-  fieldLabel: { fontSize: 12, fontWeight: '600', color: '#495565' },
-  required:   { fontSize: 13, fontWeight: '700', color: '#D83B35' },
+  fieldLabel: { fontSize: 12, fontWeight: '600', color: t.textSecondary },
+  required:   { fontSize: 13, fontWeight: '700', color: t.status.danger.fg },
   input: {
-    backgroundColor: '#F3F3F5', borderRadius: 8,
+    backgroundColor: t.cardAlt, borderRadius: 8,
     paddingHorizontal: 12, paddingVertical: 10,
-    fontSize: 13, color: '#2E2E2E',
+    fontSize: 13, color: t.textPrimary,
     borderWidth: 1, borderColor: 'transparent',
   },
-  inputError: { borderColor: '#D83B35', backgroundColor: '#FFF5F5' },
-  errorMsg:   { fontSize: 11, color: '#D83B35', marginTop: 2 },
+  inputError: { borderColor: t.status.danger.border, backgroundColor: t.status.danger.bg },
+  errorMsg:   { fontSize: 11, color: t.status.danger.fg, marginTop: 2 },
 
   // Radio buttons (single-select punto de quema)
   radioList:     { gap: 10 },
@@ -944,81 +962,81 @@ const s = StyleSheet.create({
   radioRowError: { opacity: 0.8 },
   radio: {
     width: 20, height: 20, borderRadius: 10,
-    borderWidth: 1.5, borderColor: '#D0D5DD',
+    borderWidth: 1.5, borderColor: t.borderStrong,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: t.card,
   },
-  radioSel:   { borderColor: '#E85D27' },
-  radioDot:   { width: 10, height: 10, borderRadius: 5, backgroundColor: '#E85D27' },
-  radioLabel: { fontSize: 13, color: '#2E2E2E', fontWeight: '500' },
-  radioLabelSel: { color: '#E85D27', fontWeight: '700' },
+  radioSel:   { borderColor: t.primary },
+  radioDot:   { width: 10, height: 10, borderRadius: 5, backgroundColor: t.primarySolid },
+  radioLabel: { fontSize: 13, color: t.textPrimary, fontWeight: '500' },
+  radioLabelSel: { color: t.primaryText, fontWeight: '700' },
 
   // Num quemas
   numRow: { flexDirection: 'row', gap: 10 },
   numChip: {
     flex: 1, paddingVertical: 12, borderRadius: 10,
-    borderWidth: 1.5, borderColor: '#D0D5DD',
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FAFB',
+    borderWidth: 1.5, borderColor: t.borderStrong,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: t.cardAlt,
   },
-  numChipActive:     { backgroundColor: '#E85D27', borderColor: '#E85D27' },
-  numChipText:       { fontSize: 18, fontWeight: '700', color: '#697282' },
-  numChipTextActive: { color: '#fff' },
+  numChipActive:     { backgroundColor: t.primarySolid, borderColor: t.primary },
+  numChipText:       { fontSize: 18, fontWeight: '700', color: t.textMuted },
+  numChipTextActive: { color: t.onPrimarySolid },
 
   // Filter
   filterRow:           { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  filterPill:          { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, backgroundColor: '#555' },
-  filterPillActive:    { backgroundColor: '#E85D27' },
-  filterPillText:      { color: '#fff', fontSize: 12, fontWeight: '600' },
-  filterPillTextActive:{ color: '#fff' },
+  filterPill:          { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, backgroundColor: t.status.neutral.solid },
+  filterPillActive:    { backgroundColor: t.primarySolid },
+  filterPillText:      { color: t.onPrimarySolid, fontSize: 12, fontWeight: '600' },
+  filterPillTextActive:{ color: t.onPrimarySolid },
   searchSmall: {
-    backgroundColor: '#F3F3F5', borderRadius: 8,
+    backgroundColor: t.cardAlt, borderRadius: 8,
     paddingHorizontal: 10, paddingVertical: 7,
-    fontSize: 12, color: '#2E2E2E', minWidth: 120,
+    fontSize: 12, color: t.textPrimary, minWidth: 120,
   },
 
   // Person grid
   personGrid: { flex: 1, gap: 8 },
   personRow:  { flexDirection: 'row', gap: 8 },
   personCard: {
-    flex: 1, backgroundColor: '#F9FAFB',
-    borderRadius: 10, borderWidth: 1, borderColor: '#E0E0E0',
+    flex: 1, backgroundColor: t.cardAlt,
+    borderRadius: 10, borderWidth: 1, borderColor: t.border,
     padding: 10, gap: 2, position: 'relative',
   },
-  personCardSel: { borderColor: '#E85D27', backgroundColor: '#FFF5F0' },
+  personCardSel: { borderColor: t.primary, backgroundColor: t.primarySoft },
   checkmarkAbs:  { position: 'absolute', top: 8, right: 8 },
-  personName:    { fontSize: 12, fontWeight: '700', color: '#2E2E2E', paddingRight: 20 },
-  personSpec:    { fontSize: 11, color: '#697282' },
-  personEmail:   { fontSize: 10, color: '#9AA3B0' },
+  personName:    { fontSize: 12, fontWeight: '700', color: t.textPrimary, paddingRight: 20 },
+  personSpec:    { fontSize: 11, color: t.textMuted },
+  personEmail:   { fontSize: 10, color: t.iconMuted },
 
   // Tags
   tagsRow:  { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
-  tagsLabel:{ fontSize: 12, fontWeight: '600', color: '#495565' },
-  tag:      { backgroundColor: '#E85D27', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  tagText:  { color: '#fff', fontSize: 11, fontWeight: '600' },
+  tagsLabel:{ fontSize: 12, fontWeight: '600', color: t.textSecondary },
+  tag:      { backgroundColor: t.primarySolid, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  tagText:  { color: t.onPrimarySolid, fontSize: 11, fontWeight: '600' },
 
   // Add btn
   addBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderWidth: 1.5, borderColor: '#E85D27', borderRadius: 8,
+    borderWidth: 1.5, borderColor: t.primary, borderRadius: 8,
     paddingHorizontal: 12, paddingVertical: 6,
   },
-  addBtnDisabled: { borderColor: '#E0E0E0' },
-  addBtnText:     { fontSize: 13, color: '#E85D27', fontWeight: '600' },
+  addBtnDisabled: { borderColor: t.border },
+  addBtnText:     { fontSize: 13, color: t.primaryText, fontWeight: '600' },
 
   // Summary
   summaryGrid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 4 },
-  summaryChip:     { flexDirection: 'row', alignItems: 'center', gap: 10, width: '23%', backgroundColor: '#F9FAFB', borderRadius: 10, borderWidth: 1, borderColor: '#E8EBF0', padding: 10 },
+  summaryChip:     { flexDirection: 'row', alignItems: 'center', gap: 10, width: '23%', backgroundColor: t.cardAlt, borderRadius: 10, borderWidth: 1, borderColor: t.border, padding: 10 },
   summaryChipWide: { width: '100%' },
-  summaryChipIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#FFF0EA', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  summaryChipLabel:{ fontSize: 10, fontWeight: '700', color: '#9AA3B0', textTransform: 'uppercase', letterSpacing: 0.4 },
-  summaryChipValue:{ fontSize: 13, fontWeight: '700', color: '#1A1A1A', marginTop: 1 },
+  summaryChipIcon: { width: 32, height: 32, borderRadius: 8, backgroundColor: t.primarySoft, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  summaryChipLabel:{ fontSize: 10, fontWeight: '700', color: t.iconMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
+  summaryChipValue:{ fontSize: 13, fontWeight: '700', color: t.textPrimary, marginTop: 1 },
 
-  emailHint: { fontSize: 11, color: '#9AA3B0', fontStyle: 'italic' },
+  emailHint: { fontSize: 11, color: t.iconMuted, fontStyle: 'italic' },
   emailList: { gap: 8 },
   emailRow:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
   removeEmailBtn: {
     width: 32, height: 32, borderRadius: 8,
-    borderWidth: 1.5, borderColor: '#D83B35',
+    borderWidth: 1.5, borderColor: t.status.danger.border,
     alignItems: 'center', justifyContent: 'center',
   },
 
@@ -1026,83 +1044,85 @@ const s = StyleSheet.create({
   footer:       { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
   sigBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#E85D27', borderRadius: 10,
+    backgroundColor: t.primarySolid, borderRadius: 10,
     paddingHorizontal: 24, paddingVertical: 12,
   },
-  sigBtnText:   { color: '#fff', fontSize: 14, fontWeight: '700' },
+  sigBtnText:   { color: t.onPrimarySolid, fontSize: 14, fontWeight: '700' },
   cancelBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10,
-    borderWidth: 1.5, borderColor: '#D0D5DD',
+    borderWidth: 1.5, borderColor: t.borderStrong,
   },
-  cancelBtnText: { fontSize: 14, fontWeight: '600', color: '#495565' },
+  cancelBtnText: { fontSize: 14, fontWeight: '600', color: t.textSecondary },
   crearBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#E85D27', borderRadius: 10,
+    backgroundColor: t.primarySolid, borderRadius: 10,
     paddingHorizontal: 24, paddingVertical: 12,
   },
-  crearBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-});
+  crearBtnText: { color: t.onPrimarySolid, fontSize: 14, fontWeight: '700' },
+  });
 
-const m = StyleSheet.create({
+const makeM = (t) =>
+  StyleSheet.create({
   overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 20 },
-  box:       { width: '100%', maxWidth: 460, backgroundColor: '#fff', borderRadius: 16, padding: 28, gap: 14 },
+  box:       { width: '100%', maxWidth: 460, backgroundColor: t.card, borderRadius: 16, padding: 28, gap: 14 },
   errorText: {
-    fontSize: 13, color: '#B3261E', fontWeight: '600',
-    backgroundColor: '#FDECEA', borderRadius: 8, padding: 10,
+    fontSize: 13, color: t.status.danger.fg, fontWeight: '600',
+    backgroundColor: t.status.danger.bg, borderRadius: 8, padding: 10,
   },
   closeBtn:  { position: 'absolute', top: 16, right: 16, padding: 4 },
-  title:     { fontSize: 18, fontWeight: '800', color: '#1A1A1A' },
-  subtitle:  { fontSize: 13, color: '#697282', lineHeight: 20 },
+  title:     { fontSize: 18, fontWeight: '800', color: t.textPrimary },
+  subtitle:  { fontSize: 13, color: t.textMuted, lineHeight: 20 },
   emailList: { gap: 10 },
   emailRow:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
   emailInput: {
-    flex: 1, backgroundColor: '#F3F3F5', borderRadius: 10,
+    flex: 1, backgroundColor: t.cardAlt, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 13, color: '#2E2E2E',
+    fontSize: 13, color: t.textPrimary,
   },
   removeBtn: {
     width: 34, height: 34, borderRadius: 8,
-    borderWidth: 1.5, borderColor: '#D83B35',
+    borderWidth: 1.5, borderColor: t.status.danger.border,
     alignItems: 'center', justifyContent: 'center',
   },
   addMoreBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 10,
+    borderWidth: 1, borderColor: t.border, borderRadius: 10,
     paddingVertical: 10, justifyContent: 'center',
   },
-  addMoreText: { fontSize: 13, color: '#495565', fontWeight: '600' },
-  submitBtn:   { backgroundColor: '#E85D27', borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
-  submitText:  { color: '#fff', fontSize: 15, fontWeight: '700' },
-});
+  addMoreText: { fontSize: 13, color: t.textSecondary, fontWeight: '600' },
+  submitBtn:   { backgroundColor: t.primarySolid, borderRadius: 10, paddingVertical: 14, alignItems: 'center' },
+  submitText:  { color: t.onPrimarySolid, fontSize: 15, fontWeight: '700' },
+  });
 
-const sc = StyleSheet.create({
-  infoTextError: { color: '#B3261E', fontWeight: '600' },
+const makeSC = (t) =>
+  StyleSheet.create({
+  infoTextError: { color: t.status.danger.fg, fontWeight: '600' },
   iconCircle: {
     width: 80, height: 80, borderRadius: 40,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: t.status.success.bg,
     alignItems: 'center', justifyContent: 'center',
     alignSelf: 'center',
   },
   title: {
-    fontSize: 20, fontWeight: '800', color: '#1A1A1A',
+    fontSize: 20, fontWeight: '800', color: t.textPrimary,
     textAlign: 'center',
   },
   sessionName: {
-    fontSize: 14, color: '#697282', textAlign: 'center',
+    fontSize: 14, color: t.textMuted, textAlign: 'center',
     fontWeight: '600',
   },
   divider: {
-    height: 1, backgroundColor: '#F0F0F0', marginVertical: 4,
+    height: 1, backgroundColor: t.pill, marginVertical: 4,
   },
   infoRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
   },
-  infoText: { fontSize: 13, color: '#495565' },
+  infoText: { fontSize: 13, color: t.textSecondary },
   btn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 8, backgroundColor: '#E85D27', borderRadius: 10,
+    gap: 8, backgroundColor: t.primarySolid, borderRadius: 10,
     paddingVertical: 14, marginTop: 4,
   },
-  btnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-});
+  btnText: { color: t.onPrimarySolid, fontSize: 15, fontWeight: '700' },
+  });

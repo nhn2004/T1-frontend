@@ -163,10 +163,8 @@ export default function Sidebar({ navigation, activeRoute, isOpen, onOpen, onClo
                 accessibilityLabel={label}
                 accessibilityState={{ selected: isActive }}
               >
-                {/* Barra lateral: distingue el ítem activo sin depender solo del color,
-                    requisito WCAG 1.4.1 (no usar el color como único indicador). */}
-                {isActive && <View style={styles.activeBar} {...a11yDecorative} />}
-
+                {/* El ítem activo se distingue por color Y por peso de fuente (700),
+                    así no depende solo del color — requisito WCAG 1.4.1. */}
                 <View style={styles.iconContainer} {...a11yDecorative}>
                   <Icon
                     name={item.icon.name}
@@ -293,7 +291,8 @@ const makeStyles = (t) =>
 
     divider: {
       height: 1,
-      backgroundColor: t.sidebarBorder,
+      // Divisor naranja: es un elemento distintivo del diseño original del sidebar.
+      backgroundColor: t.sidebarIconActive,
       marginVertical: 14,
       marginHorizontal: 8,
     },
@@ -324,15 +323,6 @@ const makeStyles = (t) =>
     },
     menuItemPressed: {
       backgroundColor: t.surfaceHover,
-    },
-    activeBar: {
-      position: 'absolute',
-      left: 0,
-      top: 10,
-      bottom: 10,
-      width: 3,
-      borderRadius: 2,
-      backgroundColor: t.sidebarIconActive,
     },
 
     iconContainer: {

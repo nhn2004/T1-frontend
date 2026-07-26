@@ -21,6 +21,7 @@ const RIGHT_INSET = 16;
 // aplastar los puntos hasta volverlos ilegibles.
 export default function InteractiveLineChart({ series = [], points = [], emptyLabel = '' }) {
   const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const [hidden, setHidden] = useState(() => new Set());
   const [selected, setSelected] = useState(null); // { pointIndex, seriesKey }
   const [boxWidth, setBoxWidth] = useState(0);
@@ -209,7 +210,7 @@ export default function InteractiveLineChart({ series = [], points = [], emptyLa
             // fijo, y en modo oscuro theme.textPrimary es casi blanco — esa combinación
             // dejaba el texto invisible sobre fondo claro.
             return (
-              <View style={[styles.tooltip, { left: tooltipLeft, backgroundColor: '#1A1A1A' }]}>
+              <View style={[styles.tooltip, { left: tooltipLeft, backgroundColor: theme.textPrimary }]}>
                 <Text style={styles.tooltipTitle} numberOfLines={1}>{point.title}</Text>
                 <Text style={styles.tooltipDate}>{point.date}</Text>
                 {visibleSeries.map((s) => (
@@ -227,7 +228,8 @@ export default function InteractiveLineChart({ series = [], points = [], emptyLa
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t) =>
+  StyleSheet.create({
   emptyBox: {
     height: 160,
     borderRadius: 12,
@@ -287,14 +289,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     gap: 2,
-    shadowColor: '#000',
+    shadowColor: t.shadowColor,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 6,
   },
   tooltipTitle: {
-    color: '#fff',
+    color: t.card,
     fontSize: 12,
     fontWeight: '700',
   },
@@ -304,7 +306,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   tooltipValue: {
-    color: '#fff',
+    color: t.card,
     fontSize: 11,
     fontWeight: '600',
   },

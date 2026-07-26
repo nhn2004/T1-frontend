@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { COLORS } from '../../../constants';
 import useTheme from '../../../hooks/useTheme';
@@ -7,6 +7,7 @@ import { fullDateLabel } from '../utils/calendarUtils';
 
 export default function DayAgendaPanel({ selectedDate, events = [], onViewDetails, compact }) {
   const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { t, language } = useTranslation();
 
   if (!selectedDate) {
@@ -65,12 +66,13 @@ export default function DayAgendaPanel({ selectedDate, events = [], onViewDetail
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t) =>
+  StyleSheet.create({
   card: {
     width: 280,
     borderRadius: 18,
     padding: 18,
-    shadowColor: '#000',
+    shadowColor: t.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
@@ -87,15 +89,15 @@ const styles = StyleSheet.create({
   weekday: {
     fontSize: 17,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: t.textPrimary,
   },
   dayMonth: {
     fontSize: 12,
-    color: '#697282',
+    color: t.textMuted,
     marginTop: 2,
   },
   dateBadge: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: t.status.warning.bg,
     borderRadius: 10,
     width: 36,
     height: 36,
@@ -109,12 +111,12 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#EEF0F2',
+    backgroundColor: t.divider,
     marginVertical: 14,
   },
   emptyText: {
     fontSize: 13,
-    color: '#9AA3B0',
+    color: t.iconMuted,
   },
   item: {
     flexDirection: 'row',
@@ -132,16 +134,16 @@ const styles = StyleSheet.create({
   itemTime: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#9AA3B0',
+    color: t.iconMuted,
   },
   itemTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: t.textPrimary,
   },
   itemLocation: {
     fontSize: 12,
-    color: '#697282',
+    color: t.textMuted,
   },
   detailsLink: {
     fontSize: 12,

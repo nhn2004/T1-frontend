@@ -1,58 +1,51 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
+import useTheme from '../../../hooks/useTheme';
 
-// Label + input box — used by the Perfil de Usuario card.
-// `editable={false}` renders the dimmed read-only look (e.g. ID de Bombero, Rol).
+// Etiqueta + campo de texto — usado por la tarjeta Perfil de Usuario.
+// `editable={false}` produce el aspecto atenuado de solo lectura (Rol, ID de Bombero).
 
-export default function FormField({ label, value, onChangeText, editable = true, keyboardType, dark }) {
+export default function FormField({
+  label, value, onChangeText, editable = true, keyboardType, autoComplete,
+}) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   return (
     <View style={styles.field}>
-      <Text style={[styles.label, dark ? styles.labelDark : styles.labelLight]}>{label}</Text>
+      <Text style={styles.label} nativeID={`field-${label}`}>{label}</Text>
       <TextInput
-        style={[
-          styles.input,
-          dark ? styles.inputDark : styles.inputLight,
-          !editable && styles.inputDisabled,
-        ]}
+        style={[styles.input, !editable && styles.inputDisabled]}
         value={value}
         onChangeText={onChangeText}
         editable={editable}
         keyboardType={keyboardType}
-        placeholderTextColor={dark ? '#777' : '#BDBDBD'}
+        autoComplete={autoComplete}
+        placeholderTextColor={theme.textPlaceholder}
         autoCapitalize="none"
+        accessibilityLabel={label}
+        accessibilityLabelledBy={`field-${label}`}
+        // Un campo de solo lectura debe anunciarse como tal: si no, el lector
+        // invita a editarlo y el usuario no entiende por qué no responde.
+        accessibilityState={{ disabled: !editable }}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  field: {
-    flex: 1,
-    gap: 6,
-  },
-  label: {
-    fontSize: 13,
-  },
-  labelLight: { color: '#364153' },
-  labelDark: { color: '#C2C2C2' },
-  input: {
-    borderWidth: 1.5,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    fontSize: 14,
-  },
-  inputLight: {
-    backgroundColor: '#F3F3F5',
-    borderColor: '#D1D5DC',
-    color: '#0A0A0A',
-  },
-  inputDark: {
-    backgroundColor: '#2A2A2A',
-    borderColor: '#3A3A3A',
-    color: '#F0F0F0',
-  },
-  inputDisabled: {
-    opacity: 0.6,
-  },
-});
+const makeStyles = (t) =>
+  StyleSheet.create({
+    field: { flex: 1, gap: 6 },
+    label: { fontSize: 13, color: t.textSecondary },
+    input: {
+      borderWidth: 1.5,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+      fontSize: 14,
+      backgroundColor: t.cardAlt,
+      borderColor: t.borderStrong,
+      color: t.textPrimary,
+    },
+    inputDisabled: { opacity: 0.6 },
+  });

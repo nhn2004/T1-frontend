@@ -9,7 +9,7 @@ import FilterTabs from '../sessions/components/FilterTabs';
 import MonthCalendar from './components/MonthCalendar';
 import DayAgendaPanel from './components/DayAgendaPanel';
 
-import { FILTER_KEYS, applyFilter, countByFilter } from '../sessions/sessionFilters';
+import { FILTER_KEYS, applyFilter } from '../sessions/sessionFilters';
 import { buildMonthMatrix } from './utils/calendarUtils';
 import { useSessions } from '../sessions/hooks/useSessions';
 
@@ -47,8 +47,8 @@ export default function TrainingScheduleScreen({ navigation }) {
   const { sessions, loading } = useSessions();
 
   const [activeFilter, setActiveFilter] = useState(FILTER_KEYS.ALL);
-  const [monthDate,    setMonthDate]    = useState(() => new Date(TODAY.getFullYear(), TODAY.getMonth(), 1));
-  const [selectedDate, setSelectedDate] = useState(TODAY);
+  const [monthDate,    setMonthDate]    = useState(() => { const n = today(); return new Date(n.getFullYear(), n.getMonth(), 1); });
+  const [selectedDate, setSelectedDate] = useState(() => today());
   const hasJumped = useRef(false);
 
   // Al cargar las sesiones por primera vez, saltar a la sesión más próxima.
@@ -119,8 +119,8 @@ export default function TrainingScheduleScreen({ navigation }) {
   }, [navigation]);
 
   const handleToday = useCallback(() => {
-    setSelectedDate(TODAY);
-    setMonthDate(new Date(TODAY.getFullYear(), TODAY.getMonth(), 1));
+    setSelectedDate(today());
+    setMonthDate(new Date(today().getFullYear(), today().getMonth(), 1));
   }, []);
 
   const BodyContainer = isCompact ? ScrollView : View;
@@ -152,7 +152,7 @@ export default function TrainingScheduleScreen({ navigation }) {
               monthDate={monthDate}
               eventsByDay={eventsByDay}
               selectedDate={selectedDate}
-              today={TODAY}
+              today={today()}
               onSelectDay={handleSelectDay}
               onPrevMonth={handlePrevMonth}
               onNextMonth={handleNextMonth}

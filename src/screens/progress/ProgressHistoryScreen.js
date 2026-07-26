@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { COLORS, ROUTES } from '../../constants';
 import useTheme from '../../hooks/useTheme';
+import { a11yDecorative, a11yTab } from '../../constants/a11y';
 import useTranslation from '../../hooks/useTranslation';
 import { getStatus } from '../resultados/utils/vitalThresholds';
 import { useAuth } from '../../hooks';
@@ -25,6 +26,7 @@ const RECENT_SESSION_FALLBACK = 5;
 
 export default function ProgressHistoryScreen({ navigation }) {
   const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const isCompact = width < 900;
@@ -92,25 +94,29 @@ export default function ProgressHistoryScreen({ navigation }) {
     if (!latestEntry) return [];
     const peso = latestEntry.vitals.peso;
     const firstPeso = firstEntry?.vitals.peso;
-    const pesoDelta = (peso != null && firstPeso != null) ? peso - firstPeso : 0;
+    const hasPeso = peso != null && firstPeso != null;
+    const pesoDelta = hasPeso ? peso - firstPeso : null;
     return [
       {
-        id: 'presion', iconName: VITAL_META.presionArterial.icon, iconBg: '#E3F2FD', iconColor: VITAL_META.presionArterial.color,
+        id: 'presion', iconName: VITAL_META.presionArterial.icon, tone: 'info',
         label: t.progress.metrics.presionArterial, value: latestEntry.vitals.presionArterial ?? '—/—', valueColor: theme.textPrimary,
         hint: t.progress.hints.optimal, hintColor: theme.badge.success.text,
       },
       {
-        id: 'spo2', iconName: VITAL_META.nivelOxigeno.icon, iconBg: '#E0F7F4', iconColor: VITAL_META.nivelOxigeno.color,
+        id: 'spo2', iconName: VITAL_META.nivelOxigeno.icon, tone: 'success',
         label: t.progress.metrics.nivelOxigeno, value: latestEntry.vitals.nivelOxigeno != null ? `${latestEntry.vitals.nivelOxigeno}%` : '—', valueColor: theme.textPrimary,
         hint: t.progress.hints.avgRange(94, 99), hintColor: theme.textMuted,
       },
       {
-        id: 'peso', iconName: VITAL_META.peso.icon, iconBg: '#F3E5F5', iconColor: VITAL_META.peso.color,
+        id: 'peso', iconName: VITAL_META.peso.icon, tone: 'neutral',
         label: t.progress.metrics.peso, value: peso != null ? `${peso}kg` : '—', valueColor: theme.textPrimary,
-        hint: t.progress.hints.sinceFirst(pesoDelta), hintColor: pesoDelta <= 0 ? theme.badge.success.text : theme.badge.pending.text,
+        hint: hasPeso ? t.progress.hints.sinceFirst(pesoDelta) : 'Sin registro de peso',
+        hintColor: hasPeso
+          ? (pesoDelta <= 0 ? theme.badge.success.text : theme.badge.pending.text)
+          : theme.textMuted,
       },
       {
-        id: 'temp', iconName: VITAL_META.temperatura.icon, iconBg: '#FFF3E0', iconColor: VITAL_META.temperatura.color,
+        id: 'temp', iconName: VITAL_META.temperatura.icon, tone: 'warning',
         label: t.progress.metrics.temperatura, value: latestEntry.vitals.temperatura != null ? `${latestEntry.vitals.temperatura}°C` : '—', valueColor: theme.textPrimary,
         hint: t.progress.hints.postSession, hintColor: theme.textMuted,
       },
@@ -234,6 +240,8 @@ export default function ProgressHistoryScreen({ navigation }) {
 }
 
 function Pill({ active, icon, label, onPress, theme }) {
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   return (
     <TouchableOpacity
       style={[
@@ -243,16 +251,21 @@ function Pill({ active, icon, label, onPress, theme }) {
       ]}
       onPress={onPress}
       activeOpacity={0.7}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
+      {...a11yTab(label, active)}
     >
-      <Ionicons name={icon} size={14} color={active ? '#FFFFFF' : theme.textSecondary} />
+      <Ionicons
+        name={icon}
+        size={14}
+        color={active ? theme.onPrimarySolid : theme.textSecondary}
+        {...a11yDecorative}
+      />
       <Text style={[styles.pillText, { color: theme.textSecondary }, active && styles.pillTextActive]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t) =>
+  StyleSheet.create({
   root: { flex: 1 },
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   topBar: {
@@ -275,11 +288,11 @@ const styles = StyleSheet.create({
   },
   pillActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   pillText: { fontSize: 12, fontWeight: '600' },
-  pillTextActive: { color: '#FFFFFF' },
+  pillTextActive: { color: t.onPrimarySolid },
 
   card: {
     borderRadius: 18, padding: 18, gap: 4,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
+    shadowColor: t.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: t.shadowOpacity, shadowRadius: 6, elevation: 2,
   },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 },
   cardTitle: { fontSize: 15, fontWeight: '700' },

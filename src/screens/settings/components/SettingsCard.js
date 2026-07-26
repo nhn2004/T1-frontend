@@ -1,61 +1,41 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../../constants';
+import useTheme from '../../../hooks/useTheme';
+import { a11yDecorative } from '../../../constants/a11y';
 
-// Generic "section" card used by every block in the Settings screen
+// Tarjeta genérica de sección usada por cada bloque de Configuración
 // (Perfil, Notificaciones, Datos y Sincronización, Apariencia, Idioma, Seguridad).
-// `dark` flips its own palette so the "Modo Oscuro" toggle has a real, visible effect.
+//
+// Antes recibía una prop `dark` y llevaba su propia paleta duplicada. Ahora lee el tema
+// global, que es la misma fuente que usa el resto de la app.
 
-export default function SettingsCard({ icon, title, dark, style, children }) {
+export default function SettingsCard({ icon, title, style, children }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   return (
-    <View
-      style={[
-        styles.card,
-        dark ? styles.cardDark : styles.cardLight,
-        style,
-      ]}
-    >
+    <View style={[styles.card, style]}>
       <View style={styles.header}>
-        <Ionicons name={icon} size={20} color={COLORS.primary} />
-        <Text style={[styles.title, dark ? styles.titleDark : styles.titleLight]}>{title}</Text>
+        <Ionicons name={icon} size={20} color={theme.primary} {...a11yDecorative} />
+        <Text style={styles.title} accessibilityRole="header">{title}</Text>
       </View>
       <View style={styles.body}>{children}</View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 18,
-    gap: 16,
-  },
-  cardLight: {
-    backgroundColor: '#FFFFFF',
-    borderColor: 'rgba(0,0,0,0.08)',
-  },
-  cardDark: {
-    backgroundColor: '#1E1E1E',
-    borderColor: '#2E2E2E',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  titleLight: {
-    color: '#2E2E2E',
-  },
-  titleDark: {
-    color: '#F5F5F5',
-  },
-  body: {
-    gap: 12,
-  },
-});
+const makeStyles = (t) =>
+  StyleSheet.create({
+    card: {
+      borderRadius: 14,
+      borderWidth: 1.5,
+      padding: 18,
+      gap: 16,
+      backgroundColor: t.card,
+      borderColor: t.border,
+    },
+    header: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    title: { fontSize: 16, fontWeight: '700', color: t.textPrimary },
+    body: { gap: 12 },
+  });

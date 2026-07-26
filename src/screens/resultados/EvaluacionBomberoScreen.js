@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 } from 'react-native';
@@ -8,6 +8,7 @@ import { SINTOMAS_LIST } from './__mocks__/resultadosData';
 import { vitalSignsService } from '../../services/vitalSignsService';
 import { healthPersonnelService } from '../../services/healthPersonnelService';
 import { useAuth } from '../../hooks';
+import useTheme from '../../hooks/useTheme';
 import { useAuditOnMount } from '../../hooks/useAuditTrail';
 import { a11yButton, a11yDecorative } from '../../constants/a11y';
 import Toast from '../../components/Toast';
@@ -48,6 +49,15 @@ const EMPTY_INVESTIGACION = {
   stroop_tiempo: '', stroop_errores: '',
 };
 
+/** Entrega las cuatro hojas de estilo del módulo ya resueltas contra el tema. */
+function useSheets() {
+  const t = useTheme();
+  return useMemo(
+    () => ({ st: makeSt(t), tl: makeTl(t), p: makeP(t), vi: makeVi(t), t }),
+    [t],
+  );
+}
+
 // ── Semáforo: verde = normal, naranja = fuera de rango ───────────────────────
 function getSemaforoColor(field, rawVal) {
   const val = parseFloat(rawVal);
@@ -69,8 +79,14 @@ function getSemaforoColor(field, rawVal) {
   }
 }
 
-const SEM_BORDER = { green: '#27AE60', orange: '#E85D27' };
-const SEM_BG     = { green: '#F0FFF4', orange: '#FFF5F0' };
+// El semáforo se deriva del tema para que sus fondos no queden luminosos en
+// modo oscuro; los tonos siguen siendo verde (en rango) y naranja (fuera).
+function semaforoTones(t) {
+  return {
+    border: { green: t.status.success.solid, orange: t.primary },
+    bg:     { green: t.status.success.bg,    orange: t.primarySoft },
+  };
+}
 
 // ── Aptitud ───────────────────────────────────────────────────────────────────
 function verificarAptitud(form) {
@@ -97,6 +113,7 @@ function vitalsComplete(form) {
 
 // ── Pantalla principal ────────────────────────────────────────────────────────
 export default function EvaluacionBomberoScreen({ navigation, route }) {
+  const { st, t } = useSheets();
   const bomberoName   = route?.params?.bomberoName ?? 'Bombero';
   const participantId = route?.params?.bomberoId   ?? null;
   // Se acota a un mínimo de 1: con `numQuemas = 0` el array de quemas quedaba vacío y
@@ -335,7 +352,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
           </View>
         </View>
         <TouchableOpacity style={st.volverBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={15} color="#2E2E2E" />
+          <Ionicons name="arrow-back" size={15} color={t.textPrimary} />
           <Text style={st.volverText}>Volver</Text>
         </TouchableOpacity>
       </View>
@@ -346,7 +363,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
       {/* ── No Apto Banner ── */}
       {isNoApto && stage !== S.NO_APTO && stage !== S.LISTO && (
         <View style={st.noAptoBanner}>
-          <Ionicons name="warning" size={15} color="#fff" />
+          <Ionicons name="warning" size={15} color={t.onPrimarySolid} />
           <Text style={st.noAptoBannerText}>Bombero marcado NO APTO — Completa el cierre</Text>
         </View>
       )}
@@ -450,6 +467,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
 // ── TimelineBar ───────────────────────────────────────────────────────────────
 
 function TimelineBar({ stage, currentQuema, numQuemas }) {
+  const { tl, t } = useSheets();
   const preStages    = [S.PRE_SESION, S.NO_APTO, S.APTO];
   const cierreStages = [S.CIERRE, S.LISTO];
   const quemaStages  = [S.QUEMA_ACTIVA, S.POST_QUEMA];
@@ -484,8 +502,8 @@ function TimelineBar({ stage, currentQuema, numQuemas }) {
             <View style={tl.dotRow}>
               <View style={[tl.dot, done && tl.dotDone, active && tl.dotActive]}>
                 {done
-                  ? <Ionicons name="checkmark" size={10} color="#fff" />
-                  : <Text style={[tl.dotText, (active || done) && { color: '#fff' }]}>{i + 1}</Text>
+                  ? <Ionicons name="checkmark" size={10} color={t.onPrimarySolid} />
+                  : <Text style={[tl.dotText, (active || done) && { color: t.onPrimarySolid }]}>{i + 1}</Text>
                 }
               </View>
               {!isLast && <View style={[tl.line, done && tl.lineDone]} />}
@@ -503,6 +521,7 @@ function TimelineBar({ stage, currentQuema, numQuemas }) {
 // ── PreSesionPanel ────────────────────────────────────────────────────────────
 
 function PreSesionPanel({ data, onChange, onToggleSintoma, showErrors, onEvaluar }) {
+  const { p, t } = useSheets();
   const errRol    = showErrors && !data.rol;
   const errHumo1  = showErrors && data.esFumador === null;
   const errHumo2  = showErrors && data.expuestoHumo === null;
@@ -513,11 +532,11 @@ function PreSesionPanel({ data, onChange, onToggleSintoma, showErrors, onEvaluar
       {/* ── Izquierda: Rol + Exposición ── */}
       <View style={p.leftCol}>
         <View style={p.panelHeader}>
-          <Ionicons name="person-outline" size={18} color="#E85D27" />
+          <Ionicons name="person-outline" size={18} color={t.primaryText} />
           <Text style={p.panelTitle}>Pre-sesión</Text>
         </View>
 
-        <Text style={[p.secLabel, errRol && { color: '#D83B35' }]}>
+        <Text style={[p.secLabel, errRol && { color: t.status.danger.fg }]}>
           Rol en la práctica {errRol && '— requerido'}
         </Text>
         <View style={p.chipGrid}>
@@ -559,9 +578,9 @@ function PreSesionPanel({ data, onChange, onToggleSintoma, showErrors, onEvaluar
         {/* ── Botón Evaluar (siempre activo, centrado abajo) ── */}
         <View style={p.evalBtnWrap}>
           <TouchableOpacity style={p.evalBtn} onPress={onEvaluar} activeOpacity={0.85}>
-            <Ionicons name="pulse-outline" size={17} color="#fff" />
+            <Ionicons name="pulse-outline" size={17} color={t.onPrimarySolid} />
             <Text style={p.evalBtnText}>Evaluar Aptitud</Text>
-            <Ionicons name="arrow-forward" size={17} color="#fff" />
+            <Ionicons name="arrow-forward" size={17} color={t.onPrimarySolid} />
           </TouchableOpacity>
         </View>
       </View>
@@ -572,11 +591,12 @@ function PreSesionPanel({ data, onChange, onToggleSintoma, showErrors, onEvaluar
 // ── NoAptoPanel ───────────────────────────────────────────────────────────────
 
 function NoAptoPanel({ data, razones, onTerminar, onReintentar }) {
+  const { p, t } = useSheets();
   return (
     <View style={p.centered}>
-      <View style={[p.resultBadge, { backgroundColor: '#FFF0EE', borderColor: '#FFCCCC' }]}>
-        <Ionicons name="close-circle" size={48} color="#D83B35" />
-        <Text style={[p.resultTitle, { color: '#D83B35' }]}>NO APTO</Text>
+      <View style={[p.resultBadge, { backgroundColor: t.status.danger.bg, borderColor: t.status.danger.border }]}>
+        <Ionicons name="close-circle" size={48} color={t.status.danger.fg} />
+        <Text style={[p.resultTitle, { color: t.status.danger.fg }]}>NO APTO</Text>
         <Text style={p.resultSub}>El bombero no cumple los parámetros mínimos para la práctica.</Text>
       </View>
 
@@ -607,10 +627,10 @@ function NoAptoPanel({ data, razones, onTerminar, onReintentar }) {
 
       <View style={p.btnRow}>
         <TouchableOpacity style={p.outlineBtn} onPress={onReintentar} activeOpacity={0.8}>
-          <Ionicons name="create-outline" size={15} color="#E85D27" />
+          <Ionicons name="create-outline" size={15} color={t.primaryText} />
           <Text style={p.outlineBtnText}>Corregir datos</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[p.mainBtn, { backgroundColor: '#697282' }]} onPress={onTerminar} activeOpacity={0.85}>
+        <TouchableOpacity style={[p.mainBtn, { backgroundColor: t.status.neutral.solid }]} onPress={onTerminar} activeOpacity={0.85}>
           <Text style={p.mainBtnText}>Terminar evaluación</Text>
         </TouchableOpacity>
       </View>
@@ -621,11 +641,12 @@ function NoAptoPanel({ data, razones, onTerminar, onReintentar }) {
 // ── AptoPanel ─────────────────────────────────────────────────────────────────
 
 function AptoPanel({ data, onIniciar }) {
+  const { p, t } = useSheets();
   return (
     <View style={p.centered}>
-      <View style={[p.resultBadge, { backgroundColor: '#F0FFF4', borderColor: '#C3E6CB' }]}>
-        <Ionicons name="checkmark-circle" size={48} color="#27AE60" />
-        <Text style={[p.resultTitle, { color: '#27AE60' }]}>APTO</Text>
+      <View style={[p.resultBadge, { backgroundColor: t.status.success.bg, borderColor: t.status.success.border }]}>
+        <Ionicons name="checkmark-circle" size={48} color={t.status.success.fg} />
+        <Text style={[p.resultTitle, { color: t.status.success.fg }]}>APTO</Text>
         <Text style={p.resultSub}>Parámetros dentro del rango. El bombero puede iniciar la práctica.</Text>
       </View>
 
@@ -640,9 +661,9 @@ function AptoPanel({ data, onIniciar }) {
 
       <View style={p.btnRow}>
         <TouchableOpacity style={[p.mainBtn, { paddingHorizontal: 36 }]} onPress={onIniciar} activeOpacity={0.85}>
-          <MaterialCommunityIcons name="fire" size={18} color="#fff" />
+          <MaterialCommunityIcons name="fire" size={18} color={t.onPrimarySolid} />
           <Text style={p.mainBtnText}>Iniciar Quema 1</Text>
-          <Ionicons name="arrow-forward" size={16} color="#fff" />
+          <Ionicons name="arrow-forward" size={16} color={t.onPrimarySolid} />
         </TouchableOpacity>
       </View>
     </View>
@@ -652,6 +673,7 @@ function AptoPanel({ data, onIniciar }) {
 // ── QuemaActivaPanel ──────────────────────────────────────────────────────────
 
 function QuemaActivaPanel({ quemaNum, secs, toMM, toSS, onFinalizar }) {
+  const { p, t } = useSheets();
   return (
     <View style={p.centered}>
       <Text style={p.quemaLabel}>Quema {quemaNum} en progreso</Text>
@@ -659,7 +681,7 @@ function QuemaActivaPanel({ quemaNum, secs, toMM, toSS, onFinalizar }) {
       {/* Círculo de fuego */}
       <View style={p.fireCircleOuter}>
         <View style={p.fireCircle}>
-          <MaterialCommunityIcons name="fire" size={54} color="#fff" />
+          <MaterialCommunityIcons name="fire" size={54} color={t.onPrimarySolid} />
         </View>
         <View style={p.fireNumBadge}>
           <Text style={p.fireNumText}>#{quemaNum}</Text>
@@ -672,8 +694,8 @@ function QuemaActivaPanel({ quemaNum, secs, toMM, toSS, onFinalizar }) {
         <Text style={p.timerSub}>min &nbsp; : &nbsp; seg</Text>
       </View>
 
-      <TouchableOpacity style={[p.mainBtn, { backgroundColor: '#C62828', marginTop: 8 }]} onPress={onFinalizar} activeOpacity={0.85}>
-        <Ionicons name="stop-circle-outline" size={18} color="#fff" />
+      <TouchableOpacity style={[p.mainBtn, { backgroundColor: t.status.danger.solid, marginTop: 8 }]} onPress={onFinalizar} activeOpacity={0.85}>
+        <Ionicons name="stop-circle-outline" size={18} color={t.onPrimarySolid} />
         <Text style={p.mainBtnText}>Finalizar Quema {quemaNum}</Text>
       </TouchableOpacity>
     </View>
@@ -683,6 +705,7 @@ function QuemaActivaPanel({ quemaNum, secs, toMM, toSS, onFinalizar }) {
 // ── PostQuemaPanel ────────────────────────────────────────────────────────────
 
 function PostQuemaPanel({ quemaNum, numQuemas, data, onChange, onToggleSintoma, showErrors, onGuardar }) {
+  const { p, t } = useSheets();
   const isLast = quemaNum === numQuemas;
   return (
     <View style={p.twoCol}>
@@ -690,7 +713,7 @@ function PostQuemaPanel({ quemaNum, numQuemas, data, onChange, onToggleSintoma, 
       {/* ── Izquierda: Duración + Síntomas ── */}
       <View style={p.leftCol}>
         <View style={p.panelHeader}>
-          <Ionicons name="timer-outline" size={18} color="#E85D27" />
+          <Ionicons name="timer-outline" size={18} color={t.primaryText} />
           <Text style={p.panelTitle}>Registro — Quema {quemaNum}</Text>
         </View>
 
@@ -721,7 +744,7 @@ function PostQuemaPanel({ quemaNum, numQuemas, data, onChange, onToggleSintoma, 
             <Text style={p.evalBtnText}>
               {isLast ? 'Ir al Cierre' : `Guardar y continuar a Quema ${quemaNum + 1}`}
             </Text>
-            <Ionicons name={isLast ? 'flag-outline' : 'arrow-forward'} size={16} color="#fff" />
+            <Ionicons name={isLast ? 'flag-outline' : 'arrow-forward'} size={16} color={t.onPrimarySolid} />
           </TouchableOpacity>
         </View>
       </View>
@@ -736,19 +759,21 @@ function CierrePanel({
   esInvestigacion, setEsInvestigacion, invData, updateInv, onFinalizar,
   showErrors, saving,
 }) {
+  const { p, t } = useSheets();
+
   return (
     <View style={p.twoCol}>
 
       {/* ── Izquierda: Síntomas + Observaciones + Investigación ── */}
       <View style={p.leftCol}>
         <View style={p.panelHeader}>
-          <Ionicons name="flag-outline" size={18} color="#2E7D32" />
+          <Ionicons name="flag-outline" size={18} color={t.status.success.fg} />
           <Text style={p.panelTitle}>Cierre del día</Text>
         </View>
 
         {isNoApto && (
           <View style={p.noAptoNote}>
-            <Ionicons name="warning-outline" size={14} color="#D83B35" />
+            <Ionicons name="warning-outline" size={14} color={t.status.danger.fg} />
             <Text style={p.noAptoNoteText}>Bombero NO APTO — Completa el registro de cierre.</Text>
           </View>
         )}
@@ -762,7 +787,7 @@ function CierrePanel({
           value={data.eventosEspeciales}
           onChangeText={v => onChange('eventosEspeciales', v)}
           placeholder="Describe cualquier evento relevante durante la práctica..."
-          placeholderTextColor="#B0B7C3"
+          placeholderTextColor={t.textPlaceholder}
           multiline
           numberOfLines={4}
           textAlignVertical="top"
@@ -775,7 +800,7 @@ function CierrePanel({
           activeOpacity={0.8}
         >
           <View style={[p.invCheckbox, esInvestigacion && p.invCheckboxActive]}>
-            {esInvestigacion && <Ionicons name="checkmark" size={12} color="#fff" />}
+            {esInvestigacion && <Ionicons name="checkmark" size={12} color={t.onPrimarySolid} />}
           </View>
           <Text style={p.invToggleText}>Sesión de investigación (I+D+i)</Text>
         </TouchableOpacity>
@@ -804,15 +829,15 @@ function CierrePanel({
 
         <View style={p.evalBtnWrap}>
           <TouchableOpacity
-            style={[p.evalBtn, { backgroundColor: saving ? '#8E9399' : '#2E7D32' }]}
+            style={[p.evalBtn, { backgroundColor: saving ? t.disabledBg : t.status.success.solid }]}
             onPress={onFinalizar}
             activeOpacity={0.85}
             disabled={saving}
             {...a11yButton('Finalizar evaluación', { disabled: saving, busy: saving })}
           >
             {saving
-              ? <ActivityIndicator size="small" color="#fff" />
-              : <Ionicons name="checkmark-circle-outline" size={17} color="#fff" {...a11yDecorative} />}
+              ? <ActivityIndicator size="small" color={t.onPrimarySolid} />
+              : <Ionicons name="checkmark-circle-outline" size={17} color={t.onPrimarySolid} {...a11yDecorative} />}
             <Text style={p.evalBtnText}>
               {saving ? 'Guardando…' : 'Finalizar Evaluación'}
             </Text>
@@ -826,6 +851,7 @@ function CierrePanel({
 // ── InvestigacionSection ──────────────────────────────────────────────────────
 
 function InvestigacionSection({ data, onChange }) {
+  const { p } = useSheets();
   return (
     <View style={p.invSection}>
       <Text style={p.invSectionTitle}>Marcadores de Investigación</Text>
@@ -853,6 +879,7 @@ function InvestigacionSection({ data, onChange }) {
 }
 
 function InvField({ label, value, onChange }) {
+  const { p, t } = useSheets();
   return (
     <View style={p.invField}>
       <Text style={p.invFieldLabel}>{label}</Text>
@@ -860,7 +887,7 @@ function InvField({ label, value, onChange }) {
         style={p.invInput}
         value={value} onChangeText={onChange}
         keyboardType="number-pad" placeholder="—"
-        placeholderTextColor="#B0B7C3"
+        placeholderTextColor={t.textPlaceholder}
       />
     </View>
   );
@@ -869,15 +896,19 @@ function InvField({ label, value, onChange }) {
 // ── ListoPanel ────────────────────────────────────────────────────────────────
 
 function ListoPanel({ isNoApto, onVolver }) {
+  const { p, t } = useSheets();
   return (
     <View style={p.centered}>
-      <View style={[p.resultBadge, { backgroundColor: isNoApto ? '#FFF0EE' : '#F0FFF4', borderColor: isNoApto ? '#FFCCCC' : '#C3E6CB' }]}>
+      <View style={[p.resultBadge, {
+          backgroundColor: isNoApto ? t.status.danger.bg : t.status.success.bg,
+          borderColor: isNoApto ? t.status.danger.border : t.status.success.border,
+        }]}>
         <Ionicons
           name={isNoApto ? 'close-circle' : 'checkmark-circle'}
           size={52}
-          color={isNoApto ? '#D83B35' : '#27AE60'}
+          color={isNoApto ? t.status.danger.fg : t.status.success.fg}
         />
-        <Text style={[p.resultTitle, { color: isNoApto ? '#D83B35' : '#27AE60' }]}>
+        <Text style={[p.resultTitle, { color: isNoApto ? t.status.danger.fg : t.status.success.fg }]}>
           Evaluación Guardada
         </Text>
         <Text style={p.resultSub}>
@@ -888,7 +919,7 @@ function ListoPanel({ isNoApto, onVolver }) {
         </Text>
       </View>
       <TouchableOpacity style={[p.mainBtn, { paddingHorizontal: 36 }]} onPress={onVolver} activeOpacity={0.85}>
-        <Ionicons name="arrow-back" size={16} color="#fff" />
+        <Ionicons name="arrow-back" size={16} color={t.onPrimarySolid} />
         <Text style={p.mainBtnText}>Volver a la lista</Text>
       </TouchableOpacity>
     </View>
@@ -898,6 +929,7 @@ function ListoPanel({ isNoApto, onVolver }) {
 // ── Vitales Form ──────────────────────────────────────────────────────────────
 
 function VitalesForm({ data, onChange, showErrors }) {
+  const { vi } = useSheets();
   return (
     <View style={vi.grid}>
       <SemaforoInput
@@ -946,13 +978,14 @@ function VitalesForm({ data, onChange, showErrors }) {
 }
 
 function SemaforoInput({ field, label, value, onChangeText, showError, placeholder, isCompact }) {
+  const { vi, t } = useSheets();
   const color = getSemaforoColor(field, value);
-  const borderColor = showError ? '#D83B35'
-    : color ? SEM_BORDER[color]
-    : '#E8EBF0';
-  const bgColor = showError ? '#FFF5F5'
-    : color ? SEM_BG[color]
-    : '#F3F3F5';
+  const borderColor = showError ? t.status.danger.border
+    : color ? semaforoTones(t).border[color]
+    : t.border;
+  const bgColor = showError ? t.status.danger.bg
+    : color ? semaforoTones(t).bg[color]
+    : t.cardAlt;
   return (
     <View style={[vi.fieldWrap, isCompact && { flex: 1 }]}>
       {!!label && (
@@ -967,7 +1000,7 @@ function SemaforoInput({ field, label, value, onChangeText, showError, placehold
         onChangeText={onChangeText}
         keyboardType="number-pad"
         placeholder={placeholder || (showError ? 'Obligatorio' : '—')}
-        placeholderTextColor={showError ? '#D83B35' : '#B0B7C3'}
+        placeholderTextColor={showError ? t.status.danger.fg : t.textPlaceholder}
       />
       {showError && !isCompact && <Text style={vi.errorText}>Campo obligatorio</Text>}
     </View>
@@ -975,10 +1008,12 @@ function SemaforoInput({ field, label, value, onChangeText, showError, placehold
 }
 
 function SemaforoIndicator({ color }) {
-  return <View style={[vi.dot, { backgroundColor: SEM_BORDER[color] }]} />;
+  const { vi, t } = useSheets();
+  return <View style={[vi.dot, { backgroundColor: semaforoTones(t).border[color] }]} />;
 }
 
 function SintomasChips({ selected, onToggle }) {
+  const { vi } = useSheets();
   return (
     <View style={vi.sintomasGrid}>
       {SINTOMAS_LIST.map(s => {
@@ -999,21 +1034,22 @@ function SintomasChips({ selected, onToggle }) {
 }
 
 function YesNoField({ label, value, hasError, onChange }) {
+  const { vi, t } = useSheets();
   return (
     <View style={vi.yesNoWrap}>
-      <Text style={[vi.yesNoLabel, hasError && { color: '#D83B35' }]}>{label}</Text>
+      <Text style={[vi.yesNoLabel, hasError && { color: t.status.danger.fg }]}>{label}</Text>
       <View style={vi.yesNoRow}>
         <TouchableOpacity
           style={[vi.yesNoBtn, value === true && vi.yesNoBtnActive, hasError && vi.yesNoBtnErr]}
           onPress={() => onChange(true)} activeOpacity={0.8}
         >
-          <Text style={[vi.yesNoBtnText, value === true && { color: '#fff' }]}>Sí</Text>
+          <Text style={[vi.yesNoBtnText, value === true && { color: t.onPrimarySolid }]}>Sí</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[vi.yesNoBtn, value === false && vi.yesNoBtnActive, hasError && vi.yesNoBtnErr]}
           onPress={() => onChange(false)} activeOpacity={0.8}
         >
-          <Text style={[vi.yesNoBtnText, value === false && { color: '#fff' }]}>No</Text>
+          <Text style={[vi.yesNoBtnText, value === false && { color: t.onPrimarySolid }]}>No</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -1021,18 +1057,20 @@ function YesNoField({ label, value, hasError, onChange }) {
 }
 
 function VitalStatItem({ label, value, bad }) {
+  const { p, t } = useSheets();
   return (
     <View style={[p.vitalStat, bad && p.vitalStatBad]}>
       <Text style={p.vitalStatLabel}>{label}</Text>
-      <Text style={[p.vitalStatValue, bad && { color: '#D83B35' }]}>{value}</Text>
+      <Text style={[p.vitalStatValue, bad && { color: t.status.danger.fg }]}>{value}</Text>
     </View>
   );
 }
 
 // ── Estilos ───────────────────────────────────────────────────────────────────
 
-const st = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F4F6F8' },
+const makeSt = (t) =>
+  StyleSheet.create({
+  root: { flex: 1, backgroundColor: t.background },
   noticeWrap: { paddingHorizontal: 20, paddingBottom: 8 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -1041,53 +1079,55 @@ const st = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   avatar: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#E85D27', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: t.primarySolid, alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  bomberName: { fontSize: 17, fontWeight: '800', color: '#1A1A1A' },
-  bomberSub:  { fontSize: 11, color: '#697282', marginTop: 2 },
+  avatarText: { color: t.onPrimarySolid, fontSize: 16, fontWeight: '800' },
+  bomberName: { fontSize: 17, fontWeight: '800', color: t.textPrimary },
+  bomberSub:  { fontSize: 11, color: t.textMuted, marginTop: 2 },
   volverBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#fff', borderRadius: 8,
+    backgroundColor: t.card, borderRadius: 8,
     paddingHorizontal: 14, paddingVertical: 8,
-    borderWidth: 1, borderColor: '#E0E0E0',
+    borderWidth: 1, borderColor: t.border,
   },
-  volverText: { fontSize: 13, fontWeight: '600', color: '#2E2E2E' },
+  volverText: { fontSize: 13, fontWeight: '600', color: t.textPrimary },
   noAptoBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#D83B35', paddingHorizontal: 20, paddingVertical: 8,
+    backgroundColor: t.status.danger.solid, paddingHorizontal: 20, paddingVertical: 8,
   },
-  noAptoBannerText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  noAptoBannerText: { color: t.onPrimarySolid, fontSize: 12, fontWeight: '700' },
   body: { flex: 1, paddingHorizontal: 16, paddingBottom: 14 },
   card: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 14,
-    borderWidth: 1, borderColor: '#E8EBF0', padding: 22,
-    shadowColor: '#000', shadowOpacity: 0.04,
+    flex: 1, backgroundColor: t.card, borderRadius: 14,
+    borderWidth: 1, borderColor: t.border, padding: 22,
+    shadowColor: t.shadowColor, shadowOpacity: 0.04,
     shadowOffset: { width: 0, height: 2 }, shadowRadius: 6, elevation: 2,
   },
-});
+  });
 
-const tl = StyleSheet.create({
+const makeTl = (t) =>
+  StyleSheet.create({
   bar: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 20, paddingVertical: 10 },
   stepWrap: { flex: 1, alignItems: 'center', gap: 4 },
   dotRow:   { flexDirection: 'row', alignItems: 'center', width: '100%' },
   dot: {
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: '#E8EBF0', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    backgroundColor: t.border, alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  dotActive: { backgroundColor: '#E85D27' },
-  dotDone:   { backgroundColor: '#27AE60' },
-  dotText:   { fontSize: 11, fontWeight: '700', color: '#9AA3B0' },
-  line:      { flex: 1, height: 2, backgroundColor: '#E8EBF0' },
-  lineDone:  { backgroundColor: '#27AE60' },
-  label:     { fontSize: 10, color: '#9AA3B0', textAlign: 'center' },
-  labelActive:{ color: '#E85D27', fontWeight: '700' },
-  labelDone:  { color: '#27AE60' },
-});
+  dotActive: { backgroundColor: t.primarySolid },
+  dotDone:   { backgroundColor: t.status.success.solid },
+  dotText:   { fontSize: 11, fontWeight: '700', color: t.iconMuted },
+  line:      { flex: 1, height: 2, backgroundColor: t.border },
+  lineDone:  { backgroundColor: t.status.success.solid },
+  label:     { fontSize: 10, color: t.iconMuted, textAlign: 'center' },
+  labelActive:{ color: t.primaryText, fontWeight: '700' },
+  labelDone:  { color: t.status.success.fg },
+  });
 
-const p = StyleSheet.create({
+const makeP = (t) =>
+  StyleSheet.create({
   unsupportedNote: {
-    fontSize: 12, color: '#8A5000', backgroundColor: '#FFF4E5',
+    fontSize: 12, color: t.status.warning.fg, backgroundColor: t.status.warning.bg,
     borderRadius: 8, padding: 10, marginTop: 8, lineHeight: 17,
   },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 22 },
@@ -1096,19 +1136,19 @@ const p = StyleSheet.create({
   rightCol: { flex: 1.1, gap: 10 },
 
   panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  panelTitle:  { fontSize: 16, fontWeight: '800', color: '#1A1A1A' },
-  secLabel:    { fontSize: 12, fontWeight: '700', color: '#495565' },
+  panelTitle:  { fontSize: 16, fontWeight: '800', color: t.textPrimary },
+  secLabel:    { fontSize: 12, fontWeight: '700', color: t.textSecondary },
 
   // Rol chips
   chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   roleChip: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8,
-    borderWidth: 1.5, borderColor: '#D0D5DD', backgroundColor: '#F9FAFB',
+    borderWidth: 1.5, borderColor: t.borderStrong, backgroundColor: t.cardAlt,
   },
-  roleChipActive: { backgroundColor: '#E85D27', borderColor: '#E85D27' },
-  roleChipErr:    { borderColor: '#D83B35' },
-  roleChipText:   { fontSize: 13, fontWeight: '600', color: '#697282' },
-  roleChipTextActive: { color: '#fff' },
+  roleChipActive: { backgroundColor: t.primarySolid, borderColor: t.primary },
+  roleChipErr:    { borderColor: t.status.danger.border },
+  roleChipText:   { fontSize: 13, fontWeight: '600', color: t.textMuted },
+  roleChipTextActive: { color: t.onPrimarySolid },
 
   // Result badge
   resultBadge: {
@@ -1116,7 +1156,7 @@ const p = StyleSheet.create({
     borderWidth: 1,
   },
   resultTitle: { fontSize: 26, fontWeight: '900' },
-  resultSub:   { fontSize: 13, color: '#697282', textAlign: 'center', maxWidth: 360 },
+  resultSub:   { fontSize: 13, color: t.textMuted, textAlign: 'center', maxWidth: 360 },
 
   // Vitales summary
   vitalesSummary: {
@@ -1126,142 +1166,143 @@ const p = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center',
   },
   vitalStat: {
-    backgroundColor: '#F9FAFB', borderRadius: 10,
+    backgroundColor: t.cardAlt, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 10,
     alignItems: 'center', minWidth: 80,
-    borderWidth: 1, borderColor: '#E8EBF0',
+    borderWidth: 1, borderColor: t.border,
   },
-  vitalStatBad: { borderColor: '#FFCCCC', backgroundColor: '#FFF5F5' },
-  vitalStatLabel: { fontSize: 10, color: '#697282', fontWeight: '600' },
-  vitalStatValue: { fontSize: 15, fontWeight: '800', color: '#1A1A1A', marginTop: 2 },
+  vitalStatBad: { borderColor: t.status.danger.border, backgroundColor: t.status.danger.bg },
+  vitalStatLabel: { fontSize: 10, color: t.textMuted, fontWeight: '600' },
+  vitalStatValue: { fontSize: 15, fontWeight: '800', color: t.textPrimary, marginTop: 2 },
 
   // Fire circle (quema activa)
-  quemaLabel: { fontSize: 16, fontWeight: '700', color: '#697282' },
+  quemaLabel: { fontSize: 16, fontWeight: '700', color: t.textMuted },
   fireCircleOuter: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
   fireCircle: {
     width: 120, height: 120, borderRadius: 60,
-    backgroundColor: '#E85D27',
+    backgroundColor: t.primarySolid,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#E85D27', shadowOpacity: 0.4,
+    shadowColor: t.primary, shadowOpacity: 0.4,
     shadowOffset: { width: 0, height: 6 }, shadowRadius: 12, elevation: 8,
   },
   fireNumBadge: {
     position: 'absolute', bottom: -6, right: -6,
-    backgroundColor: '#C62828', borderRadius: 16,
+    backgroundColor: t.status.danger.solid, borderRadius: 16,
     paddingHorizontal: 10, paddingVertical: 4,
-    borderWidth: 2, borderColor: '#fff',
+    borderWidth: 2, borderColor: t.card,
   },
-  fireNumText: { color: '#fff', fontSize: 14, fontWeight: '900' },
+  fireNumText: { color: t.onPrimarySolid, fontSize: 14, fontWeight: '900' },
 
   timerBox:  { alignItems: 'center', gap: 4 },
-  timerText: { fontSize: 68, fontWeight: '900', color: '#C62828', letterSpacing: 2 },
-  timerSub:  { fontSize: 12, color: '#9AA3B0', letterSpacing: 6 },
+  timerText: { fontSize: 68, fontWeight: '900', color: t.status.danger.fg, letterSpacing: 2 },
+  timerSub:  { fontSize: 12, color: t.iconMuted, letterSpacing: 6 },
 
   // Duración
   duracionRow:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  duracionField:{ alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 10, padding: 12, flex: 1, borderWidth: 1, borderColor: '#E8EBF0' },
-  duracionUnit: { fontSize: 10, color: '#697282', fontWeight: '600' },
-  duracionValue:{ fontSize: 28, fontWeight: '900', color: '#2E2E2E' },
-  duracionSep:  { fontSize: 24, fontWeight: '300', color: '#9AA3B0' },
+  duracionField:{ alignItems: 'center', backgroundColor: t.cardAlt, borderRadius: 10, padding: 12, flex: 1, borderWidth: 1, borderColor: t.border },
+  duracionUnit: { fontSize: 10, color: t.textMuted, fontWeight: '600' },
+  duracionValue:{ fontSize: 28, fontWeight: '900', color: t.textPrimary },
+  duracionSep:  { fontSize: 24, fontWeight: '300', color: t.iconMuted },
 
   // No Apto note
   noAptoNote: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#FFF5F5', borderRadius: 8, padding: 10,
-    borderWidth: 1, borderColor: '#FFCCCC',
+    backgroundColor: t.status.danger.bg, borderRadius: 8, padding: 10,
+    borderWidth: 1, borderColor: t.status.danger.border,
   },
-  noAptoNoteText: { flex: 1, fontSize: 12, color: '#D83B35', fontWeight: '600' },
+  noAptoNoteText: { flex: 1, fontSize: 12, color: t.status.danger.fg, fontWeight: '600' },
 
   // Investigacion
   invToggleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
   invCheckbox: {
     width: 20, height: 20, borderRadius: 4,
-    borderWidth: 1.5, borderColor: '#D0D5DD',
+    borderWidth: 1.5, borderColor: t.borderStrong,
     alignItems: 'center', justifyContent: 'center',
   },
-  invCheckboxActive: { backgroundColor: '#E85D27', borderColor: '#E85D27' },
-  invToggleText: { fontSize: 13, fontWeight: '600', color: '#495565' },
+  invCheckboxActive: { backgroundColor: t.primarySolid, borderColor: t.primary },
+  invToggleText: { fontSize: 13, fontWeight: '600', color: t.textSecondary },
   invSection: {
-    backgroundColor: '#F9FAFB', borderRadius: 10,
-    borderWidth: 1, borderColor: '#E8EBF0', padding: 12, gap: 8,
+    backgroundColor: t.cardAlt, borderRadius: 10,
+    borderWidth: 1, borderColor: t.border, padding: 12, gap: 8,
   },
-  invSectionTitle: { fontSize: 12, fontWeight: '700', color: '#E85D27', marginBottom: 4 },
-  invGroupLabel:   { fontSize: 11, fontWeight: '700', color: '#697282' },
+  invSectionTitle: { fontSize: 12, fontWeight: '700', color: t.primaryText, marginBottom: 4 },
+  invGroupLabel:   { fontSize: 11, fontWeight: '700', color: t.textMuted },
   invRow:          { flexDirection: 'row', gap: 8 },
   invField:        { flex: 1, gap: 4 },
-  invFieldLabel:   { fontSize: 10, color: '#697282', fontWeight: '600' },
+  invFieldLabel:   { fontSize: 10, color: t.textMuted, fontWeight: '600' },
   invInput: {
-    backgroundColor: '#fff', borderRadius: 8,
+    backgroundColor: t.card, borderRadius: 8,
     paddingHorizontal: 10, paddingVertical: 8,
-    fontSize: 13, color: '#2E2E2E',
-    borderWidth: 1, borderColor: '#E8EBF0',
+    fontSize: 13, color: t.textPrimary,
+    borderWidth: 1, borderColor: t.border,
     textAlign: 'center', fontWeight: '600',
   },
 
   // Text area
   textArea: {
-    backgroundColor: '#F3F3F5', borderRadius: 10,
+    backgroundColor: t.cardAlt, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 13, color: '#2E2E2E', minHeight: 80,
+    fontSize: 13, color: t.textPrimary, minHeight: 80,
   },
 
   // Evaluar btn (bottom-right)
   evalBtnWrap: { marginTop: 'auto', alignItems: 'flex-end' },
   evalBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#E85D27', borderRadius: 12,
+    backgroundColor: t.primarySolid, borderRadius: 12,
     paddingHorizontal: 24, paddingVertical: 13,
   },
-  evalBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  evalBtnText: { color: t.onPrimarySolid, fontSize: 14, fontWeight: '700' },
 
   // Generic buttons
   mainBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: '#E85D27', borderRadius: 12,
+    backgroundColor: t.primarySolid, borderRadius: 12,
     paddingHorizontal: 24, paddingVertical: 13,
   },
-  mainBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  mainBtnText: { color: t.onPrimarySolid, fontSize: 14, fontWeight: '700' },
   outlineBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 24, paddingVertical: 13, borderRadius: 12,
-    borderWidth: 1.5, borderColor: '#E85D27',
+    borderWidth: 1.5, borderColor: t.primary,
   },
-  outlineBtnText: { fontSize: 14, fontWeight: '600', color: '#E85D27' },
+  outlineBtnText: { fontSize: 14, fontWeight: '600', color: t.primaryText },
   btnRow: { flexDirection: 'row', gap: 12 },
-});
+  });
 
-const vi = StyleSheet.create({
+const makeVi = (t) =>
+  StyleSheet.create({
   grid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   fieldWrap:{ width: '47%', gap: 4 },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  label:    { fontSize: 11, fontWeight: '600', color: '#495565' },
+  label:    { fontSize: 11, fontWeight: '600', color: t.textSecondary },
   dot:      { width: 10, height: 10, borderRadius: 5 },
   input: {
     borderRadius: 8, paddingHorizontal: 10, paddingVertical: 9,
-    fontSize: 14, color: '#2E2E2E', fontWeight: '600',
+    fontSize: 14, color: t.textPrimary, fontWeight: '600',
   },
-  errorText: { fontSize: 10, color: '#D83B35', marginTop: 1 },
+  errorText: { fontSize: 10, color: t.status.danger.fg, marginTop: 1 },
   bpWrap:  { width: '47%', gap: 4 },
-  bpLabel: { fontSize: 11, fontWeight: '600', color: '#495565' },
+  bpLabel: { fontSize: 11, fontWeight: '600', color: t.textSecondary },
   bpRow:   { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  bpSlash: { fontSize: 20, fontWeight: '300', color: '#9AA3B0' },
+  bpSlash: { fontSize: 20, fontWeight: '300', color: t.iconMuted },
   sintomasGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   sintomaChip: {
     paddingHorizontal: 11, paddingVertical: 6, borderRadius: 8,
-    borderWidth: 1, borderColor: '#D0D5DD', backgroundColor: '#F9FAFB',
+    borderWidth: 1, borderColor: t.borderStrong, backgroundColor: t.cardAlt,
   },
-  sintomaChipActive:    { backgroundColor: '#E85D27', borderColor: '#E85D27' },
-  sintomaChipText:      { fontSize: 12, color: '#697282' },
-  sintomaChipTextActive:{ color: '#fff', fontWeight: '600' },
+  sintomaChipActive:    { backgroundColor: t.primarySolid, borderColor: t.primary },
+  sintomaChipText:      { fontSize: 12, color: t.textMuted },
+  sintomaChipTextActive:{ color: t.onPrimarySolid, fontWeight: '600' },
   yesNoWrap:  { gap: 4 },
-  yesNoLabel: { fontSize: 12, color: '#495565', lineHeight: 16 },
+  yesNoLabel: { fontSize: 12, color: t.textSecondary, lineHeight: 16 },
   yesNoRow:   { flexDirection: 'row', gap: 8 },
   yesNoBtn: {
     flex: 1, paddingVertical: 8, borderRadius: 8,
-    borderWidth: 1.5, borderColor: '#D0D5DD',
-    alignItems: 'center', backgroundColor: '#F9FAFB',
+    borderWidth: 1.5, borderColor: t.borderStrong,
+    alignItems: 'center', backgroundColor: t.cardAlt,
   },
-  yesNoBtnActive: { backgroundColor: '#E85D27', borderColor: '#E85D27' },
-  yesNoBtnErr:    { borderColor: '#D83B35' },
-  yesNoBtnText:   { fontSize: 13, fontWeight: '600', color: '#697282' },
-});
+  yesNoBtnActive: { backgroundColor: t.primarySolid, borderColor: t.primary },
+  yesNoBtnErr:    { borderColor: t.status.danger.border },
+  yesNoBtnText:   { fontSize: 13, fontWeight: '600', color: t.textMuted },
+  });

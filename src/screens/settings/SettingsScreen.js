@@ -6,7 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { COLORS, ROLE_LABELS, ROLES } from '../../constants';
+import { ROLE_LABELS, ROLES } from '../../constants';
+import { a11yButton, a11yDecorative } from '../../constants/a11y';
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
@@ -25,7 +26,7 @@ function formatTime(date) {
 }
 
 export default function SettingsScreen() {
-  const { user, role, token, login, logout } = useAuth();
+  const { user, role, updateUser, logout } = useAuth();
   const { width } = useWindowDimensions();
   const isCompact = width < 700;
   const isWide = width >= 1100;
@@ -73,12 +74,14 @@ export default function SettingsScreen() {
       setToast({ message: t.invalidEmailMessage, tone: 'error' });
       return;
     }
-    // Esto actualiza el authStore global — el nombre se refleja de inmediato
-    // en el resto de la app (ej. el saludo del Dashboard).
-    login({ user: { ...user, name: name.trim(), email: email.trim() }, role, token });
-    // TODO: api.put('/users/me', { name, email })
+    // Se actualiza SOLO el perfil. Antes esto llamaba a `login({ user, role, token })`,
+    // pero `setAuth` espera `roles` (array) y al no recibirlo dejaba el rol global en
+    // null: el navigator no encontraba dashboard y la app quedaba en pantalla blanca
+    // sin posibilidad de cerrar sesión. `updateUser` preserva rol, token y sesión.
+    updateUser({ name: name.trim(), email: email.trim() });
+    // TODO: persistir en el backend con api.put('/users/me', { name, email })
     setToast({ message: t.savedToast, tone: 'success' });
-  }, [name, email, user, role, token, login, t]);
+  }, [name, email, updateUser, t]);
 
   const handleSyncNow = useCallback(() => {
     markSynced();
@@ -101,17 +104,25 @@ export default function SettingsScreen() {
 
         {toast && <Toast message={toast.message} tone={toast.tone} />}
 
-        <SettingsCard icon="person-outline" title={t.profile} dark={darkMode}>
-          <FormField label={t.fullName} value={name} onChangeText={setName} dark={darkMode} />
+        <SettingsCard icon="person-outline" title={t.profile}>
+          <FormField label={t.fullName} value={name} onChangeText={setName} />
 
           <View style={[styles.row, isCompact && styles.rowCompact]}>
             {isTrainee ? (
               <>
-                <FormField label={t.firefighterId} value={token ?? ''} editable={false} dark={darkMode} />
-                <FormField label={t.rank} value={ROLE_LABELS[role] ?? role ?? ''} editable={false} dark={darkMode} />
+                {/* Antes este campo mostraba el JWT de sesión completo — la misma
+                    credencial que viaja en el header Authorization — etiquetado como
+                    "ID de Bombero". Ahora muestra el identificador real del usuario. */}
+                <FormField
+                  label={t.firefighterId}
+                  value={user?.applicantCode ?? user?.userId ?? '—'}
+                  editable={false}
+                 
+                />
+                <FormField label={t.rank} value={ROLE_LABELS[role] ?? role ?? ''} editable={false} />
               </>
             ) : (
-              <FormField label={t.role} value={ROLE_LABELS[role] ?? role ?? ''} editable={false} dark={darkMode} />
+              <FormField label={t.role} value={ROLE_LABELS[role] ?? role ?? ''} editable={false} />
             )}
           </View>
 
@@ -120,17 +131,33 @@ export default function SettingsScreen() {
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
-            dark={darkMode}
+           
           />
 
           <TouchableOpacity
-            style={[styles.saveBtn, !hasProfileChanges && styles.saveBtnDisabled]}
+            style={[
+              styles.saveBtn,
+              { backgroundColor: hasProfileChanges ? theme.primarySolid : theme.disabledBg },
+            ]}
             onPress={handleSave}
             activeOpacity={hasProfileChanges ? 0.85 : 1}
             disabled={!hasProfileChanges}
+            {...a11yButton(hasProfileChanges ? t.saveChanges : t.noChanges, {
+              disabled: !hasProfileChanges,
+            })}
           >
-            <Ionicons name="save-outline" size={16} color="#fff" />
-            <Text style={styles.saveBtnText}>
+            <Ionicons
+              name="save-outline"
+              size={16}
+              color={hasProfileChanges ? theme.onPrimarySolid : theme.textDisabled}
+              {...a11yDecorative}
+            />
+            <Text
+              style={[
+                styles.saveBtnText,
+                { color: hasProfileChanges ? theme.onPrimarySolid : theme.textDisabled },
+              ]}
+            >
               {hasProfileChanges ? t.saveChanges : t.noChanges}
             </Text>
           </TouchableOpacity>
@@ -138,52 +165,58 @@ export default function SettingsScreen() {
 
         <View style={[styles.gridRow, isWide && styles.gridRowWide]}>
           <View style={[styles.gridItem, isWide && styles.gridItemWide]}>
-            <SettingsCard icon="notifications-outline" title={t.notifications} dark={darkMode} style={isWide && styles.gridCardFill}>
+            <SettingsCard icon="notifications-outline" title={t.notifications} style={isWide && styles.gridCardFill}>
               <ToggleRow
                 label={t.pushTitle}
                 description={t.pushDesc}
                 value={pushNotifications}
                 onValueChange={() => toggle('pushNotifications')}
-                dark={darkMode}
+               
               />
               <ToggleRow
                 label={t.soundTitle}
                 description={t.soundDesc}
                 value={soundAlerts}
                 onValueChange={() => toggle('soundAlerts')}
-                dark={darkMode}
+               
               />
             </SettingsCard>
           </View>
 
           <View style={[styles.gridItem, isWide && styles.gridItemWide]}>
-            <SettingsCard icon="sync-outline" title={t.dataSync} dark={darkMode} style={isWide && styles.gridCardFill}>
+            <SettingsCard icon="sync-outline" title={t.dataSync} style={isWide && styles.gridCardFill}>
               <ToggleRow
                 label={t.autoSyncTitle}
                 description={t.autoSyncDesc}
                 value={autoSync}
                 onValueChange={() => toggle('autoSync')}
-                dark={darkMode}
+               
               />
               <ToggleRow
                 label={t.backupTitle}
                 description={t.backupDesc}
                 value={autoBackup}
                 onValueChange={() => toggle('autoBackup')}
-                dark={darkMode}
+               
               />
 
               <TouchableOpacity
                 style={[styles.secondaryBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
                 onPress={handleSyncNow}
                 activeOpacity={0.8}
+                {...a11yButton(t.syncNow)}
               >
-                <Ionicons name="cloud-upload-outline" size={16} color={theme.textPrimary} />
+                <Ionicons
+                  name="cloud-upload-outline"
+                  size={16}
+                  color={theme.textPrimary}
+                  {...a11yDecorative}
+                />
                 <Text style={[styles.secondaryBtnText, { color: theme.textPrimary }]}>{t.syncNow}</Text>
               </TouchableOpacity>
 
               {lastSyncedAt && (
-                <Text style={styles.syncHint}>
+                <Text style={[styles.syncHint, { color: theme.textMuted }]}>
                   {t.lastSync}: {formatTime(lastSyncedAt)}
                 </Text>
               )}
@@ -193,65 +226,63 @@ export default function SettingsScreen() {
 
         <View style={[styles.gridRow, isWide && styles.gridRowWide]}>
           <View style={[styles.gridItem, isWide && styles.gridItemWide]}>
-            <SettingsCard icon="color-palette-outline" title={t.appearance} dark={darkMode} style={isWide && styles.gridCardFill}>
+            <SettingsCard icon="color-palette-outline" title={t.appearance} style={isWide && styles.gridCardFill}>
               <ToggleRow
                 label={t.darkModeTitle}
                 description={t.darkModeDesc}
                 value={darkMode}
                 onValueChange={() => toggle('darkMode')}
-                dark={darkMode}
+               
               />
             </SettingsCard>
           </View>
 
           <View style={[styles.gridItem, isWide && styles.gridItemWide]}>
-            <SettingsCard icon="globe-outline" title={t.language} dark={darkMode} style={isWide && styles.gridCardFill}>
+            <SettingsCard icon="globe-outline" title={t.language} style={isWide && styles.gridCardFill}>
               <View style={styles.langRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.langBtn,
-                    { backgroundColor: theme.card, borderColor: theme.border },
-                    language === 'es' && styles.langBtnActive,
-                  ]}
-                  onPress={() => setLanguage('es')}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[
-                    styles.langBtnText,
-                    { color: theme.textPrimary },
-                    language === 'es' && styles.langBtnTextActive,
-                  ]}>
-                    Español
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.langBtn,
-                    { backgroundColor: theme.card, borderColor: theme.border },
-                    language === 'en' && styles.langBtnActive,
-                  ]}
-                  onPress={() => setLanguage('en')}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[
-                    styles.langBtnText,
-                    { color: theme.textPrimary },
-                    language === 'en' && styles.langBtnTextActive,
-                  ]}>
-                    English
-                  </Text>
-                </TouchableOpacity>
+                {[
+                  { code: 'es', label: 'Español' },
+                  { code: 'en', label: 'English' },
+                ].map(({ code, label }) => {
+                  const active = language === code;
+                  return (
+                    <TouchableOpacity
+                      key={code}
+                      style={[
+                        styles.langBtn,
+                        active
+                          ? { backgroundColor: theme.primarySolid, borderColor: theme.primarySolid }
+                          : { backgroundColor: theme.card, borderColor: theme.border },
+                      ]}
+                      onPress={() => setLanguage(code)}
+                      activeOpacity={0.85}
+                      // `radio` transmite mejor que `button` que se elige uno entre varios.
+                      accessible
+                      accessibilityRole="radio"
+                      accessibilityLabel={label}
+                      accessibilityState={{ checked: active }}
+                    >
+                      <Text style={[
+                        styles.langBtnText,
+                        { color: active ? theme.onPrimarySolid : theme.textPrimary },
+                        active && styles.langBtnTextActive,
+                      ]}>
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </SettingsCard>
           </View>
         </View>
 
-        <SettingsCard icon="shield-checkmark-outline" title={t.security} dark={darkMode}>
+        <SettingsCard icon="shield-checkmark-outline" title={t.security}>
           <TouchableOpacity
             style={[styles.outlineBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
             onPress={() => handleComingSoon(t.changePassword)}
             activeOpacity={0.8}
+            {...a11yButton(t.changePassword)}
           >
             <Text style={[styles.outlineBtnText, { color: theme.textPrimary }]}>{t.changePassword}</Text>
           </TouchableOpacity>
@@ -260,6 +291,7 @@ export default function SettingsScreen() {
             style={[styles.outlineBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
             onPress={() => handleComingSoon(t.twoFactor)}
             activeOpacity={0.8}
+            {...a11yButton(t.twoFactor)}
           >
             <Text style={[styles.outlineBtnText, { color: theme.textPrimary }]}>{t.twoFactor}</Text>
           </TouchableOpacity>
@@ -269,8 +301,9 @@ export default function SettingsScreen() {
           style={[styles.logoutBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
           onPress={() => setLogoutVisible(true)}
           activeOpacity={0.8}
+          {...a11yButton(t.logout, { hint: t.logoutMessage })}
         >
-          <Ionicons name="log-out-outline" size={16} color={theme.textPrimary} />
+          <Ionicons name="log-out-outline" size={16} color={theme.textPrimary} {...a11yDecorative} />
           <Text style={[styles.logoutBtnText, { color: theme.textPrimary }]}>{t.logout}</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -359,7 +392,6 @@ const styles = StyleSheet.create({
   },
   syncHint: {
     fontSize: 11,
-    color: '#6A7282',
     textAlign: 'center',
   },
 
@@ -373,15 +405,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1.5,
   },
-  langBtnActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
   langBtnText: {
     fontSize: 13,
   },
   langBtnTextActive: {
-    color: '#fff',
     fontWeight: '700',
   },
 
@@ -400,16 +427,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: COLORS.primary,
     borderRadius: 8,
     paddingVertical: 11,
     marginTop: 4,
   },
-  saveBtnDisabled: {
-    backgroundColor: '#BDBDBD',
-  },
   saveBtnText: {
-    color: '#fff',
     fontSize: 14,
     fontWeight: '700',
   },

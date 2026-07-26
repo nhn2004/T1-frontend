@@ -16,7 +16,7 @@ import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
 import Toast from '../../components/Toast';
-import { sessionService } from '../../services';
+import { sessionService, environmentalDataService } from '../../services';
 import { traineeService } from '../../services/traineeService';
 import api from '../../services/api';
 
@@ -66,6 +66,8 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
   const [showAmbientalModal, setShowAmbientalModal] = useState(false);
   const [ambiental, setAmbiental] = useState(EMPTY_AMBIENTAL);
   const [ambErrors, setAmbErrors] = useState(false);
+  const [savingAmbiental, setSavingAmbiental] = useState(false);
+  const [ambSaveError, setAmbSaveError] = useState('');
 
   useEffect(() => {
     if (!id) return undefined;
@@ -154,15 +156,39 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
     }
   }, [display, isTrainee, navigation, session.status, user, navigateToPersonas]);
 
-  const handleConfirmarAmbiental = useCallback(() => {
+  /**
+   * Guarda las condiciones ambientales y continúa a la gestión de asistentes.
+   *
+   * Antes estos datos solo viajaban como parámetro de navegación y se perdían, pese a
+   * que el backend ya expone POST /environmental-data. La presión atmosférica sigue sin
+   * tener columna en la API, así que se informa explícitamente.
+   */
+  const handleConfirmarAmbiental = useCallback(async () => {
     const missing = AMBIENTAL_FIELDS.some((f) => !ambiental[f.key]);
     if (missing) {
       setAmbErrors(true);
       return;
     }
-    setShowAmbientalModal(false);
-    navigateToPersonas();
-  }, [ambiental, navigateToPersonas]);
+
+    setSavingAmbiental(true);
+    try {
+      const { unsupported } = await environmentalDataService.create(
+        session.id,
+        user?.userId,
+        ambiental,
+      );
+      setShowAmbientalModal(false);
+      if (unsupported.length) {
+        setLoadError(`Condiciones guardadas. Sin soporte en el servidor: ${unsupported.join(', ')}.`);
+      }
+      navigateToPersonas();
+    } catch (error) {
+      const detail = error?.response?.data?.message ?? error?.message ?? 'Error desconocido.';
+      setAmbSaveError(`No se pudieron guardar las condiciones ambientales: ${detail}`);
+    } finally {
+      setSavingAmbiental(false);
+    }
+  }, [ambiental, navigateToPersonas, session.id, user?.userId]);
 
   const handleBack = useCallback(() => {
     if (onBack) onBack();
@@ -338,6 +364,12 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
               </TouchableOpacity>
             </View>
 
+            {!!ambSaveError && (
+              <View {...a11yAlert(ambSaveError)}>
+                <Toast message={ambSaveError} tone="error" />
+              </View>
+            )}
+
             <View style={styles.fields}>
               {AMBIENTAL_FIELDS.map((f) => {
                 const hasError = ambErrors && !ambiental[f.key];
@@ -373,10 +405,14 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
                 <Text style={styles.cancelBtnText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.confirmBtn}
+                style={[styles.confirmBtn, savingAmbiental && styles.confirmBtnBusy]}
                 onPress={handleConfirmarAmbiental}
                 activeOpacity={0.85}
-                {...a11yButton('Iniciar capacitación')}
+                disabled={savingAmbiental}
+                {...a11yButton('Iniciar capacitación', {
+                  disabled: savingAmbiental,
+                  busy: savingAmbiental,
+                })}
               >
                 <Ionicons
                   name="arrow-forward"
@@ -384,7 +420,9 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
                   color={theme.onPrimarySolid}
                   {...a11yDecorative}
                 />
-                <Text style={styles.confirmBtnText}>Iniciar Capacitación</Text>
+                <Text style={styles.confirmBtnText}>
+                  {savingAmbiental ? 'Guardando…' : 'Iniciar Capacitación'}
+                </Text>
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -519,5 +557,6 @@ const makeStyles = (t, isCompact) =>
       backgroundColor: t.primarySolid, borderRadius: 10,
       paddingHorizontal: 22, minHeight: MIN_TOUCH_SIZE, justifyContent: 'center',
     },
+    confirmBtnBusy: { opacity: 0.8 },
     confirmBtnText: { fontSize: 15, fontWeight: '700', color: t.onPrimarySolid },
   });

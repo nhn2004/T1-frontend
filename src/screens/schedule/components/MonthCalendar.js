@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../../../constants';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
 import { weekdayLabels, monthLabel, isSameDay } from '../utils/calendarUtils';
@@ -10,6 +9,7 @@ const MAX_VISIBLE_CHIPS = 3;
 
 export default function MonthCalendar({ weeks, monthDate, eventsByDay, selectedDate, today, onSelectDay, onPrevMonth, onNextMonth, onToday, compact }) {
   const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
   const { t, language } = useTranslation();
   const isShowingToday = isSameDay(monthDate, new Date(today.getFullYear(), today.getMonth(), 1));
 
@@ -75,8 +75,8 @@ export default function MonthCalendar({ weeks, monthDate, eventsByDay, selectedD
                   style={[
                     styles.dayCell,
                     { borderColor: theme.divider },
-                    !isCurrentMonth && { backgroundColor: theme.mode === 'dark' ? '#181818' : '#FAFAFA' },
-                    isSelected && [styles.dayCellSelected, { backgroundColor: theme.mode === 'dark' ? 'rgba(232,93,39,0.15)' : '#FFF6F1' }],
+                    !isCurrentMonth && { backgroundColor: theme.cardAlt },
+                    isSelected && [styles.dayCellSelected, { backgroundColor: theme.primarySoft }],
                   ]}
                   onPress={() => onSelectDay(date)}
                   activeOpacity={0.75}
@@ -117,13 +117,14 @@ export default function MonthCalendar({ weeks, monthDate, eventsByDay, selectedD
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t) =>
+  StyleSheet.create({
   card: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: t.card,
     borderRadius: 18,
     padding: 18,
-    shadowColor: '#000',
+    shadowColor: t.shadowColor,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 6,
@@ -145,11 +146,11 @@ const styles = StyleSheet.create({
   monthTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#1A1A1A',
+    color: t.textPrimary,
   },
   subtitle: {
     fontSize: 12,
-    color: '#697282',
+    color: t.textMuted,
     marginTop: 2,
   },
   navButtons: {
@@ -160,7 +161,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: '#F4F6F8',
+    backgroundColor: t.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -168,7 +169,7 @@ const styles = StyleSheet.create({
     height: 32,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: '#F4F6F8',
+    backgroundColor: t.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 11,
     fontWeight: '700',
-    color: '#9AA3B0',
+    color: t.iconMuted,
   },
   grid: {
     flex: 1,
@@ -211,15 +212,15 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#EEF0F2',
+    borderColor: t.divider,
     padding: 5,
     minHeight: 64,
     gap: 3,
   },
   dayCellSelected: {
-    borderColor: COLORS.primary,
+    borderColor: t.primary,
     borderWidth: 1.5,
-    backgroundColor: '#FFF6F1',
+    backgroundColor: t.primarySoft,
   },
   dayNumberBox: {
     width: 20,
@@ -229,15 +230,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   dayNumberBoxToday: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: t.primarySolid,
   },
   dayNumber: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: t.textPrimary,
   },
   dayNumberToday: {
-    color: '#FFFFFF',
+    color: t.onPrimarySolid,
   },
   chipsContainer: {
     gap: 2,
@@ -254,6 +255,6 @@ const styles = StyleSheet.create({
   moreText: {
     fontSize: 9,
     fontWeight: '700',
-    color: '#9AA3B0',
+    color: t.iconMuted,
   },
 });
