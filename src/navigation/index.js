@@ -1,18 +1,20 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useMemo } from 'react';
+import { DefaultTheme, DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator, CardStyleInterpolators } from '@react-navigation/stack';
 
 import { ROLES } from '../constants/roles';
 import { ROUTES } from '../constants/routes';
 import useAuthStore from '../store/authStore';
+import useTheme from '../hooks/useTheme';
+import { canAccessRoute } from './guards';
 
 import MainLayout from '../components/MainLayout';
 
-// Auth screens
+// Auth
 import LoginScreen from '../screens/auth/LoginScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
-// Role dashboards
+// Dashboards por rol
 import SystemDashboard from '../screens/dashboard/SystemDashboard';
 import AdminDashboard from '../screens/dashboard/AdminDashboard';
 import TraineeDashboard from '../screens/dashboard/TraineeDashboard';
@@ -20,22 +22,32 @@ import CapacitatorDashboard from '../screens/dashboard/CapacitatorDashboard';
 import MedicalDashboard from '../screens/dashboard/MedicalDashboard';
 import ResearcherDashboard from '../screens/dashboard/ResearcherDashboard';
 import FireChiefDashboard from '../screens/dashboard/FireChiefDashboard';
+
+// Pantallas
 import PersonasScreen from '../screens/people/PersonasScreen';
 import PersonasSesionesScreen from '../screens/people/PersonasSesionesScreen';
-
-// Screens ya construidas
-import SessionsScreen                from '../screens/sessions/SessionsScreen';
-import SessionDetailScreen           from '../screens/sessions/SessionDetailScreen';
-import SettingsScreen                from '../screens/settings/SettingsScreen';
-import ResultadosIndividualesScreen  from '../screens/resultados/ResultadosIndividualesScreen';
-import EvaluacionBomberoScreen       from '../screens/resultados/EvaluacionBomberoScreen';
-import ResultadosBomberoScreen       from '../screens/resultados/ResultadosBomberoScreen';
-import CrearSesionScreen             from '../screens/sessions/CrearSesionScreen';
-import TrainingScheduleScreen        from '../screens/schedule/TrainingScheduleScreen';
-import ProgressHistoryScreen         from '../screens/progress/ProgressHistoryScreen';
-import ValidationQueueScreen         from '../screens/dashboard/ValidationQueueScreen';
+import SessionsScreen from '../screens/sessions/SessionsScreen';
+import SessionDetailScreen from '../screens/sessions/SessionDetailScreen';
+import CrearSesionScreen from '../screens/sessions/CrearSesionScreen';
+import SettingsScreen from '../screens/settings/SettingsScreen';
+import ResultadosIndividualesScreen from '../screens/resultados/ResultadosIndividualesScreen';
+import EvaluacionBomberoScreen from '../screens/resultados/EvaluacionBomberoScreen';
+import ResultadosBomberoScreen from '../screens/resultados/ResultadosBomberoScreen';
+import TrainingScheduleScreen from '../screens/schedule/TrainingScheduleScreen';
+import ProgressHistoryScreen from '../screens/progress/ProgressHistoryScreen';
+import ValidationQueueScreen from '../screens/dashboard/ValidationQueueScreen';
 
 const Stack = createStackNavigator();
+
+const DASHBOARD_BY_ROLE = {
+  [ROLES.SYSTEM_ADMIN]:        SystemDashboard,
+  [ROLES.ADMIN]:               AdminDashboard,
+  [ROLES.FIREFIGHTER_TRAINEE]: TraineeDashboard,
+  [ROLES.CAPACITATOR]:         CapacitatorDashboard,
+  [ROLES.MEDICAL]:             MedicalDashboard,
+  [ROLES.RESEARCHER]:          ResearcherDashboard,
+  [ROLES.FIRE_CHIEF]:          FireChiefDashboard,
+};
 
 function AuthStack() {
   return (
@@ -52,88 +64,117 @@ function AuthStack() {
   );
 }
 
+// Envuelve una pantalla con el layout de sidebar + contenido.
+// Se memoriza por componente para no recrear el wrapper en cada render, lo que
+// desmontaría y volvería a montar la pantalla (perdiendo su estado local).
+const layoutCache = new WeakMap();
 function withMainLayout(Component) {
-  return function WrappedScreen(props) {
-    return (
-      <MainLayout navigation={props.navigation} route={props.route}>
-        <Component {...props} />
-      </MainLayout>
-    );
-  };
+  if (layoutCache.has(Component)) return layoutCache.get(Component);
+
+  const Wrapped = (props) => (
+    <MainLayout navigation={props.navigation} route={props.route}>
+      <Component {...props} />
+    </MainLayout>
+  );
+  Wrapped.displayName = `withMainLayout(${Component.displayName ?? Component.name ?? 'Screen'})`;
+
+  layoutCache.set(Component, Wrapped);
+  return Wrapped;
 }
 
-function RoleNavigator({ role }) {
-  const dashboardMap = {
-    [ROLES.SYSTEM_ADMIN]: SystemDashboard,
-    [ROLES.ADMIN]: AdminDashboard,
-    [ROLES.FIREFIGHTER_TRAINEE]: TraineeDashboard,
-    [ROLES.CAPACITATOR]: CapacitatorDashboard,
-    [ROLES.MEDICAL]: MedicalDashboard,
-    [ROLES.RESEARCHER]: ResearcherDashboard,
-    [ROLES.FIRE_CHIEF]: FireChiefDashboard,
-  };
+function RoleNavigator({ roles, primaryRole }) {
+  const Dashboard = DASHBOARD_BY_ROLE[primaryRole];
+  const isTrainee = roles.includes(ROLES.FIREFIGHTER_TRAINEE);
 
-  const Dashboard = dashboardMap[role];
-
+  // Sin dashboard para el rol no hay nada que montar. No debería ocurrir (authStore
+  // rechaza sesiones sin roles), pero si el backend devolviera un rol desconocido
+  // preferimos no renderizar un stack vacío.
   if (!Dashboard) return null;
 
-  const DashboardWithLayout = withMainLayout(Dashboard);
-  const PersonasWithLayout = withMainLayout(PersonasScreen);
-  const PersonasSesionesWithLayout = withMainLayout(PersonasSesionesScreen);
-
-  const canCreateSession = role === ROLES.FIRE_CHIEF || role === ROLES.ADMIN;
-  const canSeePersonas   = role === ROLES.MEDICAL || role === ROLES.CAPACITATOR
-                        || role === ROLES.FIRE_CHIEF || role === ROLES.ADMIN;
-  const canValidate      = role === ROLES.MEDICAL || role === ROLES.ADMIN;
+  // El acceso a cada pantalla se decide con `canAccessRoute`, que lee el mismo mapa de
+  // permisos que usa el Sidebar para construir el menú. Así nunca hay una entrada de
+  // menú sin pantalla, ni una pantalla accesible que el rol no debería tener.
+  const allows = (route) => canAccessRoute(roles, route);
 
   return (
     <Stack.Navigator
-      initialRouteName={role === ROLES.FIREFIGHTER_TRAINEE ? 'Training' : 'Dashboard'}
+      initialRouteName={isTrainee ? ROUTES.TRAINING : ROUTES.DASHBOARD}
       screenOptions={{
         headerShown: false,
         animationEnabled: false,
         cardStyleInterpolator: CardStyleInterpolators.forNoAnimation,
       }}
     >
-      <Stack.Screen name="Dashboard" component={DashboardWithLayout} />
-      <Stack.Screen
-        name="Training"
-        component={role === ROLES.FIREFIGHTER_TRAINEE
-          ? withMainLayout(TraineeDashboard)
-          : withMainLayout(SessionsScreen)}
-      />
-      <Stack.Screen name="SessionDetail"          component={withMainLayout(SessionDetailScreen)} />
-      <Stack.Screen name="ResultadosIndividuales" component={ResultadosIndividualesScreen} />
-      <Stack.Screen name="EvaluacionBombero"      component={EvaluacionBomberoScreen} />
-      <Stack.Screen name="ResultadosBombero"      component={ResultadosBomberoScreen} />
-      <Stack.Screen name="Schedule"               component={withMainLayout(TrainingScheduleScreen)} />
-      <Stack.Screen name="Progress"               component={withMainLayout(ProgressHistoryScreen)} />
+      <Stack.Screen name={ROUTES.DASHBOARD} component={withMainLayout(Dashboard)} />
 
-      {canSeePersonas && (
-        <>
-          <Stack.Screen name="Personas"         component={PersonasWithLayout} />
-          <Stack.Screen name="PersonasSesiones" component={PersonasSesionesWithLayout} />
-        </>
+      {/* Para el aspirante, "Capacitaciones" es su propio panel; para el resto es el
+          listado general de sesiones. */}
+      <Stack.Screen
+        name={ROUTES.TRAINING}
+        component={withMainLayout(isTrainee ? TraineeDashboard : SessionsScreen)}
+      />
+
+      <Stack.Screen name={ROUTES.SESSION_DETAIL}  component={withMainLayout(SessionDetailScreen)} />
+      <Stack.Screen name={ROUTES.SCHEDULE}        component={withMainLayout(TrainingScheduleScreen)} />
+      <Stack.Screen name={ROUTES.PROGRESS}        component={withMainLayout(ProgressHistoryScreen)} />
+      <Stack.Screen name={ROUTES.RESULTS_TRAINEE} component={ResultadosBomberoScreen} />
+      <Stack.Screen name={ROUTES.SETTINGS}        component={withMainLayout(SettingsScreen)} />
+
+      {allows(ROUTES.RESULTS_INDIVIDUAL) && (
+        <Stack.Screen name={ROUTES.RESULTS_INDIVIDUAL} component={ResultadosIndividualesScreen} />
       )}
-      {canValidate && (
-        <Stack.Screen name="ValidationQueue" component={withMainLayout(ValidationQueueScreen)} />
+      {allows(ROUTES.EVALUATION) && (
+        <Stack.Screen name={ROUTES.EVALUATION} component={EvaluacionBomberoScreen} />
       )}
-      {canCreateSession && (
-        <Stack.Screen name="CrearSesion" component={withMainLayout(CrearSesionScreen)} />
+      {allows(ROUTES.PEOPLE) && (
+        <Stack.Screen name={ROUTES.PEOPLE} component={withMainLayout(PersonasScreen)} />
       )}
-      <Stack.Screen name="Configuration" component={withMainLayout(SettingsScreen)} />
+      {allows(ROUTES.PEOPLE_SESSIONS) && (
+        <Stack.Screen name={ROUTES.PEOPLE_SESSIONS} component={withMainLayout(PersonasSesionesScreen)} />
+      )}
+      {allows(ROUTES.VALIDATION_QUEUE) && (
+        <Stack.Screen name={ROUTES.VALIDATION_QUEUE} component={withMainLayout(ValidationQueueScreen)} />
+      )}
+      {allows(ROUTES.SESSION_CREATE) && (
+        <Stack.Screen name={ROUTES.SESSION_CREATE} component={withMainLayout(CrearSesionScreen)} />
+      )}
     </Stack.Navigator>
   );
 }
 
 export default function RootNavigator() {
-  const { isAuthenticated, role } = useAuthStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const role            = useAuthStore((s) => s.role);
+  const roles           = useAuthStore((s) => s.roles);
+  const theme           = useTheme();
 
+  const effectiveRoles = useMemo(
+    () => (roles?.length ? roles : role ? [role] : []),
+    [roles, role],
+  );
+
+  // El contenedor de navegación también necesita el tema: sin esto el fondo entre
+  // transiciones de pantalla se queda blanco en modo oscuro.
+  const navTheme = useMemo(() => {
+    const base = theme.mode === 'dark' ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        primary: theme.primary,
+        background: theme.background,
+        card: theme.card,
+        text: theme.textPrimary,
+        border: theme.border,
+      },
+    };
+  }, [theme]);
 
   return (
-  <NavigationContainer>
-    {isAuthenticated ? <RoleNavigator role={role} /> : <AuthStack />}
-  </NavigationContainer>
+    <NavigationContainer theme={navTheme}>
+      {isAuthenticated
+        ? <RoleNavigator roles={effectiveRoles} primaryRole={role} />
+        : <AuthStack />}
+    </NavigationContainer>
   );
 }
-

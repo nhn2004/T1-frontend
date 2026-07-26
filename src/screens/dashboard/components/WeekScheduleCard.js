@@ -1,31 +1,45 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
+import { a11yDecorative, MIN_TOUCH_SIZE } from '../../../constants/a11y';
 
-// "This Week" panel: upcoming agenda items, distinct from the full Agenda timeline used in sessions.
+// Panel "Esta semana": próximos elementos de agenda. Distinto del timeline completo
+// de Agenda que se usa en el detalle de sesión.
 
 export default function WeekScheduleCard({ items = [], compact, onViewDetails }) {
   const theme = useTheme();
   const { t } = useTranslation();
-  const statusLabel = { CONFIRMED: t.common.status.confirmed, PENDING: t.common.status.pending };
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
+  const statusLabel = {
+    CONFIRMED: t.common.status.confirmed,
+    PENDING: t.common.status.pending,
+  };
 
   return (
-    <View style={[styles.card, { backgroundColor: theme.card }, compact && styles.cardCompact]}>
+    <View style={[styles.card, compact && styles.cardCompact]}>
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>{t.dashboard.thisWeek}</Text>
-        <Ionicons name="ellipsis-horizontal" size={18} color={theme.icon} />
+        <Text style={styles.headerTitle} accessibilityRole="header">{t.dashboard.thisWeek}</Text>
       </View>
 
       {items.length === 0 ? (
-        <Text style={[styles.emptyText, { color: theme.textMuted }]}>
-          {t.dashboard.noWeekSessions}
-        </Text>
+        <Text style={styles.emptyText}>{t.dashboard.noWeekSessions}</Text>
       ) : (
         <View style={styles.list}>
           {items.map((item) => {
-            const statusTheme = item.status ? theme.badge[item.status === 'CONFIRMED' ? 'success' : 'pending'] : null;
+            const badgeTone = item.status
+              ? theme.badge[item.status === 'CONFIRMED' ? 'success' : 'pending']
+              : null;
+
+            const spoken = [
+              `${item.day} ${item.date}`,
+              item.title,
+              item.time,
+              item.location,
+              item.status ? statusLabel[item.status] : null,
+            ].filter(Boolean).join(', ');
 
             return (
               <TouchableOpacity
@@ -34,24 +48,29 @@ export default function WeekScheduleCard({ items = [], compact, onViewDetails })
                 onPress={() => onViewDetails?.(item.id)}
                 activeOpacity={onViewDetails ? 0.7 : 1}
                 disabled={!onViewDetails}
-                accessibilityRole={onViewDetails ? 'button' : undefined}
-                accessibilityLabel={onViewDetails ? `${t.sessions.viewDetails} — ${item.title}` : undefined}
+                accessible
+                accessibilityRole={onViewDetails ? 'button' : 'text'}
+                accessibilityLabel={spoken}
+                accessibilityHint={onViewDetails ? t.sessions.viewDetails : undefined}
               >
                 <View style={styles.dateColumn}>
-                  <Text style={[styles.day, { color: theme.textMuted }]}>{item.day}</Text>
-                  <Text style={[styles.date, { color: theme.textPrimary }]}>{item.date}</Text>
+                  <Text style={styles.day}>{item.day}</Text>
+                  <Text style={styles.date}>{item.date}</Text>
                 </View>
 
-                <View style={[styles.bar, { backgroundColor: item.barColor }]} />
+                <View
+                  style={[styles.bar, { backgroundColor: item.barColor ?? theme.primary }]}
+                  {...a11yDecorative}
+                />
 
                 <View style={styles.content}>
-                  <Text style={[styles.title, { color: theme.textPrimary }]} numberOfLines={1}>{item.title}</Text>
-                  <Text style={[styles.subtitle, { color: theme.textSecondary }]} numberOfLines={1}>
+                  <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
+                  <Text style={styles.subtitle} numberOfLines={2}>
                     {item.time} · {item.location}
                   </Text>
-                  {statusTheme && (
-                    <View style={[styles.badge, { backgroundColor: statusTheme.bg }]}>
-                      <Text style={[styles.badgeText, { color: statusTheme.text }]}>
+                  {badgeTone && (
+                    <View style={[styles.badge, { backgroundColor: badgeTone.bg }]}>
+                      <Text style={[styles.badgeText, { color: badgeTone.text }]}>
                         {statusLabel[item.status]}
                       </Text>
                     </View>
@@ -59,7 +78,12 @@ export default function WeekScheduleCard({ items = [], compact, onViewDetails })
                 </View>
 
                 {onViewDetails && (
-                  <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={theme.iconMuted}
+                    {...a11yDecorative}
+                  />
                 )}
               </TouchableOpacity>
             );
@@ -70,87 +94,59 @@ export default function WeekScheduleCard({ items = [], compact, onViewDetails })
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-  },
-  // "flex: 0" en RN-Web fija flexBasis:0% (colapsa a 0px) — se cancela el flex
-  // heredado con las props largas y flexBasis "auto" para medir por contenido.
-  cardCompact: {
-    flexGrow: 0,
-    flexShrink: 0,
-    flexBasis: 'auto',
-    width: '100%',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-  list: {
-    gap: 14,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  emptyText: {
-    fontSize: 13,
-  },
-  dateColumn: {
-    width: 32,
-    alignItems: 'center',
-  },
-  day: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#99A1AF',
-  },
-  date: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  bar: {
-    width: 3,
-    borderRadius: 2,
-    // El row usa alignItems:'center' (para el chevron); sin alignSelf:'stretch' esta
-    // barra no tiene contenido propio que le dé alto y queda invisible (0px).
-    alignSelf: 'stretch',
-  },
-  content: {
-    flex: 1,
-    gap: 2,
-  },
-  title: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  subtitle: {
-    fontSize: 11,
-    color: '#697282',
-  },
-  badge: {
-    alignSelf: 'flex-start',
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    marginTop: 2,
-  },
-  badgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-});
+const makeStyles = (t) =>
+  StyleSheet.create({
+    card: {
+      flex: 1,
+      backgroundColor: t.card,
+      borderRadius: 18,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    // "flex: 0" en RN-Web fija flexBasis:0% (colapsa a 0px) — se cancela el flex
+    // heredado con las props largas y flexBasis 'auto' para medir por contenido.
+    cardCompact: {
+      flexGrow: 0,
+      flexShrink: 0,
+      flexBasis: 'auto',
+      width: '100%',
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 14,
+    },
+    headerTitle: { fontSize: 16, fontWeight: '700', color: t.textPrimary },
+    list: { gap: 6 },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      minHeight: MIN_TOUCH_SIZE,
+      paddingVertical: 6,
+    },
+    emptyText: { fontSize: 14, color: t.textMuted },
+    dateColumn: { width: 34, alignItems: 'center' },
+    day: { fontSize: 11, fontWeight: '700', color: t.textMuted },
+    date: { fontSize: 16, fontWeight: '700', color: t.textPrimary },
+    bar: {
+      width: 3,
+      borderRadius: 2,
+      // El row usa alignItems:'center' (por el chevron); sin alignSelf:'stretch' esta
+      // barra no tiene contenido propio que le dé alto y quedaría invisible (0px).
+      alignSelf: 'stretch',
+    },
+    content: { flex: 1, gap: 2 },
+    title: { fontSize: 14, fontWeight: '700', color: t.textPrimary },
+    subtitle: { fontSize: 13, color: t.textSecondary },
+    badge: {
+      alignSelf: 'flex-start',
+      borderRadius: 6,
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      marginTop: 2,
+    },
+    badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+  });

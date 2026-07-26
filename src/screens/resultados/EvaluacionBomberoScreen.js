@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Modal, Pressable,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,6 +8,9 @@ import { SINTOMAS_LIST } from './__mocks__/resultadosData';
 import { vitalSignsService } from '../../services/vitalSignsService';
 import { healthPersonnelService } from '../../services/healthPersonnelService';
 import { useAuth } from '../../hooks';
+import { useAuditOnMount } from '../../hooks/useAuditTrail';
+import { a11yButton, a11yDecorative } from '../../constants/a11y';
+import Toast from '../../components/Toast';
 
 // ── Etapas ────────────────────────────────────────────────────────────────────
 const S = {
@@ -97,26 +99,80 @@ function vitalsComplete(form) {
 export default function EvaluacionBomberoScreen({ navigation, route }) {
   const bomberoName   = route?.params?.bomberoName ?? 'Bombero';
   const participantId = route?.params?.bomberoId   ?? null;
-  const numQuemas     = route?.params?.numQuemas   ?? 2;
+  // Se acota a un mínimo de 1: con `numQuemas = 0` el array de quemas quedaba vacío y
+  // `quemasData[currentQuema - 1]` era undefined, reventando al leer sus campos.
+  const numQuemas     = Math.max(1, Number(route?.params?.numQuemas) || 2);
   const { user }      = useAuth();
-  const hpIdRef       = React.useRef(null);
+
+  // Requisito de auditoría: esta pantalla escribe la ficha médica de un bombero.
+  useAuditOnMount('MEDICAL_RECORD', participantId, 'WRITE');
 
   const [stage,        setStage]        = useState(S.PRE_SESION);
   const [currentQuema, setCurrentQuema] = useState(1);
 
-  // Resolver HealthPersonnelId del médico logueado
-  React.useEffect(() => {
-    healthPersonnelService.getAll()
-      .then(list => {
-        const match = list.find(hp => hp.userId === user?.userId);
-        hpIdRef.current = match?.id ?? list[0]?.id ?? null;
-      })
-      .catch(() => {});
-  }, [user]);
+  // Ficha de personal de salud del usuario logueado. Es obligatoria para registrar
+  // mediciones: sin ella el backend atribuiría el registro a otro profesional.
+  const [healthPersonnelId, setHealthPersonnelId] = useState(null);
+  const [hpResolved,        setHpResolved]        = useState(false);
+  const [saving,            setSaving]            = useState(false);
+  const [saveNotice,        setSaveNotice]        = useState(null);
 
-  async function submitVitals(form) {
-    if (!participantId || !hpIdRef.current) return;
-    try { await vitalSignsService.submit(participantId, hpIdRef.current, form); } catch {}
+  useEffect(() => {
+    let alive = true;
+
+    healthPersonnelService.findByUserId(user?.userId)
+      .then((hp) => {
+        if (!alive) return;
+        // Antes se caía a `list[0]` cuando el usuario no era personal de salud, lo que
+        // atribuía la medición a un profesional cualquiera y corrompía la trazabilidad.
+        setHealthPersonnelId(hp?.id ?? null);
+      })
+      .catch(() => { if (alive) setHealthPersonnelId(null); })
+      .finally(() => { if (alive) setHpResolved(true); });
+
+    return () => { alive = false; };
+  }, [user?.userId]);
+
+  /**
+   * Registra una medición de signos vitales y reporta el resultado real.
+   * Devuelve true solo si el servidor confirmó el guardado.
+   */
+  async function submitVitals(form, etiqueta) {
+    if (!participantId) {
+      setSaveNotice({ tone: 'error', message: 'No hay un participante asociado: no se puede guardar.' });
+      return false;
+    }
+    if (!hpResolved) {
+      setSaveNotice({ tone: 'error', message: 'Espera a que termine de cargar tu ficha profesional.' });
+      return false;
+    }
+    if (!healthPersonnelId) {
+      setSaveNotice({
+        tone: 'error',
+        message: 'Tu usuario no está registrado como personal de salud, así que no puede firmar mediciones.',
+      });
+      return false;
+    }
+
+    setSaving(true);
+    try {
+      const { unsupported } = await vitalSignsService.submit(participantId, healthPersonnelId, form);
+      // El backend solo almacena 5 signos vitales: se avisa explícitamente de lo que
+      // NO quedó guardado en vez de mostrar un éxito que sería parcialmente falso.
+      setSaveNotice(unsupported.length
+        ? {
+            tone: 'warning',
+            message: `${etiqueta} guardada. No se almacenaron (sin soporte en el servidor): ${unsupported.join(', ')}.`,
+          }
+        : { tone: 'success', message: `${etiqueta} guardada correctamente.` });
+      return true;
+    } catch (error) {
+      const detail = error?.response?.data?.message ?? error?.message ?? 'Error desconocido.';
+      setSaveNotice({ tone: 'error', message: `No se pudo guardar ${etiqueta.toLowerCase()}: ${detail}` });
+      return false;
+    } finally {
+      setSaving(false);
+    }
   }
 
   const [preData,       setPreData]       = useState(EMPTY_PRE);
@@ -125,13 +181,16 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
   );
   const [cierreData,    setCierreData]    = useState(EMPTY_CIERRE);
   const [aptitud,       setAptitud]       = useState(null);
-  const [isNoApto,      setIsNoApto]      = useState(false);
+  // Se deriva de la evaluación en vez de mantenerse en un estado propio que nunca se
+  // actualizaba: el banner de "NO APTO" jamás llegaba a mostrarse.
+  const isNoApto = aptitud ? !aptitud.apto : false;
   const [esInvestigacion, setEsInvestigacion] = useState(false);
   const [invData,       setInvData]       = useState(EMPTY_INVESTIGACION);
 
   // Validación de campos vacíos (mostrar rojo al hacer click en Evaluar)
-  const [showPreErrors, setShowPreErrors]   = useState(false);
-  const [showPostErrors, setShowPostErrors] = useState(false);
+  const [showPreErrors, setShowPreErrors]     = useState(false);
+  const [showPostErrors, setShowPostErrors]   = useState(false);
+  const [showCierreErrors, setShowCierreErrors] = useState(false);
 
   const [quemaSecs, setQuemaSecs] = useState(0);
   const timerRef = useRef(null);
@@ -186,7 +245,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
   }
 
   // Evaluar aptitud — siempre disponible; valida campos vacíos primero
-  function handleEvaluarPre() {
+  async function handleEvaluarPre() {
     if (!vitalsComplete(preData) || !preData.rol) {
       setShowPreErrors(true);
       return;
@@ -194,7 +253,12 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
     setShowPreErrors(false);
     const result = verificarAptitud(preData);
     setAptitud(result);
-    submitVitals(preData);
+
+    // Solo se avanza si la medición quedó registrada: antes se pasaba a APTO/NO APTO
+    // aunque el guardado hubiera fallado en silencio.
+    const ok = await submitVitals(preData, 'Medición pre-sesión');
+    if (!ok) return;
+
     setStage(result.apto ? S.APTO : S.NO_APTO);
   }
 
@@ -211,18 +275,45 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
     setStage(S.POST_QUEMA);
   }
 
-  function handleGuardarPostQuema() {
-    if (!vitalsComplete(quemasData[currentQuema - 1])) {
+  /**
+   * Guarda la medición post-quema y avanza.
+   * Antes esta función solo cambiaba de etapa: los signos vitales de cada quema
+   * nunca llegaban al servidor y se perdían al salir de la pantalla.
+   */
+  async function handleGuardarPostQuema() {
+    const current = quemasData[currentQuema - 1];
+    if (!vitalsComplete(current)) {
       setShowPostErrors(true);
       return;
     }
     setShowPostErrors(false);
+
+    const ok = await submitVitals(current, `Medición post-quema ${currentQuema}`);
+    if (!ok) return;
+
     if (currentQuema < numQuemas) {
       setCurrentQuema(q => q + 1);
       setStage(S.QUEMA_ACTIVA);
     } else {
       setStage(S.CIERRE);
     }
+  }
+
+  /**
+   * Guarda la medición de cierre y finaliza la evaluación.
+   * Antes el panel de cierre solo hacía `setStage(S.LISTO)` sin persistir nada.
+   */
+  async function handleFinalizarEvaluacion() {
+    if (!vitalsComplete(cierreData)) {
+      setShowCierreErrors(true);
+      return;
+    }
+    setShowCierreErrors(false);
+
+    const ok = await submitVitals(cierreData, 'Medición de cierre');
+    if (!ok) return;
+
+    setStage(S.LISTO);
   }
 
   const curQuemaData = quemasData[currentQuema - 1];
@@ -257,6 +348,25 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
         <View style={st.noAptoBanner}>
           <Ionicons name="warning" size={15} color="#fff" />
           <Text style={st.noAptoBannerText}>Bombero marcado NO APTO — Completa el cierre</Text>
+        </View>
+      )}
+
+      {/* Resultado real del guardado: éxito, éxito parcial (campos sin soporte en el
+          servidor) o error. Antes el guardado fallaba en silencio. */}
+      {!!saveNotice && (
+        <View style={st.noticeWrap}>
+          <Toast message={saveNotice.message} tone={saveNotice.tone} />
+        </View>
+      )}
+
+      {/* Aviso de bloqueo: sin ficha de personal de salud no se pueden firmar
+          mediciones, y conviene saberlo antes de llenar todo el formulario. */}
+      {hpResolved && !healthPersonnelId && (
+        <View style={st.noticeWrap}>
+          <Toast
+            message="Tu usuario no está registrado como personal de salud: no podrás guardar mediciones."
+            tone="error"
+          />
         </View>
       )}
 
@@ -321,7 +431,9 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
               setEsInvestigacion={setEsInvestigacion}
               invData={invData}
               updateInv={updateInv}
-              onFinalizar={() => setStage(S.LISTO)}
+              showErrors={showCierreErrors}
+              saving={saving}
+              onFinalizar={handleFinalizarEvaluacion}
             />
           )}
 
@@ -622,6 +734,7 @@ function PostQuemaPanel({ quemaNum, numQuemas, data, onChange, onToggleSintoma, 
 function CierrePanel({
   data, isNoApto, onChange, onToggleSintoma,
   esInvestigacion, setEsInvestigacion, invData, updateInv, onFinalizar,
+  showErrors, saving,
 }) {
   return (
     <View style={p.twoCol}>
@@ -675,12 +788,34 @@ function CierrePanel({
       {/* ── Derecha: Vitales + Botón ── */}
       <View style={p.rightCol}>
         <Text style={p.secLabel}>Signos Vitales — Fin del día</Text>
-        <VitalesForm data={data} onChange={onChange} showErrors={false} />
+        {/* Se validan igual que en el resto de etapas: antes se pasaba showErrors
+            fijo en false, así que se podía finalizar con los vitales vacíos. */}
+        <VitalesForm data={data} onChange={onChange} showErrors={showErrors} />
+
+        {/* Los marcadores de investigación y las observaciones se capturan pero el
+            backend no tiene dónde almacenarlos todavía; se avisa para no dar por
+            guardado algo que no lo está. */}
+        {(esInvestigacion || data.eventosEspeciales) && (
+          <Text style={p.unsupportedNote}>
+            Nota: observaciones y marcadores de investigación aún no se envían al
+            servidor (sin soporte en la API).
+          </Text>
+        )}
 
         <View style={p.evalBtnWrap}>
-          <TouchableOpacity style={[p.evalBtn, { backgroundColor: '#2E7D32' }]} onPress={onFinalizar} activeOpacity={0.85}>
-            <Ionicons name="checkmark-circle-outline" size={17} color="#fff" />
-            <Text style={p.evalBtnText}>Finalizar Evaluación</Text>
+          <TouchableOpacity
+            style={[p.evalBtn, { backgroundColor: saving ? '#8E9399' : '#2E7D32' }]}
+            onPress={onFinalizar}
+            activeOpacity={0.85}
+            disabled={saving}
+            {...a11yButton('Finalizar evaluación', { disabled: saving, busy: saving })}
+          >
+            {saving
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Ionicons name="checkmark-circle-outline" size={17} color="#fff" {...a11yDecorative} />}
+            <Text style={p.evalBtnText}>
+              {saving ? 'Guardando…' : 'Finalizar Evaluación'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -898,6 +1033,7 @@ function VitalStatItem({ label, value, bad }) {
 
 const st = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F4F6F8' },
+  noticeWrap: { paddingHorizontal: 20, paddingBottom: 8 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 20, paddingVertical: 12,
@@ -950,6 +1086,10 @@ const tl = StyleSheet.create({
 });
 
 const p = StyleSheet.create({
+  unsupportedNote: {
+    fontSize: 12, color: '#8A5000', backgroundColor: '#FFF4E5',
+    borderRadius: 8, padding: 10, marginTop: 8, lineHeight: 17,
+  },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 22 },
   twoCol:   { flex: 1, flexDirection: 'row', gap: 22 },
   leftCol:  { flex: 0.9, gap: 10 },

@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { View, Image, Pressable, Animated, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import useTheme from '../../../hooks/useTheme';
+import { a11yDecorative } from '../../../constants/a11y';
 
-const FALLBACK_COLOR = '#27B8A1';
 const NORMAL_STATUSES = ['Normal', 'Seguro'];
 const IMAGE_ASPECT_RATIO = 446 / 740;
 
@@ -47,9 +48,14 @@ function PulsingRing({ color }) {
   );
 }
 
-function Hotspot({ style, metric, alert, selected, onPress }) {
-  const color = metric?.color ?? FALLBACK_COLOR;
+function Hotspot({ style, metric, label, tone, alert, selected, onPress, theme }) {
   const icon = alert ? 'warning' : (metric?.icon ?? 'ellipse');
+
+  // Estado hablado para el lector de pantalla: sin esto el diagrama era un conjunto
+  // de puntos sin nombre ni valor.
+  const spokenValue = metric?.hasValue
+    ? `${metric.value}${metric.unit ?? ''}`
+    : 'sin datos';
 
   return (
     <Pressable
@@ -58,15 +64,22 @@ function Hotspot({ style, metric, alert, selected, onPress }) {
         event.stopPropagation?.();
         onPress();
       }}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${spokenValue}${alert ? ', fuera de rango' : ''}`}
+      accessibilityState={{ selected }}
     >
       <View style={styles.markerWrapper}>
-        {alert && <PulsingRing color={color} />}
-        <View style={[styles.marker, selected && styles.markerSelected, { backgroundColor: color }]}>
-          <Ionicons
-            name={icon}
-            size={selected ? 15 : 13}
-            color="#fff"
-          />
+        {alert && <PulsingRing color={tone.solid} />}
+        <View
+          style={[
+            styles.marker,
+            selected && styles.markerSelected,
+            { backgroundColor: tone.solid, borderColor: theme.card },
+          ]}
+        >
+          <Ionicons name={icon} size={selected ? 15 : 13} color={tone.onSolid} />
         </View>
       </View>
     </Pressable>
@@ -74,60 +87,105 @@ function Hotspot({ style, metric, alert, selected, onPress }) {
 }
 
 export default function BodyDiagram2D({ metrics = {}, activeMetric, onSelectMetric }) {
+  const theme = useTheme();
+  const styles2 = useMemo(() => makeStyles(theme), [theme]);
+
+  /**
+   * Una métrica está en alerta solo si TIENE un valor medido y ese valor está fuera de
+   * rango. Antes bastaba con que `status` fuera un string cualquiera, y las métricas
+   * sin datos (que llegan con «—») se pintaban en rojo pulsante permanentemente.
+   */
   const isAlert = (key) => {
-    const status = metrics[key]?.status;
+    const m = metrics[key];
+    if (!m || m.supported === false || m.hasValue === false) return false;
+    const status = m.status;
     return Boolean(status) && !NORMAL_STATUSES.includes(status);
   };
-  const isSelected = (key) => key === activeMetric;
+
+  // Sin dato → gris (desconocido); con dato fuera de rango → rojo; normal → verde.
+  const toneFor = (key) => {
+    const m = metrics[key];
+    if (!m || m.supported === false || m.hasValue === false) return theme.status.neutral;
+    return isAlert(key) ? theme.status.danger : theme.status.success;
+  };
 
   const parts = [
-    { key: 'nivelOxigeno', style: styles.headHotspot },
+    { key: 'nivelOxigeno',           style: styles.headHotspot },
     { key: 'frecuenciaRespiratoria', style: styles.respiratoriaHotspot },
-    { key: 'frecuenciaCardiaca', style: styles.heartHotspot },
-    { key: 'temperatura', style: styles.torsoHotspot },
-    { key: 'nivelCO', style: styles.handHotspot },
+    { key: 'frecuenciaCardiaca',     style: styles.heartHotspot },
+    { key: 'temperatura',            style: styles.torsoHotspot },
+    { key: 'nivelCO',                style: styles.handHotspot },
   ];
 
-  const selectedData = activeMetric ? metrics[activeMetric] : null;
+  const selectedData  = activeMetric ? metrics[activeMetric] : null;
   const selectedAlert = activeMetric ? isAlert(activeMetric) : false;
+  const selectedTone  = activeMetric ? toneFor(activeMetric) : theme.status.neutral;
 
   return (
     <View style={styles.wrapper}>
-      <View style={styles.container}>
+      <View style={[styles.container, styles2.container]}>
         <Image
           source={require('../../../assets/anatomy/full-body.png')}
           style={styles.bodyImage}
           resizeMode="contain"
+          accessible={false}
+          {...a11yDecorative}
         />
 
-        {parts.map(({ key, style }, index) => (
+        {parts.map(({ key, style }) => (
           <Hotspot
-            key={`${key}-${index}`}
+            key={key}
             style={style}
             metric={metrics[key]}
+            label={METRIC_LABELS[key]}
+            tone={toneFor(key)}
             alert={isAlert(key)}
-            selected={isSelected(key)}
+            selected={key === activeMetric}
             onPress={() => onSelectMetric(key)}
+            theme={theme}
           />
         ))}
       </View>
 
       {selectedData && (
-        <View style={[styles.infoStrip, selectedAlert && styles.infoStripAlert]}>
+        <View
+          style={[
+            styles.infoStrip,
+            { backgroundColor: selectedTone.bg, borderColor: selectedTone.border },
+          ]}
+          accessibilityRole="text"
+        >
           <Ionicons
             name={selectedAlert ? 'warning' : (selectedData.icon ?? 'information-circle-outline')}
             size={16}
-            color={selectedData.color ?? FALLBACK_COLOR}
+            color={selectedTone.fg}
+            {...a11yDecorative}
           />
-          <Text style={styles.infoLabel}>{METRIC_LABELS[activeMetric]}</Text>
-          <Text style={[styles.infoValue, { color: selectedData.color ?? FALLBACK_COLOR }]}>
-            {selectedData.value}{selectedData.unit} · {selectedData.status}
+          <Text style={[styles.infoLabel, { color: theme.textPrimary }]}>
+            {METRIC_LABELS[activeMetric]}
+          </Text>
+          <Text style={[styles.infoValue, { color: selectedTone.fg }]}>
+            {selectedData.supported === false
+              ? 'No disponible en el servidor'
+              : selectedData.hasValue
+                ? `${selectedData.value}${selectedData.unit ?? ''}`
+                : 'Sin datos'}
           </Text>
         </View>
       )}
     </View>
   );
 }
+
+const makeStyles = (t) =>
+  StyleSheet.create({
+    container: {
+      backgroundColor: t.card,
+      borderColor: t.border,
+      shadowColor: t.shadowColor,
+      shadowOpacity: t.shadowOpacity,
+    },
+  });
 
 const styles = StyleSheet.create({
   wrapper: {

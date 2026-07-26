@@ -1,5 +1,5 @@
 export { useAuth } from './useAuth';
 export { useOfflineSync } from './useOfflineSync';
-export { useAuditTrail } from './useAuditTrail';
-export { default as useTheme } from './useTheme';
+export { useAuditTrail, useAuditOnMount, getPendingAuditEvents } from './useAuditTrail';
+export { default as useTheme, useThemedStyles } from './useTheme';
 export { default as useTranslation } from './useTranslation';

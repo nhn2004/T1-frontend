@@ -1,53 +1,117 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { vitalSignsService } from '../../services/vitalSignsService';
 
-export default function ResultadosGeneralesView() {
+/** Promedio de los valores no nulos; `null` si no hay ninguno. */
+function average(values, decimals = 0) {
+  const nums = values.filter((v) => v !== null && v !== undefined && Number.isFinite(v));
+  if (!nums.length) return null;
+  const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
+  return Number(avg.toFixed(decimals));
+}
+
+/**
+ * Métricas agregadas de la capacitación.
+ *
+ * Antes todos los valores de esta vista eran constantes escritas a mano ("10 bomberos",
+ * "78 bpm", progress 0.5…) que el usuario no podía distinguir de datos reales. Ahora se
+ * calculan a partir de las mediciones de los participantes; lo que el backend no puede
+ * entregar (frecuencia respiratoria) se muestra como «—».
+ */
+export default function ResultadosGeneralesView({ participants = [] }) {
+  const [measurements, setMeasurements] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+
+    if (!participants.length) {
+      setLoading(false);
+      setMeasurements([]);
+      return () => { alive = false; };
+    }
+
+    Promise.allSettled(
+      participants.map((p) => vitalSignsService.getByParticipant(p.id)),
+    ).then((results) => {
+      if (!alive) return;
+      const rows = results
+        .filter((r) => r.status === 'fulfilled')
+        .flatMap((r) => r.value.raw ?? []);
+      setMeasurements(rows);
+    }).finally(() => { if (alive) setLoading(false); });
+
+    return () => { alive = false; };
+  }, [participants]);
+
+  const stats = useMemo(() => {
+    const num = (v) => (v === null || v === undefined ? null : Number(v));
+    const withReports = new Set(measurements.map((m) => m.sessionParticipantId)).size;
+    const total = participants.length;
+
+    return {
+      total,
+      withReports,
+      pct: total > 0 ? Math.round((withReports / total) * 100) : null,
+      hr:   average(measurements.map((m) => num(m.heartRate))),
+      temp: average(measurements.map((m) => num(m.temperatureC)), 1),
+      spo2: average(measurements.map((m) => num(m.spo2))),
+    };
+  }, [measurements, participants.length]);
+
+  const show = (v, suffix = '') => (v === null || v === undefined ? '—' : `${v}${suffix}`);
+  const ratio = (v, max) => (v === null ? 0 : Math.min(1, Math.max(0, v / max)));
+
+  if (loading) {
+    return (
+      <View style={styles.loadingBox}>
+        <ActivityIndicator size="large" color="#C94E1B" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.subtitle}>Métricas promedio de todos los bomberos en esta Capacitación</Text>
-      
+      <Text style={styles.subtitle}>
+        Métricas promedio de todos los bomberos en esta Capacitación
+      </Text>
+
       <View style={styles.topCardsRow}>
-        <TopCard title="Bomberos" value="10" icon="people-outline" color="#E85D27" tag="Total" />
-        <TopCard title="Reportes" value="4" icon="pulse-outline" color="#27B8A1" tag="Completados" />
-        <TopCard title="% Completado" value="40" icon="trending-up-outline" color="#3B82F6" tag="Progreso" />
-        <TopCard title="bpm" value="78" icon="heart-outline" color="#A855F7" tag="Promedio" />
+        <TopCard title="Bomberos"     value={show(stats.total)}      icon="people-outline"     color="#C94E1B" tag="Total" />
+        <TopCard title="Reportes"     value={show(stats.withReports)} icon="pulse-outline"     color="#0E7C74" tag="Completados" />
+        <TopCard title="% Completado" value={show(stats.pct)}         icon="trending-up-outline" color="#1565C0" tag="Progreso" />
+        <TopCard title="bpm"          value={show(stats.hr)}          icon="heart-outline"     color="#7B3FBF" tag="Promedio" />
       </View>
 
       <Text style={styles.sectionTitle}>Promedios de Signos Vitales</Text>
 
       <View style={styles.metricsGrid}>
-        <MetricAverageCard 
-          title="Frecuencia Cardíaca Promedio" 
-          value="78" 
-          unit="bpm" 
-          icon="heart-outline" 
-          color="#E85D27" 
-          progress={0.5} 
+        <MetricAverageCard
+          title="Frecuencia Cardíaca Promedio"
+          value={show(stats.hr)} unit="bpm"
+          icon="heart-outline" color="#C94E1B"
+          progress={ratio(stats.hr, 200)}
         />
-        <MetricAverageCard 
-          title="Temperatura Promedio" 
-          value="36.9" 
-          unit="°C" 
-          icon="thermometer-outline" 
-          color="#EF4444" 
-          progress={0.6} 
+        <MetricAverageCard
+          title="Temperatura Promedio"
+          value={show(stats.temp)} unit="°C"
+          icon="thermometer-outline" color="#B3261E"
+          progress={ratio(stats.temp, 45)}
         />
-        <MetricAverageCard 
-          title="Frecuencia Respiratoria Promedio" 
-          value="17" 
-          unit="rpm" 
-          icon="leaf-outline" 
-          color="#F97316" 
-          progress={0.4} 
+        <MetricAverageCard
+          title="Nivel de Oxígeno Promedio"
+          value={show(stats.spo2)} unit="%"
+          icon="water-outline" color="#0E7C74"
+          progress={ratio(stats.spo2, 100)}
         />
-        <MetricAverageCard 
-          title="Nivel de Oxígeno Promedio" 
-          value="97" 
-          unit="%" 
-          icon="water-outline" 
-          color="#14B8A6" 
-          progress={0.9} 
+        {/* El backend no almacena frecuencia respiratoria: se declara explícitamente
+            en lugar de mostrar un promedio inventado. */}
+        <MetricAverageCard
+          title="Frecuencia Respiratoria Promedio"
+          value="—" unit="rpm"
+          icon="leaf-outline" color="#667085"
+          progress={0}
         />
       </View>
     </View>
@@ -125,6 +189,7 @@ function MetricAverageCard({ title, value, unit, icon, color, progress }) {
 }
 
 const styles = StyleSheet.create({
+  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 60 },
   container: {
     flex: 1,
     paddingTop: 8,

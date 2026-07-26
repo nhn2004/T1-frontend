@@ -8,10 +8,19 @@ import Step1SignosVitales from './components/Step1SignosVitales';
 import Step2Sintomas      from './components/Step2Sintomas';
 import Step3Nutricion     from './components/Step3Nutricion';
 import Step4Certificados  from './components/Step4Certificados';
-import { MOMENTOS_CONFIG } from './__mocks__/resultadosData';
+import { MOMENTOS_CONFIG, SINTOMAS_LIST } from './__mocks__/resultadosData';
 import { vitalSignsService } from '../../services/vitalSignsService';
+import { useAuditOnMount } from '../../hooks/useAuditTrail';
+import { a11yButton } from '../../constants/a11y';
+import Toast from '../../components/Toast';
 
 const TOTAL_STEPS = 4;
+
+// Campos obligatorios del paso 1 (coinciden con los que el backend persiste).
+const VITAL_FIELDS = [
+  'temperatura', 'presionSistolica', 'presionDiastolica',
+  'frecuenciaCardiaca', 'nivelOxigeno',
+];
 
 const INITIAL_FORM = {
   horaInicio:         '',
@@ -38,29 +47,101 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
   const momentoConfig    = MOMENTOS_CONFIG[momento] ?? MOMENTOS_CONFIG.T4;
   const isFullWizard     = momento === 'T4';
 
+  // Requisito de auditoría: la pantalla escribe la ficha médica de un participante.
+  useAuditOnMount('MEDICAL_RECORD', participantId, 'WRITE');
+
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData]       = useState(INITIAL_FORM);
+  const [showErrors, setShowErrors]   = useState(false);
+  const [saving, setSaving]           = useState(false);
+  const [notice, setNotice]           = useState(null);
 
   function updateField(field, value) {
     setFormData(prev => ({ ...prev, [field]: value }));
+    setShowErrors(false);
+  }
+
+  /** Alterna un síntoma seleccionado. Faltaba, y por eso los chips no se renderizaban. */
+  function toggleSintoma(sintoma) {
+    setFormData((prev) => {
+      const list = prev.sintomasSeleccionados;
+      return {
+        ...prev,
+        sintomasSeleccionados: list.includes(sintoma)
+          ? list.filter((s) => s !== sintoma)
+          : [...list, sintoma],
+      };
+    });
+  }
+
+  /** Los signos vitales son obligatorios antes de avanzar o guardar. */
+  function vitalsComplete() {
+    return VITAL_FIELDS.every((f) => String(formData[f] ?? '').trim() !== '');
   }
 
   function handleNext() {
+    // El paso 1 (signos vitales) está marcado como obligatorio en STEPS_CONFIG; antes
+    // se podía atravesar todo el wizard sin escribir un solo valor.
+    if (currentStep === 1 && !vitalsComplete()) {
+      setShowErrors(true);
+      setNotice({ tone: 'error', message: 'Completa todos los signos vitales para continuar.' });
+      return;
+    }
+    setNotice(null);
     if (currentStep < TOTAL_STEPS) setCurrentStep(s => s + 1);
   }
 
   function handlePrev() {
+    setNotice(null);
     if (currentStep > 1) setCurrentStep(s => s - 1);
   }
 
   async function handleSave() {
-    if (participantId && healthPersonnelId) {
-      try { await vitalSignsService.submit(participantId, healthPersonnelId, formData); } catch {}
+    if (!vitalsComplete()) {
+      setShowErrors(true);
+      setCurrentStep(1);
+      setNotice({ tone: 'error', message: 'Completa todos los signos vitales antes de guardar.' });
+      return;
     }
-    navigation.goBack();
+    if (!participantId || !healthPersonnelId) {
+      setNotice({
+        tone: 'error',
+        message: 'Falta el participante o el profesional que registra: no se puede guardar.',
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { unsupported } = await vitalSignsService.submit(participantId, healthPersonnelId, formData);
+      if (unsupported.length) {
+        // No se cierra la pantalla en silencio: el médico debe enterarse de qué
+        // campos no quedaron almacenados.
+        setNotice({
+          tone: 'warning',
+          message: `Guardado. Sin soporte en el servidor: ${unsupported.join(', ')}.`,
+        });
+        return;
+      }
+      navigation.goBack();
+    } catch (error) {
+      const detail = error?.response?.data?.message ?? error?.message ?? 'Error desconocido.';
+      setNotice({ tone: 'error', message: `No se pudo guardar: ${detail}` });
+    } finally {
+      setSaving(false);
+    }
   }
 
-  const stepProps = { formData, updateField };
+  // `sintomas` (el catálogo de opciones) y `onToggleSintoma` faltaban aquí: en las
+  // mediciones rápidas T1/T2/T3 el título "Registrar síntomas" aparecía sin ningún
+  // chip debajo, porque el componente recibía la lista vacía por defecto.
+  const stepProps = {
+    formData,
+    updateField,
+    showErrors,
+    sintomas: SINTOMAS_LIST,
+    onToggleSintoma: toggleSintoma,
+  };
 
   /* ── Medición rápida T1 / T2 / T3 ── */
   if (!isFullWizard) {
@@ -83,6 +164,12 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
 
+        {!!notice && (
+          <View style={styles.noticeWrap}>
+            <Toast message={notice.message} tone={notice.tone} />
+          </View>
+        )}
+
         {/* Tarjeta única con signos vitales */}
         <View style={styles.body}>
           <View style={styles.card}>
@@ -95,14 +182,21 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
             </View>
 
             <View style={styles.bottomNav}>
-              <View style={{ flex: 1 }} />
+              <View style={styles.navSpacer} />
               <TouchableOpacity
-                style={[styles.guardarBtn, { backgroundColor: momentoConfig.color }]}
+                style={[
+                  styles.guardarBtn,
+                  { backgroundColor: saving ? '#8E9399' : momentoConfig.color },
+                ]}
                 onPress={handleSave}
                 activeOpacity={0.8}
+                disabled={saving}
+                {...a11yButton(momentoConfig.btnLabel, { disabled: saving, busy: saving })}
               >
                 <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
-                <Text style={styles.guardarText}>{momentoConfig.btnLabel}</Text>
+                <Text style={styles.guardarText}>
+                  {saving ? 'Guardando…' : momentoConfig.btnLabel}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -121,12 +215,22 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
       <View style={styles.body}>
 
         <View style={styles.topRow}>
-          <View style={{ flex: 1 }} />
-          <TouchableOpacity style={styles.volverBtn} onPress={() => navigation.goBack()}>
+          <View style={styles.navSpacer} />
+          <TouchableOpacity
+            style={styles.volverBtn}
+            onPress={() => navigation.goBack()}
+            {...a11yButton('Volver')}
+          >
             <Ionicons name="arrow-back" size={15} color="#2E2E2E" />
             <Text style={styles.volverText}>Volver</Text>
           </TouchableOpacity>
         </View>
+
+        {!!notice && (
+          <View style={styles.noticeWrap}>
+            <Toast message={notice.message} tone={notice.tone} />
+          </View>
+        )}
 
         <View style={styles.card}>
           <View style={styles.stepContent}>
@@ -142,6 +246,7 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
               onPress={handlePrev}
               disabled={currentStep === 1}
               activeOpacity={0.7}
+              {...a11yButton('Paso anterior', { disabled: currentStep === 1 })}
             >
               <Ionicons
                 name="arrow-back"
@@ -156,14 +261,25 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
             <Text style={styles.indicatorText}>Paso {currentStep} de {TOTAL_STEPS}</Text>
 
             {currentStep < TOTAL_STEPS ? (
-              <TouchableOpacity style={styles.siguienteBtn} onPress={handleNext} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={styles.siguienteBtn}
+                onPress={handleNext}
+                activeOpacity={0.8}
+                {...a11yButton('Siguiente paso')}
+              >
                 <Text style={styles.siguienteText}>Siguiente</Text>
                 <Ionicons name="arrow-forward" size={14} color="#fff" />
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={styles.guardarBtn} onPress={handleSave} activeOpacity={0.8}>
+              <TouchableOpacity
+                style={[styles.guardarBtn, saving && styles.guardarBtnDisabled]}
+                onPress={handleSave}
+                activeOpacity={0.8}
+                disabled={saving}
+                {...a11yButton('Guardar datos', { disabled: saving, busy: saving })}
+              >
                 <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
-                <Text style={styles.guardarText}>Guardar Datos</Text>
+                <Text style={styles.guardarText}>{saving ? 'Guardando…' : 'Guardar Datos'}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -176,6 +292,9 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F0F2F5' },
+  noticeWrap: { paddingHorizontal: 20, paddingBottom: 8 },
+  navSpacer: { flex: 1 },
+  guardarBtnDisabled: { backgroundColor: '#8E9399' },
 
   /* Header T1/T2/T3 */
   momentoBar: {

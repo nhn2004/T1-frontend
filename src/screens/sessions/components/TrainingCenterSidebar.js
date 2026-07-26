@@ -1,222 +1,196 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   View, Text, Image, TouchableOpacity, StyleSheet, Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { ROLE_COLORS } from '../__mocks__/sessionDetailData';
+import { ROLE_TONES } from '../sessionDisplay';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
+import { a11yButton, a11yDecorative, a11yGroup, MIN_TOUCH_SIZE } from '../../../constants/a11y';
 
-// Right sidebar: training center card + instructor list.
-// Purely presentational — receives data as props.
+// Barra lateral derecha: centro de entrenamiento + personal asignado.
+// Puramente presentacional: recibe todo por props.
 
-export default function TrainingCenterSidebar({ trainingCenter = {}, instructors = [], fullWidth }) {
+export default function TrainingCenterSidebar({
+  trainingCenter, instructors = [], instructorsLoaded = true, fullWidth,
+}) {
   const theme = useTheme();
   const { t } = useTranslation();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
-  const handleDirections = () => {
-    const query = encodeURIComponent(trainingCenter?.address ?? '');
-    if (!trainingCenter?.address) return;
+  const address = trainingCenter?.address;
+
+  const handleDirections = useCallback(() => {
+    if (!address || address === '—') return;
+    const query = encodeURIComponent(address);
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`).catch(() => {});
-  };
+  }, [address]);
 
   return (
     <View style={[styles.sidebar, fullWidth && styles.sidebarFullWidth]}>
+      {/* ── Centro de entrenamiento ── */}
+      <View style={styles.centerCard}>
+        {trainingCenter?.imageUri ? (
+          <Image
+            source={{ uri: trainingCenter.imageUri }}
+            style={styles.centerImage}
+            resizeMode="cover"
+            accessible={false}
+          />
+        ) : (
+          // Sin imagen del backend se muestra un marcador neutro en vez de un
+          // <Image> con uri undefined, que en web deja un hueco roto.
+          <View style={[styles.centerImage, styles.centerImagePlaceholder]} {...a11yDecorative}>
+            <Ionicons name="business-outline" size={28} color={theme.iconMuted} />
+          </View>
+        )}
 
-      {/* ── Training center card ── */}
-      <View style={[styles.centerCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <Image
-          source={{ uri: trainingCenter.imageUri }}
-          style={styles.centerImage}
-          resizeMode="cover"
-        />
         <View style={styles.centerInfo}>
-          <Text style={[styles.centerName, { color: theme.textPrimary }]}>{trainingCenter.name}</Text>
+          <Text style={styles.centerName}>{trainingCenter?.name ?? 'Centro no asignado'}</Text>
 
           <View style={styles.addressRow}>
-            <Ionicons name="location-sharp" size={12} color="#E85D27" />
-            <Text style={[styles.addressText, { color: theme.textSecondary }]} numberOfLines={2}>
-              {trainingCenter.address}
+            <Ionicons name="location-sharp" size={13} color={theme.primaryText} {...a11yDecorative} />
+            <Text style={styles.addressText} numberOfLines={3}>
+              {address ?? 'Dirección no disponible'}
             </Text>
           </View>
 
-          <View style={[styles.specificBox, { backgroundColor: theme.pill }]}>
-            <Ionicons name="business-outline" size={13} color={theme.textSecondary} />
-            <Text style={[styles.specificText, { color: theme.textSecondary }]}>
-              {trainingCenter.specificLocation}
-            </Text>
-          </View>
+          {!!trainingCenter?.specificLocation && (
+            <View style={styles.specificBox}>
+              <Ionicons name="business-outline" size={13} color={theme.icon} {...a11yDecorative} />
+              <Text style={styles.specificText}>{trainingCenter.specificLocation}</Text>
+            </View>
+          )}
 
-          <TouchableOpacity
-            style={styles.directionsRow}
-            activeOpacity={0.7}
-            onPress={handleDirections}
-            accessibilityRole="button"
-            accessibilityLabel={t.sessionDetail.getDirections}
-          >
-            <Text style={[styles.directionsText, { color: theme.textPrimary }]}>{t.sessionDetail.getDirections}</Text>
-            <Ionicons name="open-outline" size={14} color={theme.textPrimary} />
-          </TouchableOpacity>
+          {!!address && address !== '—' && (
+            <TouchableOpacity
+              style={styles.directionsRow}
+              activeOpacity={0.7}
+              onPress={handleDirections}
+              {...a11yButton(t.sessionDetail.getDirections, {
+                hint: 'Abre la ubicación en Google Maps',
+              })}
+            >
+              <Text style={styles.directionsText}>{t.sessionDetail.getDirections}</Text>
+              <Ionicons name="open-outline" size={14} color={theme.primaryText} {...a11yDecorative} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
-      {/* ── Lead instructors ── */}
-      <View style={[styles.instructorsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <Text style={[styles.instructorsLabel, { color: theme.textMuted }]}>{t.sessionDetail.leadInstructor}</Text>
-        {(instructors || []).map((inst) => (
-          <InstructorRow key={inst.id} instructor={inst} theme={theme} t={t} />
-        ))}
-      </View>
+      {/* ── Personal asignado ── */}
+      <View style={styles.instructorsCard}>
+        <Text style={styles.instructorsLabel} accessibilityRole="header">
+          {t.sessionDetail.leadInstructor}
+        </Text>
 
+        {!instructorsLoaded ? (
+          <Text style={styles.emptyText}>No se pudo cargar el personal asignado.</Text>
+        ) : instructors.length === 0 ? (
+          <Text style={styles.emptyText}>
+            Todavía no hay personal de salud asignado a esta capacitación.
+          </Text>
+        ) : (
+          instructors.map((inst) => (
+            <InstructorRow key={inst.id} instructor={inst} theme={theme} t={t} styles={styles} />
+          ))
+        )}
+      </View>
     </View>
   );
 }
 
-function InstructorRow({ instructor, theme, t }) {
-  const roleStyle = ROLE_COLORS[instructor.role] ?? { bg: theme.pill, text: theme.textSecondary };
+function InstructorRow({ instructor, theme, t, styles }) {
+  const tone = theme.status[ROLE_TONES[instructor.role] ?? 'neutral'];
+
+  // Inicial a partir del último token no vacío del nombre; con nombres vacíos o
+  // con espacios extra, `split(' ').slice(-1)[0][0]` reventaba con TypeError.
+  const initial = (instructor.name ?? '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(-1)[0]?.[0]?.toUpperCase() ?? '?';
+
+  const roleLabel = t.common.instructorRoles[instructor.role] ?? instructor.role;
 
   return (
-    <View style={styles.instructorRow}>
-      {/* Avatar initials */}
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>
-          {instructor.name.split(' ').slice(-1)[0][0]}
-        </Text>
+    <View
+      style={styles.instructorRow}
+      {...a11yGroup([instructor.name, instructor.division, roleLabel].filter(Boolean).join(', '))}
+    >
+      <View style={styles.avatar} {...a11yDecorative}>
+        <Text style={styles.avatarText}>{initial}</Text>
       </View>
       <View style={styles.instructorInfo}>
-        <Text style={[styles.instructorName, { color: theme.textPrimary }]}>{instructor.name}</Text>
-        <Text style={[styles.instructorDivision, { color: theme.textSecondary }]}>{instructor.division}</Text>
-        <View style={[styles.roleBadge, { backgroundColor: roleStyle.bg }]}>
-          <Text style={[styles.roleBadgeText, { color: roleStyle.text }]}>
-            {t.common.instructorRoles[instructor.role] ?? instructor.role}
-          </Text>
+        <Text style={styles.instructorName}>{instructor.name}</Text>
+        {!!instructor.division && (
+          <Text style={styles.instructorDivision}>{instructor.division}</Text>
+        )}
+        <View style={[styles.roleBadge, { backgroundColor: tone.bg }]}>
+          <Text style={[styles.roleBadgeText, { color: tone.fg }]}>{roleLabel}</Text>
         </View>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  sidebar: {
-    width: 260,
-    gap: 12,
-  },
-  sidebarFullWidth: {
-    width: '100%',
-  },
+const makeStyles = (t) =>
+  StyleSheet.create({
+    sidebar: { width: 260, gap: 12 },
+    sidebarFullWidth: { width: '100%' },
 
-  // Training center card
-  centerCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-  },
-  centerImage: {
-    width: '100%',
-    height: 120,
-  },
-  centerInfo: {
-    padding: 14,
-    gap: 8,
-  },
-  centerName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  addressRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 4,
-  },
-  addressText: {
-    fontSize: 11,
-    color: '#495565',
-    flex: 1,
-    lineHeight: 16,
-  },
-  specificBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#F4F6F8',
-    borderRadius: 8,
-    padding: 8,
-  },
-  specificText: {
-    fontSize: 11,
-    color: '#495565',
-    flex: 1,
-  },
-  directionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 2,
-  },
-  directionsText: {
-    fontSize: 13,
-    color: '#2E2E2E',
-    fontWeight: '600',
-  },
+    centerCard: {
+      backgroundColor: t.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: t.border,
+      overflow: 'hidden',
+    },
+    centerImage: { width: '100%', height: 120, backgroundColor: t.pill },
+    centerImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
+    centerInfo: { padding: 14, gap: 8 },
+    centerName: { fontSize: 15, fontWeight: '800', color: t.textPrimary },
+    addressRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+    addressText: { flex: 1, fontSize: 13, color: t.textSecondary, lineHeight: 18 },
+    specificBox: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      backgroundColor: t.pill, borderRadius: 8,
+      paddingHorizontal: 10, paddingVertical: 8,
+    },
+    specificText: { flex: 1, fontSize: 13, color: t.textSecondary },
+    directionsRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 6,
+      minHeight: MIN_TOUCH_SIZE - 8,
+    },
+    directionsText: { fontSize: 14, fontWeight: '700', color: t.primaryText },
 
-  // Instructors
-  instructorsCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 14,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-  },
-  instructorsLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#9AA3B0',
-    letterSpacing: 1,
-  },
-  instructorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  avatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#E85D27',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  instructorInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  instructorName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#2E2E2E',
-  },
-  instructorDivision: {
-    fontSize: 11,
-    color: '#697282',
-  },
-  roleBadge: {
-    alignSelf: 'flex-start',
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-  },
-  roleBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-});
+    instructorsCard: {
+      backgroundColor: t.card,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: t.border,
+      padding: 14,
+      gap: 12,
+    },
+    instructorsLabel: {
+      fontSize: 11, fontWeight: '800', color: t.textMuted,
+      letterSpacing: 0.6, textTransform: 'uppercase',
+    },
+    emptyText: { fontSize: 13, color: t.textMuted, lineHeight: 18 },
+
+    instructorRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+    avatar: {
+      width: 38, height: 38, borderRadius: 19,
+      backgroundColor: t.primarySoft,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    avatarText: { fontSize: 15, fontWeight: '800', color: t.onPrimarySoft },
+    instructorInfo: { flex: 1, gap: 2 },
+    instructorName: { fontSize: 14, fontWeight: '700', color: t.textPrimary },
+    instructorDivision: { fontSize: 12, color: t.textSecondary },
+    roleBadge: {
+      alignSelf: 'flex-start', borderRadius: 6,
+      paddingHorizontal: 8, paddingVertical: 2, marginTop: 2,
+    },
+    roleBadgeText: { fontSize: 11, fontWeight: '700' },
+  });

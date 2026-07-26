@@ -11,8 +11,11 @@ function toPersona(raw) {
     applicantCode:     raw.applicantCode,
     trainingStatus:    raw.trainingStatus,
     bloodType:         raw.bloodType,
-    pendingSessions:   [],
-    completedSessions: [],
+    // El backend no expone todavía el conteo de sesiones por persona. `null` significa
+    // "no disponible" y la UI lo muestra como «—»; usar [] haría que se renderizara un
+    // "0" que el usuario leería como un dato real.
+    pendingSessions:   null,
+    completedSessions: null,
     photoSource:       null,
   };
 }

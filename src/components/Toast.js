@@ -1,49 +1,67 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../hooks/useTheme';
+import { a11yDecorative, a11yLiveRegion } from '../constants/a11y';
 
-// In-tree feedback banner. Alert.alert() is a no-op on web (react-native-web ships
-// an empty stub — see node_modules/react-native-web/src/exports/Alert), so anything
-// that needs to actually show feedback on every platform renders through this instead.
+// Banner de feedback embebido. Alert.alert() es un no-op en web (react-native-web
+// entrega un stub vacío), así que cualquier mensaje que deba verse en todas las
+// plataformas se renderiza a través de este componente.
 
-const TONES_LIGHT = {
-  success: { bg: '#E8F5E9', border: '#A5D6A7', text: '#2E7D32', icon: 'checkmark-circle' },
-  error: { bg: '#FFEBEE', border: '#FFCDD2', text: '#C62828', icon: 'alert-circle' },
+const ICONS = {
+  success: 'checkmark-circle',
+  error: 'alert-circle',
+  warning: 'warning',
+  info: 'information-circle',
 };
 
-const TONES_DARK = {
-  success: { bg: '#1B3A20', border: '#2E7D32', text: '#81C784', icon: 'checkmark-circle' },
-  error: { bg: '#4A1515', border: '#C62828', text: '#EF9A9A', icon: 'alert-circle' },
+// Mapea el tono a la paleta semántica del tema (ver useTheme.status).
+const TONE_TO_STATUS = {
+  success: 'success',
+  error: 'danger',
+  warning: 'warning',
+  info: 'info',
 };
 
 export default function Toast({ message, tone = 'success' }) {
   const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   if (!message) return null;
-  const TONES = theme.mode === 'dark' ? TONES_DARK : TONES_LIGHT;
-  const colors = TONES[tone] ?? TONES.success;
+
+  const status = theme.status[TONE_TO_STATUS[tone] ?? 'success'];
+  const iconName = ICONS[tone] ?? ICONS.success;
 
   return (
-    <View style={[styles.toast, { backgroundColor: colors.bg, borderColor: colors.border }]}>
-      <Ionicons name={colors.icon} size={16} color={colors.text} />
-      <Text style={[styles.text, { color: colors.text }]}>{message}</Text>
+    <View
+      style={[styles.toast, { backgroundColor: status.bg, borderColor: status.border }]}
+      // Los errores interrumpen al lector de pantalla; el resto se anuncia al terminar
+      // la locución en curso, para no cortar lo que el usuario esté escuchando.
+      {...a11yLiveRegion(tone === 'error' ? 'assertive' : 'polite')}
+      accessible
+      accessibilityRole={tone === 'error' ? 'alert' : 'text'}
+      accessibilityLabel={message}
+    >
+      <Ionicons name={iconName} size={18} color={status.fg} {...a11yDecorative} />
+      <Text style={[styles.text, { color: status.fg }]}>{message}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  toast: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  text: {
-    fontSize: 13,
-    fontWeight: '600',
-    flex: 1,
-  },
-});
+const makeStyles = () =>
+  StyleSheet.create({
+    toast: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      borderRadius: 10,
+      borderWidth: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    text: {
+      fontSize: 14,
+      fontWeight: '600',
+      flex: 1,
+    },
+  });

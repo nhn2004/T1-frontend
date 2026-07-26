@@ -4,32 +4,49 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import BodyDiagram2D from './components/BodyDiagram2D';
 import { vitalSignsService } from '../../services/vitalSignsService';
-import { COLORS } from '../../constants';
+import { useAuditOnMount } from '../../hooks/useAuditTrail';
+import useTheme from '../../hooks/useTheme';
+import Toast from '../../components/Toast';
+import { a11yButton } from '../../constants/a11y';
 
 const BODY_PANEL_WIDTH = 380;
 const BODY_IMAGE_HEIGHT = 630;
 
+// Estado inicial "sin datos". `hasValue: false` es lo que evita que el diagrama
+// corporal pinte los cinco puntos en alerta roja cuando aún no hay mediciones.
 const EMPTY_METRICS = {
-  frecuenciaCardiaca:     { value: '—', status: '—', color: '#E85D27', icon: 'heart-outline',       unit: 'bpm', progress: 0 },
-  nivelOxigeno:           { value: '—', status: '—', color: '#27B8A1', icon: 'water-outline',        unit: '%',   progress: 0 },
-  frecuenciaRespiratoria: { value: '—', status: '—', color: '#F18C00', icon: 'leaf-outline',         unit: 'rpm', progress: 0 },
-  nivelCO:                { value: '—', status: '—', color: '#D83B35', icon: 'cloud-outline',        unit: 'ppm', progress: 0 },
-  temperatura:            { value: '—', status: '—', color: '#E85D27', icon: 'thermometer-outline',  unit: '°C',  progress: 0 },
+  frecuenciaCardiaca:     { value: null, hasValue: false, supported: true,  icon: 'heart-outline',       unit: 'bpm', progress: 0 },
+  nivelOxigeno:           { value: null, hasValue: false, supported: true,  icon: 'water-outline',       unit: '%',   progress: 0 },
+  temperatura:            { value: null, hasValue: false, supported: true,  icon: 'thermometer-outline', unit: '°C',  progress: 0 },
+  frecuenciaRespiratoria: { value: null, hasValue: false, supported: false, icon: 'leaf-outline',        unit: 'rpm', progress: 0 },
+  nivelCO:                { value: null, hasValue: false, supported: false, icon: 'cloud-outline',       unit: 'ppm', progress: 0 },
 };
 
 export default function ResultadosBomberoScreen({ route, navigation }) {
   const { bomberoId, bomberoName } = route.params || {};
   const nameToDisplay = bomberoName ?? 'Bombero';
+  const theme = useTheme();
+
+  // Requisito de auditoría: se están consultando datos médicos de un bombero.
+  useAuditOnMount('MEDICAL_RECORD', bomberoId, 'READ');
+
   const [metrics,      setMetrics]      = useState(EMPTY_METRICS);
   const [loading,      setLoading]      = useState(true);
+  const [loadError,    setLoadError]    = useState(null);
   const [activeMetric, setActiveMetric] = useState(null);
 
   useEffect(() => {
-    if (!bomberoId) { setLoading(false); return; }
+    if (!bomberoId) { setLoading(false); return undefined; }
+    let alive = true;
+
     vitalSignsService.getByParticipant(bomberoId)
-      .then(({ metrics: m }) => { if (m) setMetrics(m); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+      .then(({ metrics: m }) => { if (alive && m) setMetrics(m); })
+      .catch(() => {
+        if (alive) setLoadError('No se pudieron cargar las mediciones de este bombero.');
+      })
+      .finally(() => { if (alive) setLoading(false); });
+
+    return () => { alive = false; };
   }, [bomberoId]);
 
   return (
@@ -39,15 +56,25 @@ export default function ResultadosBomberoScreen({ route, navigation }) {
         <View style={styles.headerLeft}>
           <Text style={styles.pageTitle}>Resultados de {nameToDisplay}</Text>
         </View>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          {...a11yButton('Volver')}
+        >
           <Ionicons name="arrow-back" size={16} color="#111" />
           <Text style={styles.backButtonText}>Volver</Text>
         </TouchableOpacity>
       </View>
 
+      {!!loadError && (
+        <View style={styles.noticeWrap}>
+          <Toast message={loadError} tone="error" />
+        </View>
+      )}
+
       {loading ? (
         <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={theme.primary} />
         </View>
       ) : (
         <Pressable style={styles.body} onPress={() => setActiveMetric(null)}>
@@ -116,6 +143,7 @@ function MetricCard({ metric, title, active }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F1F4F8' },
+  noticeWrap: { paddingHorizontal: 20, paddingBottom: 8 },
 
   header: {
     flexDirection: 'row',

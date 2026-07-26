@@ -1,35 +1,16 @@
+// Colores de marca FIJOS: no cambian entre modo claro y oscuro.
+//
+// IMPORTANTE: para casi todo (fondos, texto, bordes, badges) usa `useTheme()`, que
+// devuelve tokens adaptados al modo activo y con contraste WCAG AA garantizado.
+// COLORS solo debe usarse para elementos donde la identidad de marca es fija —
+// por ejemplo el logo o el splash. Si lo usas para texto, verifica el contraste
+// contra el fondo real en AMBOS temas.
 export const COLORS = {
-  // Primary fire palette
+  // Naranja fuego de la marca. `useTheme().primary` ya expone la variante correcta
+  // por tema; este valor es el de referencia del manual de marca.
   primary: '#E85D27',
   primaryDark: '#C44A18',
-  primaryLight: '#F07A4A',
 
-  // Accent reds
+  // Rojo de alerta de la marca (equipamiento de bomberos).
   danger: '#D32F2F',
-  dangerLight: '#FF5252',
-
-  // Neutrals
-  background: '#1A1A1A',
-  surface: '#242424',
-  surfaceElevated: '#2E2E2E',
-  border: '#3A3A3A',
-
-  // Text
-  textPrimary: '#FFFFFF',
-  textSecondary: '#B0B0B0',
-  textMuted: '#6B6B6B',
-
-  // Status
-  success: '#4CAF50',
-  warning: '#FF9800',
-  info: '#2196F3',
-
-  // Sidebar
-  sidebarBg: '#111111',
-  sidebarIcon: '#6B6B6B',
-  sidebarIconActive: '#E85D27',
-
-  // Transparent overlays
-  overlay: 'rgba(0,0,0,0.6)',
-  cardOverlay: 'rgba(232,93,39,0.12)',
 };

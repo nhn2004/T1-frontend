@@ -1,116 +1,103 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
+import { a11yDecorative, a11yGroup } from '../../../constants/a11y';
 
-// Renders the vertical timeline agenda. Purely presentational.
+// Línea de tiempo vertical de la agenda. Puramente presentacional.
+//
+// `items === null` significa "el servidor no expone la agenda todavía";
+// `items === []` significa "esta sesión no tiene actividades cargadas".
+// Se distinguen porque para el usuario no son lo mismo: antes ambos casos mostraban
+// una sección vacía que parecía un error de carga.
 
-export default function AgendaTimeline({ items = [] }) {
+export default function AgendaTimeline({ items }) {
   const theme = useTheme();
   const { t } = useTranslation();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
+  const isUnavailable = items === null || items === undefined;
+  const list = Array.isArray(items) ? items : [];
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="document-text-outline" size={18} color={theme.textPrimary} />
-        <Text style={[styles.headerText, { color: theme.textPrimary }]}>{t.sessionDetail.agenda}</Text>
+        <Ionicons name="document-text-outline" size={18} color={theme.icon} {...a11yDecorative} />
+        <Text style={styles.headerText} accessibilityRole="header">
+          {t.sessionDetail.agenda}
+        </Text>
       </View>
 
-      <View style={styles.timeline}>
-        {items.map((item, index) => {
-          const isLast = index === items.length - 1;
-          return (
-            <View key={item.id} style={styles.row}>
-              {/* Left: time + line */}
-              <View style={styles.timeColumn}>
-                <Text style={[styles.time, { color: theme.textSecondary }]}>{item.time}</Text>
-                <View style={styles.dotWrapper}>
-                  <View style={[styles.dot, { borderColor: theme.textSecondary, backgroundColor: theme.card }]} />
-                  {!isLast && <View style={[styles.line, { backgroundColor: theme.border }]} />}
+      {isUnavailable ? (
+        <View style={styles.emptyBox}>
+          <Ionicons name="time-outline" size={20} color={theme.iconMuted} {...a11yDecorative} />
+          <Text style={styles.emptyText}>
+            La agenda detallada aún no está disponible en el servidor.
+          </Text>
+        </View>
+      ) : list.length === 0 ? (
+        <View style={styles.emptyBox}>
+          <Ionicons name="calendar-clear-outline" size={20} color={theme.iconMuted} {...a11yDecorative} />
+          <Text style={styles.emptyText}>Esta capacitación no tiene actividades registradas.</Text>
+        </View>
+      ) : (
+        <View style={styles.timeline}>
+          {list.map((item, index) => {
+            const isLast = index === list.length - 1;
+            return (
+              <View
+                key={item.id}
+                style={styles.row}
+                {...a11yGroup([item.time, item.title, item.description].filter(Boolean).join(', '))}
+              >
+                <View style={styles.timeColumn}>
+                  <Text style={styles.time}>{item.time}</Text>
+                  <View style={styles.dotWrapper} {...a11yDecorative}>
+                    <View style={styles.dot} />
+                    {!isLast && <View style={styles.line} />}
+                  </View>
+                </View>
+
+                <View style={styles.content}>
+                  <Text style={styles.itemTitle}>{item.title}</Text>
+                  {!!item.description && (
+                    <Text style={styles.itemDesc}>{item.description}</Text>
+                  )}
                 </View>
               </View>
-
-              {/* Right: content */}
-              <View style={styles.content}>
-                <Text style={[styles.itemTitle, { color: theme.textPrimary }]}>{item.title}</Text>
-                <Text style={[styles.itemDesc, { color: theme.textSecondary }]}>{item.description}</Text>
-              </View>
-            </View>
-          );
-        })}
-      </View>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    gap: 10,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#2E2E2E',
-  },
-  timeline: {
-    gap: 0,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-    minHeight: 64,
-  },
-  // Left column: time + dot + line
-  timeColumn: {
-    width: 48,
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  time: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#495565',
-    marginTop: 2,
-  },
-  dotWrapper: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#495565',
-    backgroundColor: '#fff',
-  },
-  line: {
-    flex: 1,
-    width: 2,
-    backgroundColor: '#D0D0D0',
-    marginTop: 2,
-  },
-  // Right column: title + description
-  content: {
-    flex: 1,
-    paddingBottom: 16,
-  },
-  itemTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#2E2E2E',
-    marginTop: 2,
-    marginBottom: 3,
-  },
-  itemDesc: {
-    fontSize: 11,
-    color: '#495565',
-    lineHeight: 17,
-  },
-});
+const makeStyles = (t) =>
+  StyleSheet.create({
+    container: { gap: 10 },
+    header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    headerText: { fontSize: 16, fontWeight: '700', color: t.textPrimary },
+
+    emptyBox: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      backgroundColor: t.cardAlt, borderRadius: 10,
+      borderWidth: 1, borderColor: t.border, padding: 12,
+    },
+    emptyText: { flex: 1, fontSize: 13, color: t.textMuted, lineHeight: 18 },
+
+    timeline: { gap: 0 },
+    row: { flexDirection: 'row', gap: 12, minHeight: 64 },
+    timeColumn: { width: 48, alignItems: 'flex-end', gap: 2 },
+    time: { fontSize: 13, fontWeight: '700', color: t.textSecondary, marginTop: 2 },
+    dotWrapper: { alignItems: 'center', flex: 1 },
+    dot: {
+      width: 12, height: 12, borderRadius: 6,
+      borderWidth: 2, borderColor: t.primary, backgroundColor: t.card,
+    },
+    line: { flex: 1, width: 2, backgroundColor: t.border, marginTop: 2 },
+    content: { flex: 1, paddingBottom: 16 },
+    itemTitle: { fontSize: 14, fontWeight: '700', color: t.textPrimary, marginTop: 2, marginBottom: 3 },
+    itemDesc: { fontSize: 13, color: t.textSecondary, lineHeight: 18 },
+  });

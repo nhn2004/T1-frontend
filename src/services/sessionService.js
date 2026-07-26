@@ -7,16 +7,24 @@ const STATUS_MAP = {
   Cancelled:  'CANCELLED',
 };
 
+// Traducción inversa: el frontend trabaja con el vocabulario normalizado
+// (PLANNED/ACTIVE/COMPLETED/CANCELLED) y el backend con el suyo.
+const STATUS_TO_API = Object.fromEntries(
+  Object.entries(STATUS_MAP).map(([api_, ui]) => [ui, api_]),
+);
+
 function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('es-ES', {
-    day: 'numeric', month: 'short', year: 'numeric',
-  });
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function formatTime(iso) {
-  return new Date(iso).toLocaleTimeString('es-ES', {
-    hour: '2-digit', minute: '2-digit',
-  });
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 }
 
 function splitTitle(fullTitle = '') {
@@ -37,19 +45,23 @@ function toSession(raw) {
     time:          formatTime(raw.scheduledStart),
     type,
     description:   raw.description ?? '',
+    sessionCode:   raw.sessionCode ?? null,
     scheduledStart: raw.scheduledStart,
     scheduledEnd:   raw.scheduledEnd,
     actualStart:    raw.actualStart,
     actualEnd:      raw.actualEnd,
+    trainingLocationId: raw.trainingLocationId,
   };
 }
 
 function toTrainingCenter(loc) {
-  if (!loc) return { name: '—', address: '—', specificLocation: '', imageUri: null };
+  if (!loc) return null;
   return {
+    id:               loc.trainingLocationId,
     name:             loc.name,
     address:          loc.address ?? '—',
     specificLocation: loc.locationType ?? 'Sede principal',
+    maxCapacity:      loc.maxCapacity ?? null,
     imageUri:         null,
   };
 }
@@ -57,7 +69,8 @@ function toTrainingCenter(loc) {
 function toInstructor(hp) {
   return {
     id:       hp.healthPersonnelId,
-    name:     `${hp.firstName} ${hp.lastName}`.trim(),
+    userId:   hp.userId,
+    name:     `${hp.firstName ?? ''} ${hp.lastName ?? ''}`.trim() || 'Personal de salud',
     division: hp.specialty ?? hp.profession ?? '—',
     role:     (hp.profession ?? 'MEDICO').toUpperCase().replace(/\s+/g, '_'),
   };
@@ -66,7 +79,7 @@ function toInstructor(hp) {
 export const sessionService = {
   async getAll() {
     const { data: wrapper } = await api.get('/training-sessions');
-    return wrapper.data.map(toSession);
+    return (wrapper.data ?? []).map(toSession);
   },
 
   async getById(id) {
@@ -74,27 +87,65 @@ export const sessionService = {
     const raw = wrapper.data;
     const session = toSession(raw);
 
-    const [locResult, hpResult] = await Promise.allSettled([
+    // El modelo de datos no tiene una relación sesión↔instructor. La única vinculación
+    // real entre personal de salud y una sesión son las invitaciones, así que los
+    // "instructores a cargo" se derivan de las invitaciones de ESTA sesión.
+    // Antes se devolvía /health-personnel completo, lo que mostraba a todo el personal
+    // del sistema como asignado a cualquier sesión.
+    const [locResult, hpResult, invResult] = await Promise.allSettled([
       raw.trainingLocationId
         ? api.get(`/training-locations/${raw.trainingLocationId}`)
         : Promise.resolve(null),
       api.get('/health-personnel'),
+      api.get('/invitations'),
     ]);
 
     const loc = locResult.status === 'fulfilled' && locResult.value
       ? locResult.value.data.data
       : null;
-    const hp = hpResult.status === 'fulfilled'
+
+    const allPersonnel = hpResult.status === 'fulfilled'
       ? hpResult.value.data.data ?? []
       : [];
 
+    const invitations = invResult.status === 'fulfilled'
+      ? invResult.value.data.data ?? []
+      : [];
+
+    // Invitaciones vigentes de esta sesión (las revocadas/rechazadas no cuentan).
+    const invitedUserIds = new Set(
+      invitations
+        .filter((inv) => inv.trainingSessionId === id
+          && ['Pending', 'Accepted'].includes(inv.status))
+        .map((inv) => inv.targetUserId)
+        .filter(Boolean),
+    );
+
+    const instructors = allPersonnel
+      .filter((hp) => invitedUserIds.has(hp.userId))
+      .map(toInstructor);
+
     return {
       ...session,
-      trainingLocationId: raw.trainingLocationId,
-      note:               raw.description ?? '',
-      agenda:             [],
-      trainingCenter:     toTrainingCenter(loc),
-      instructors:        hp.map(toInstructor),
+      note:            raw.description ?? '',
+      // El backend no expone una agenda por sesión todavía; se devuelve null (no
+      // disponible) en vez de [] para que la UI muestre "aún no hay agenda" en lugar
+      // de una sección vacía que parece un error de carga.
+      agenda:          null,
+      trainingCenter:  toTrainingCenter(loc),
+      instructors,
+      // Permite a la UI distinguir "no hay instructores asignados" de "no se pudieron
+      // cargar", que se ven igual pero significan cosas muy distintas.
+      instructorsLoaded: hpResult.status === 'fulfilled' && invResult.status === 'fulfilled',
     };
   },
+
+  /** Crea una sesión de entrenamiento. Devuelve la sesión normalizada. */
+  async create(payload) {
+    const { data: wrapper } = await api.post('/training-sessions', payload);
+    return wrapper.data;
+  },
+
+  STATUS_MAP,
+  STATUS_TO_API,
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, StyleSheet, ActivityIndicator,
   TouchableOpacity, ScrollView,
@@ -6,16 +6,43 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { COLORS } from '../../constants/colors';
+import { ROUTES } from '../../constants/routes';
+import { a11yButton, a11yDecorative, a11yGroup, MIN_TOUCH_SIZE } from '../../constants/a11y';
 import { useAuth } from '../../hooks';
+import useTheme from '../../hooks/useTheme';
 import { sessionService }         from '../../services';
 import { traineeService }         from '../../services/traineeService';
 import { healthPersonnelService } from '../../services/healthPersonnelService';
 import { invitationService }      from '../../services/invitationService';
 import api                        from '../../services/api';
 
+const STATUS_TONE = {
+  ACTIVE:    'info',
+  PLANNED:   'warning',
+  COMPLETED: 'success',
+  CANCELLED: 'danger',
+};
+
+const STATUS_LABEL = {
+  ACTIVE:    'En Curso',
+  PLANNED:   'Pendiente',
+  COMPLETED: 'Finalizada',
+  CANCELLED: 'Cancelada',
+};
+
+// Accesos rápidos. Cada uno declara la ruta a la que navega; se filtran con
+// `canAccessRoute` para no ofrecer pantallas que el rol no tiene montadas.
+const QUICK_ACCESS = [
+  { key: 'sessions',   label: 'Sesiones',     icon: 'calendar-outline',        route: ROUTES.TRAINING },
+  { key: 'people',     label: 'Personas',     icon: 'people-outline',          route: ROUTES.PEOPLE },
+  { key: 'validation', label: 'Validaciones', icon: 'checkmark-done-outline',  route: ROUTES.VALIDATION_QUEUE },
+  { key: 'schedule',   label: 'Calendario',   icon: 'calendar-number-outline', route: ROUTES.SCHEDULE },
+];
+
 export default function AdminDashboard({ navigation }) {
-  const { user } = useAuth();
+  const { user, canAccessRoute } = useAuth();
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const [loading,        setLoading]        = useState(true);
   const [sessions,       setSessions]       = useState([]);
@@ -23,106 +50,159 @@ export default function AdminDashboard({ navigation }) {
   const [staffCount,     setStaffCount]     = useState(null);
   const [userCount,      setUserCount]      = useState(null);
   const [pendingInvites, setPendingInvites] = useState(null);
+  const [loadError,      setLoadError]      = useState(false);
 
   useEffect(() => {
+    let alive = true;
+
     Promise.allSettled([
       sessionService.getAll(),
       traineeService.getAll(),
       healthPersonnelService.getAll(),
       api.get('/users'),
       invitationService.getAll(),
-    ]).then(([sessR, trainR, staffR, usersR, invsR]) => {
+    ]).then((results) => {
+      if (!alive) return;
+      const [sessR, trainR, staffR, usersR, invsR] = results;
+
       if (sessR.status  === 'fulfilled') setSessions(sessR.value);
       if (trainR.status === 'fulfilled') setTraineeCount(trainR.value.length);
       if (staffR.status === 'fulfilled') setStaffCount(staffR.value.length);
       if (usersR.status === 'fulfilled') setUserCount((usersR.value.data?.data ?? []).length);
-      if (invsR.status  === 'fulfilled') setPendingInvites(invsR.value.filter(i => i.status === 'Pending').length);
-    }).finally(() => setLoading(false));
+      if (invsR.status  === 'fulfilled') {
+        setPendingInvites(invsR.value.filter((i) => i.status === 'Pending').length);
+      }
+
+      // Si alguna fuente falló, la métrica queda en «—» y se avisa: mostrar 0 haría
+      // creer que el dato es real.
+      setLoadError(results.some((r) => r.status === 'rejected'));
+    }).finally(() => {
+      if (alive) setLoading(false);
+    });
+
+    return () => { alive = false; };
   }, []);
 
-  const activeSessions    = sessions.filter(s => s.status === 'ACTIVE').length;
-  const plannedSessions   = sessions.filter(s => s.status === 'PLANNED').length;
-  const completedSessions = sessions.filter(s => s.status === 'COMPLETED').length;
+  const stats = useMemo(() => {
+    // `null` = no disponible. Nunca se sustituye por 0.
+    const fmt = (v) => (v === null || v === undefined ? '—' : String(v));
+    const count = (status) => (loading ? '—' : String(sessions.filter((s) => s.status === status).length));
 
-  const fmt = v => (loading && v === null) ? '—' : String(v ?? 0);
+    return [
+      { id: 'users',     label: 'Usuarios\nRegistrados',    value: loading ? '—' : fmt(userCount),      icon: 'people-outline',           tone: 'info' },
+      { id: 'trainees',  label: 'Bomberos\nAspirantes',     value: loading ? '—' : fmt(traineeCount),   icon: 'flame-outline',            tone: 'primary' },
+      { id: 'staff',     label: 'Personal\nMédico',         value: loading ? '—' : fmt(staffCount),     icon: 'medkit-outline',           tone: 'success' },
+      { id: 'pending',   label: 'Invitaciones\nPendientes', value: loading ? '—' : fmt(pendingInvites), icon: 'mail-outline',             tone: 'warning' },
+      { id: 'active',    label: 'Sesiones\nEn Curso',       value: count('ACTIVE'),                     icon: 'play-circle-outline',      tone: 'info' },
+      { id: 'planned',   label: 'Sesiones\nPendientes',     value: count('PLANNED'),                    icon: 'time-outline',             tone: 'warning' },
+      { id: 'completed', label: 'Sesiones\nFinalizadas',    value: count('COMPLETED'),                  icon: 'checkmark-circle-outline', tone: 'success' },
+      { id: 'total',     label: 'Total\nSesiones',          value: loading ? '—' : String(sessions.length), icon: 'calendar-outline',     tone: 'neutral' },
+    ];
+  }, [loading, sessions, userCount, traineeCount, staffCount, pendingInvites]);
 
-  const STATS = [
-    { id: 'users',     label: 'Usuarios\nRegistrados',   value: fmt(userCount),      icon: 'people-outline',       color: '#1E88E5', bg: '#EAF3FD' },
-    { id: 'trainees',  label: 'Bomberos\nAspirantes',    value: fmt(traineeCount),   icon: 'flame-outline',        color: '#E85D27', bg: '#FFF0EA' },
-    { id: 'staff',     label: 'Personal\nMédico',        value: fmt(staffCount),     icon: 'medkit-outline',       color: '#08C65A', bg: '#E8FAF0' },
-    { id: 'pending',   label: 'Invitaciones\nPendientes',value: fmt(pendingInvites), icon: 'mail-outline',         color: '#F59E0B', bg: '#FFFBEB' },
-    { id: 'active',    label: 'Sesiones\nEn Curso',      value: loading ? '—' : String(activeSessions),    icon: 'play-circle-outline',  color: '#1E88E5', bg: '#EAF3FD' },
-    { id: 'planned',   label: 'Sesiones\nPendientes',    value: loading ? '—' : String(plannedSessions),   icon: 'time-outline',         color: '#8F45D4', bg: '#F3EAFD' },
-    { id: 'completed', label: 'Sesiones\nFinalizadas',   value: loading ? '—' : String(completedSessions), icon: 'checkmark-circle-outline', color: '#08C65A', bg: '#E8FAF0' },
-    { id: 'total',     label: 'Total\nSesiones',         value: loading ? '—' : String(sessions.length),   icon: 'calendar-outline',     color: '#697282', bg: '#F4F6F8' },
-  ];
+  const recentSessions = useMemo(
+    () => [...sessions]
+      .sort((a, b) => new Date(b.scheduledStart) - new Date(a.scheduledStart))
+      .slice(0, 6),
+    [sessions],
+  );
 
-  const recentSessions = [...sessions]
-    .sort((a, b) => new Date(b.scheduledStart) - new Date(a.scheduledStart))
-    .slice(0, 6);
-
-  const STATUS_BADGE = {
-    ACTIVE:    { label: 'En Curso',   bg: '#1E88E5' },
-    PLANNED:   { label: 'Pendiente',  bg: '#8F45D4' },
-    COMPLETED: { label: 'Finalizada', bg: '#08C65A' },
-    CANCELLED: { label: 'Cancelada',  bg: '#D83B35' },
-  };
+  const quickAccess = useMemo(
+    () => QUICK_ACCESS.filter((q) => canAccessRoute(q.route)),
+    [canAccessRoute],
+  );
 
   return (
-    <SafeAreaView style={styles.root}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
-
-        {/* ── Header ── */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Bienvenido, {user?.name ?? 'Administrador'}</Text>
-            <Text style={styles.subtitle}>Panel de Administración · Vista General del Sistema</Text>
+          <View style={styles.headerText}>
+            <Text style={styles.greeting} accessibilityRole="header">
+              Bienvenido, {user?.name ?? 'Administrador'}
+            </Text>
+            <Text style={styles.subtitle}>
+              Panel de Administración · Vista General del Sistema
+            </Text>
           </View>
-          {loading && <ActivityIndicator size="small" color={COLORS.primary} />}
+          {loading && <ActivityIndicator size="small" color={theme.primary} />}
         </View>
 
-        {/* ── Stats grid 4x2 ── */}
+        {loadError && !loading && (
+          <View style={styles.warningBanner} accessibilityRole="alert">
+            <Ionicons
+              name="warning-outline"
+              size={18}
+              color={theme.status.warning.fg}
+              {...a11yDecorative}
+            />
+            <Text style={styles.warningText}>
+              Algunas métricas no se pudieron cargar y se muestran como «—».
+            </Text>
+          </View>
+        )}
+
+        {/* ── Estadísticas ── */}
         <View style={styles.statsGrid}>
-          {STATS.map(st => (
-            <View key={st.id} style={[styles.statCard, { backgroundColor: st.bg }]}>
-              <View style={[styles.statIcon, { backgroundColor: st.color + '22' }]}>
-                <Ionicons name={st.icon} size={20} color={st.color} />
+          {stats.map((st) => {
+            const tone = st.tone === 'primary'
+              ? { bg: theme.primarySoft, fg: theme.onPrimarySoft }
+              : theme.status[st.tone];
+
+            return (
+              <View
+                key={st.id}
+                style={[styles.statCard, { backgroundColor: tone.bg }]}
+                {...a11yGroup(`${st.label.replace('\n', ' ')}: ${st.value}`)}
+              >
+                <View style={styles.statIcon} {...a11yDecorative}>
+                  <Ionicons name={st.icon} size={20} color={tone.fg} />
+                </View>
+                <Text style={[styles.statValue, { color: tone.fg }]}>{st.value}</Text>
+                <Text style={[styles.statLabel, { color: tone.fg }]}>{st.label}</Text>
               </View>
-              <Text style={[styles.statValue, { color: st.color }]}>{st.value}</Text>
-              <Text style={styles.statLabel}>{st.label}</Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* ── Sesiones recientes ── */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Ionicons name="calendar-outline" size={18} color="#1A1A1A" />
-            <Text style={styles.cardTitle}>Sesiones Recientes</Text>
+            <Ionicons name="calendar-outline" size={18} color={theme.icon} {...a11yDecorative} />
+            <Text style={styles.cardTitle} accessibilityRole="header">Sesiones Recientes</Text>
           </View>
 
           {loading ? (
-            <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 16 }} />
+            <ActivityIndicator size="small" color={theme.primary} style={styles.inlineLoader} />
           ) : recentSessions.length === 0 ? (
             <Text style={styles.emptyText}>No hay sesiones registradas</Text>
           ) : (
-            recentSessions.map(s => {
-              const badge = STATUS_BADGE[s.status] ?? STATUS_BADGE.PLANNED;
+            recentSessions.map((s) => {
+              const tone = theme.status[STATUS_TONE[s.status] ?? 'warning'];
+              const label = STATUS_LABEL[s.status] ?? 'Pendiente';
+
               return (
                 <TouchableOpacity
                   key={s.id}
                   style={styles.sessionRow}
-                  onPress={() => navigation?.navigate('SessionDetail', { id: s.id })}
+                  onPress={() => navigation?.navigate(ROUTES.SESSION_DETAIL, { id: s.id })}
                   activeOpacity={0.75}
+                  {...a11yButton(`${s.title}, ${s.date} ${s.time}, ${label}`, {
+                    hint: 'Abre el detalle de la sesión',
+                  })}
                 >
                   <View style={styles.sessionInfo}>
-                    <Text style={styles.sessionTitle} numberOfLines={1}>{s.title}</Text>
+                    <Text style={styles.sessionTitle} numberOfLines={2}>{s.title}</Text>
                     <Text style={styles.sessionMeta}>{s.date} · {s.time}</Text>
                   </View>
-                  <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                    <Text style={styles.badgeText}>{badge.label}</Text>
+                  <View style={[styles.badge, { backgroundColor: tone.bg }]}>
+                    <Text style={[styles.badgeText, { color: tone.fg }]}>{label}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color="#C0C8D2" />
+                  <Ionicons
+                    name="chevron-forward"
+                    size={16}
+                    color={theme.iconMuted}
+                    {...a11yDecorative}
+                  />
                 </TouchableOpacity>
               );
             })
@@ -130,90 +210,95 @@ export default function AdminDashboard({ navigation }) {
         </View>
 
         {/* ── Accesos rápidos ── */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="flash-outline" size={18} color="#1A1A1A" />
-            <Text style={styles.cardTitle}>Accesos Rápidos</Text>
+        {quickAccess.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="flash-outline" size={18} color={theme.icon} {...a11yDecorative} />
+              <Text style={styles.cardTitle} accessibilityRole="header">Accesos Rápidos</Text>
+            </View>
+            <View style={styles.quickRow}>
+              {quickAccess.map((q) => (
+                <TouchableOpacity
+                  key={q.key}
+                  style={styles.quickCard}
+                  onPress={() => navigation?.navigate(q.route)}
+                  activeOpacity={0.8}
+                  {...a11yButton(q.label)}
+                >
+                  <Ionicons name={q.icon} size={22} color={theme.primaryText} {...a11yDecorative} />
+                  <Text style={styles.quickLabel}>{q.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-          <View style={styles.quickRow}>
-            {[
-              { label: 'Sesiones',   icon: 'calendar',       route: 'Sessions'  },
-              { label: 'Personas',   icon: 'people',         route: 'Personas'  },
-              { label: 'Validaciones', icon: 'checkmark-done', route: 'ValidationQueue' },
-              { label: 'Calendario', icon: 'calendar-number', route: 'TrainingSchedule' },
-            ].map(q => (
-              <TouchableOpacity
-                key={q.route}
-                style={styles.quickCard}
-                onPress={() => navigation?.navigate(q.route)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name={`${q.icon}-outline`} size={22} color={COLORS.primary} />
-                <Text style={styles.quickLabel}>{q.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  root:    { flex: 1, backgroundColor: '#F4F6F8' },
-  content: { padding: 20, gap: 16 },
+const makeStyles = (t) =>
+  StyleSheet.create({
+    root:    { flex: 1, backgroundColor: t.background },
+    content: { padding: 20, gap: 16 },
 
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  greeting: { fontSize: 22, fontWeight: '800', color: '#1A1A1A' },
-  subtitle: { fontSize: 12, color: '#697282', marginTop: 2 },
+    header: {
+      flexDirection: 'row', alignItems: 'center',
+      justifyContent: 'space-between', gap: 12,
+    },
+    headerText: { flex: 1 },
+    greeting: { fontSize: 22, fontWeight: '800', color: t.textPrimary },
+    subtitle: { fontSize: 13, color: t.textSecondary, marginTop: 2 },
 
-  statsGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
-  },
-  statCard: {
-    width: '23%', minWidth: 130, flexGrow: 1,
-    borderRadius: 14, padding: 14, gap: 6,
-  },
-  statIcon: {
-    width: 36, height: 36, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: 2,
-  },
-  statValue: { fontSize: 26, fontWeight: '900', lineHeight: 30 },
-  statLabel: { fontSize: 11, fontWeight: '700', color: '#697282', lineHeight: 15 },
+    warningBanner: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      backgroundColor: t.status.warning.bg,
+      borderWidth: 1, borderColor: t.status.warning.border,
+      borderRadius: 10, padding: 12,
+    },
+    warningText: { flex: 1, fontSize: 13, color: t.status.warning.fg },
 
-  card: {
-    backgroundColor: '#fff', borderRadius: 14,
-    borderWidth: 1, borderColor: '#E8EBF0',
-    padding: 16, gap: 10,
-  },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  cardTitle:  { fontSize: 15, fontWeight: '700', color: '#1A1A1A' },
+    statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    statCard: {
+      width: '23%', minWidth: 130, flexGrow: 1,
+      borderRadius: 14, padding: 14, gap: 6,
+    },
+    statIcon: {
+      width: 36, height: 36, borderRadius: 10,
+      alignItems: 'center', justifyContent: 'center',
+      marginBottom: 2, backgroundColor: t.scrim,
+    },
+    statValue: { fontSize: 26, fontWeight: '900', lineHeight: 30 },
+    statLabel: { fontSize: 12, fontWeight: '700', lineHeight: 16 },
 
-  sessionRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 10,
-    borderTopWidth: 1, borderTopColor: '#F0F0F0',
-  },
-  sessionInfo:  { flex: 1 },
-  sessionTitle: { fontSize: 13, fontWeight: '700', color: '#1A1A1A' },
-  sessionMeta:  { fontSize: 11, color: '#9AA3B0', marginTop: 2 },
-  badge: {
-    borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
-  },
-  badgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
-  emptyText: { fontSize: 13, color: '#9AA3B0', textAlign: 'center', paddingVertical: 12 },
+    card: {
+      backgroundColor: t.card, borderRadius: 14,
+      borderWidth: 1, borderColor: t.border,
+      padding: 16, gap: 10,
+    },
+    cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+    cardTitle:  { fontSize: 16, fontWeight: '700', color: t.textPrimary },
+    inlineLoader: { marginVertical: 16 },
 
-  quickRow: { flexDirection: 'row', gap: 10 },
-  quickCard: {
-    flex: 1, backgroundColor: '#F8F9FA', borderRadius: 12,
-    borderWidth: 1, borderColor: '#E8EBF0',
-    alignItems: 'center', justifyContent: 'center',
-    paddingVertical: 16, gap: 6,
-  },
-  quickLabel: { fontSize: 11, fontWeight: '700', color: '#495565', textAlign: 'center' },
-});
+    sessionRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingVertical: 10, minHeight: MIN_TOUCH_SIZE,
+      borderTopWidth: 1, borderTopColor: t.divider,
+    },
+    sessionInfo:  { flex: 1 },
+    sessionTitle: { fontSize: 14, fontWeight: '700', color: t.textPrimary },
+    sessionMeta:  { fontSize: 13, color: t.textMuted, marginTop: 2 },
+    badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+    badgeText: { fontSize: 11, fontWeight: '800' },
+    emptyText: { fontSize: 14, color: t.textMuted, textAlign: 'center', paddingVertical: 12 },
+
+    quickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    quickCard: {
+      flex: 1, minWidth: 110,
+      backgroundColor: t.cardAlt, borderRadius: 12,
+      borderWidth: 1, borderColor: t.border,
+      alignItems: 'center', justifyContent: 'center',
+      paddingVertical: 16, gap: 6, minHeight: MIN_TOUCH_SIZE + 20,
+    },
+    quickLabel: { fontSize: 12, fontWeight: '700', color: t.textSecondary, textAlign: 'center' },
+  });

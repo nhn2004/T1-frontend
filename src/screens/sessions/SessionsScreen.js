@@ -1,70 +1,76 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { COLORS } from '../../constants';
-import { ROLES } from '../../constants/roles';
+import { ROUTES } from '../../constants/routes';
+import { a11yButton, a11yDecorative, MIN_TOUCH_SIZE } from '../../constants/a11y';
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
 import FilterTabs   from './components/FilterTabs';
 import CarouselGrid from './components/CarouselGrid';
 import { useSessions } from './hooks/useSessions';
+import { FILTER_KEYS, applyFilter, countByFilter } from './sessionFilters';
 
-import { FILTER_KEYS, applyFilter } from './__mocks__/sessionsData';
-
-export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
+export default function SessionsScreen({ navigation, onViewDetails }) {
   const theme = useTheme();
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const { role } = useAuth();
-  const isFireChief = role === ROLES.FIRE_CHIEF || role === ROLES.ADMIN;
-  const [activeFilter, setActiveFilter] = useState(FILTER_KEYS.ALL);
-  const [query, setQuery] = useState('');
+  const { canAccessRoute } = useAuth();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
+  const [activeFilter,   setActiveFilter]   = useState(FILTER_KEYS.ALL);
+  const [query,          setQuery]          = useState('');
   const [searchExpanded, setSearchExpanded] = useState(false);
 
-  const { sessions, loading, error } = useSessions();
+  const { sessions, loading, error, refresh } = useSessions();
+
+  const canCreate = canAccessRoute(ROUTES.SESSION_CREATE);
 
   const filteredSessions = useMemo(() => {
     const byFilter = applyFilter(sessions, activeFilter);
-    if (!query.trim()) return byFilter;
-    return byFilter.filter(s => s.title.toLowerCase().includes(query.trim().toLowerCase()));
+    const q = query.trim().toLowerCase();
+    if (!q) return byFilter;
+    return byFilter.filter((s) => s.title.toLowerCase().includes(q));
   }, [sessions, activeFilter, query]);
 
-  const counts = useMemo(() => ({
-    [FILTER_KEYS.ALL]:         sessions.length,
-    [FILTER_KEYS.IN_PROGRESS]: applyFilter(sessions, FILTER_KEYS.IN_PROGRESS).length,
-    [FILTER_KEYS.PENDING]:     applyFilter(sessions, FILTER_KEYS.PENDING).length,
-    [FILTER_KEYS.COMPLETED]:   applyFilter(sessions, FILTER_KEYS.COMPLETED).length,
-    [FILTER_KEYS.CANCELLED]:   applyFilter(sessions, FILTER_KEYS.CANCELLED).length,
-  }), [sessions]);
+  const counts = useMemo(() => countByFilter(sessions), [sessions]);
 
   const handleViewDetails = useCallback((id) => {
     if (onViewDetails) onViewDetails(id);
-    else navigation?.navigate('SessionDetail', { id });
+    else navigation?.navigate(ROUTES.SESSION_DETAIL, { id });
   }, [onViewDetails, navigation]);
 
   const toggleSearch = useCallback(() => {
-    if (searchExpanded) setQuery('');
-    setSearchExpanded(v => !v);
-  }, [searchExpanded]);
-  const emptyMessage = t.sessions.emptyMessage[activeFilter];
+    setSearchExpanded((v) => {
+      if (v) setQuery('');
+      return !v;
+    });
+  }, []);
+
+  const emptyMessage = t.sessions.emptyMessage[activeFilter]
+    ?? t.sessions.emptyMessage[FILTER_KEYS.ALL];
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
-      {Sidebar && <Sidebar />}
-
-      <View style={[styles.content, { paddingTop: Math.max(insets.top, 12) }]}>
+    <SafeAreaView style={styles.root} edges={['top']}>
+      <View style={styles.content}>
         <View style={styles.titleRow}>
-          <Text style={[styles.pageTitle, { color: theme.textPrimary }]}>{t.sessions.pageTitle[activeFilter]}</Text>
-          {isFireChief && (
+          <Text style={styles.pageTitle} accessibilityRole="header">
+            {t.sessions.pageTitle[activeFilter] ?? t.sessions.pageTitle[FILTER_KEYS.ALL]}
+          </Text>
+          {canCreate && (
             <TouchableOpacity
               style={styles.crearBtn}
-              onPress={() => navigation?.navigate('CrearSesion')}
+              onPress={() => navigation?.navigate(ROUTES.SESSION_CREATE)}
               activeOpacity={0.85}
+              {...a11yButton('Crear sesión', { hint: 'Abre el formulario de nueva capacitación' })}
             >
-              <Ionicons name="add-circle-outline" size={16} color="#fff" />
+              <Ionicons
+                name="add-circle-outline"
+                size={16}
+                color={theme.onPrimarySolid}
+                {...a11yDecorative}
+              />
               <Text style={styles.crearBtnText}>Crear Sesión</Text>
             </TouchableOpacity>
           )}
@@ -82,21 +88,39 @@ export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
 
         {loading ? (
           <View style={styles.emptyBox}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={styles.emptyText}>Cargando capacitaciones…</Text>
           </View>
         ) : error ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>{error}</Text>
+          <View style={styles.emptyBox} accessibilityRole="alert">
+            <Ionicons
+              name="cloud-offline-outline"
+              size={32}
+              color={theme.status.danger.fg}
+              {...a11yDecorative}
+            />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity
+              style={styles.retryBtn}
+              onPress={refresh}
+              activeOpacity={0.8}
+              {...a11yButton('Reintentar')}
+            >
+              <Ionicons name="refresh" size={16} color={theme.primaryText} {...a11yDecorative} />
+              <Text style={styles.retryText}>Reintentar</Text>
+            </TouchableOpacity>
           </View>
         ) : filteredSessions.length > 0 ? (
-          <CarouselGrid
-            sessions={filteredSessions}
-            onViewDetails={handleViewDetails}
-          />
+          <CarouselGrid sessions={filteredSessions} onViewDetails={handleViewDetails} />
         ) : (
           <View style={styles.emptyBox}>
-            <Ionicons name="file-tray-outline" size={32} color={theme.textMuted} />
-            <Text style={[styles.emptyText, { color: theme.textMuted }]}>{emptyMessage}</Text>
+            <Ionicons
+              name="file-tray-outline"
+              size={32}
+              color={theme.iconMuted}
+              {...a11yDecorative}
+            />
+            <Text style={styles.emptyText}>{emptyMessage}</Text>
           </View>
         )}
       </View>
@@ -104,41 +128,42 @@ export default function SessionsScreen({ navigation, Sidebar, onViewDetails }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 14,
-    paddingTop: 14,
-    paddingBottom: 14,
-    gap: 8,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  pageTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#2E2E2E',
-  },
-  crearBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    backgroundColor: '#E85D27',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-  },
-  crearBtnText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  emptyBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  emptyText: { fontSize: 14 },
-});
+const makeStyles = (t) =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: t.background },
+    content: { flex: 1, padding: 14, gap: 8 },
+
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    pageTitle: { fontSize: 19, fontWeight: '800', color: t.textPrimary },
+    crearBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 7,
+      backgroundColor: t.primarySolid,
+      borderRadius: 10,
+      paddingHorizontal: 16,
+      minHeight: MIN_TOUCH_SIZE,
+    },
+    crearBtnText: { color: t.onPrimarySolid, fontSize: 14, fontWeight: '700' },
+
+    emptyBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20 },
+    emptyText: { fontSize: 15, color: t.textMuted, textAlign: 'center' },
+    errorText: { fontSize: 15, color: t.status.danger.fg, textAlign: 'center', fontWeight: '600' },
+    retryBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 16,
+      minHeight: MIN_TOUCH_SIZE,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: t.primaryBorder,
+    },
+    retryText: { color: t.primaryText, fontSize: 14, fontWeight: '700' },
+  });

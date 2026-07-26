@@ -1,12 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, Modal, Pressable, Alert, ActivityIndicator,
+  StyleSheet, Modal, Pressable, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { DOCTOR_FILTERS } from './__mocks__/crearSesionData';
+import { a11yAlert, a11yButton, a11yModal } from '../../constants/a11y';
+import Toast from '../../components/Toast';
 import { healthPersonnelService } from '../../services/healthPersonnelService';
 import api from '../../services/api';
 
@@ -60,11 +62,19 @@ export default function CrearSesionScreen({ navigation }) {
   const [bomberoEmails, setBomberoEmails] = useState(['', '', '', '']);
   const [saving,        setSaving]        = useState(false);
   const [successData,   setSuccessData]   = useState(null);
+  // Alert.alert es un no-op en web, así que los errores del formulario se muestran
+  // dentro de la pantalla en vez de en un diálogo nativo que nunca aparecería.
+  const [formError,     setFormError]     = useState('');
+  // Correos añadidos manualmente desde los modales de médico/capacitador.
+  const [extraEmails,   setExtraEmails]   = useState([]);
 
   useEffect(() => {
     healthPersonnelService.getAll()
       .then(list => setAllMedicos(list.map(p => ({
         id:        p.id,
+        // Se conserva el userId: las invitaciones se vinculan al usuario, no a la
+        // ficha de personal de salud.
+        userId:    p.userId,
         name:      p.name,
         specialty: p.specialty ?? p.role,
         email:     p.email,
@@ -126,6 +136,17 @@ export default function CrearSesionScreen({ navigation }) {
     setBomberoEmails(prev => prev.filter((_, i) => i !== idx));
   }
 
+  /**
+   * Añade correos capturados en el modal de "Añadir médico/capacitador" a la lista de
+   * invitados. Se envían de verdad al crear la sesión, junto con el resto.
+   */
+  function addExtraEmails(list) {
+    setExtraEmails((prev) => {
+      const known = new Set(prev);
+      return [...prev, ...list.filter((e) => !known.has(e))];
+    });
+  }
+
   function handleSiguiente() {
     if (!nombre.trim() || !fecha.trim() || !puntoQuema) {
       setShowErrors(true);
@@ -135,61 +156,91 @@ export default function CrearSesionScreen({ navigation }) {
     setStep(2);
   }
 
+  /**
+   * Crea la sesión y envía las invitaciones.
+   *
+   * Nota sobre el modelo de datos: `TrainingSession` no tiene columnas para el punto
+   * de quema ni el número de quemas, y no existe una relación sesión↔personal. Para no
+   * descartar lo que el usuario configuró:
+   *   · punto de quema y nº de quemas se guardan en `description` (único campo de texto
+   *     libre que el backend persiste) con un formato que la app puede volver a leer;
+   *   · médicos y capacitadores se vinculan mediante invitaciones, que es la única
+   *     relación real entre una persona y una sesión.
+   */
   async function handleCrearSesion() {
     const start = parseDatetime(fecha, hora);
     if (!nombre.trim() || !start) {
-      Alert.alert('Faltan datos', 'Ingresa nombre, fecha (dd/mm/aaaa) y hora (HH:MM AM/PM).');
+      setFormError('Ingresa nombre, fecha (dd/mm/aaaa) y hora (HH:MM AM/PM).');
       return;
     }
-    const end = new Date(start.getTime() + 4 * 3_600_000);
+    if (!puntoQuema) {
+      setFormError('Selecciona el punto de quema en el paso 1.');
+      return;
+    }
 
+    const end = new Date(start.getTime() + 4 * 3_600_000);
+    const puntoLabel = PUNTOS_QUEMA.find((p) => p.key === puntoQuema)?.label ?? puntoQuema;
+
+    setFormError('');
     setSaving(true);
     try {
       const [{ data: instWrap }, { data: locWrap }] = await Promise.all([
         api.get('/institutions'),
         api.get('/training-locations'),
       ]);
-      const institutionId       = instWrap.data?.[0]?.institutionId;
-      const trainingLocationId  = locWrap.data?.[0]?.trainingLocationId;
+      const institutionId      = instWrap.data?.[0]?.institutionId;
+      const trainingLocationId = locWrap.data?.[0]?.trainingLocationId;
 
       if (!institutionId || !trainingLocationId) {
-        Alert.alert('Error', 'No se encontró institución o ubicación de entrenamiento.');
+        setFormError('No se encontró institución o ubicación de entrenamiento.');
         return;
       }
 
       const { data: sessionWrap } = await api.post('/training-sessions', {
         institutionId,
         trainingLocationId,
-        title:          nombre.trim(),
-        description:    null,
-        sessionCode:    null,
-        scheduledStart: start.toISOString(),
-        scheduledEnd:   end.toISOString(),
+        title:           nombre.trim(),
+        description:     `Punto de quema: ${puntoLabel}. Número de quemas: ${numQuemas}.`,
+        sessionCode:     null,
+        scheduledStart:  start.toISOString(),
+        scheduledEnd:    end.toISOString(),
         plannedCapacity: capacidad.trim() ? parseInt(capacidad, 10) : null,
       });
       const sessionId = sessionWrap.data?.trainingSessionId;
 
-      const validEmails = bomberoEmails.map(e => e.trim()).filter(Boolean);
-      const expiresAt   = new Date(Date.now() + 7 * 86_400_000).toISOString();
-      await Promise.allSettled(
-        validEmails.map(email =>
+      // Destinatarios: bomberos por correo + personal seleccionado en los pasos 1 y 2.
+      const expiresAt = new Date(Date.now() + 7 * 86_400_000).toISOString();
+      const recipients = [
+        ...bomberoEmails.map((e) => e.trim()).filter(Boolean).map((email) => ({ email, userId: null })),
+        ...extraEmails.map((email) => ({ email, userId: null })),
+        ...selectedMedicos.filter((md) => md.email).map((md) => ({ email: md.email, userId: md.userId ?? null })),
+        ...selectedCaps.filter((c) => c.email).map((c) => ({ email: c.email, userId: c.id ?? null })),
+      ];
+
+      const results = await Promise.allSettled(
+        recipients.map((r) =>
           api.post('/invitations', {
-            targetEmail:       email,
+            targetEmail:       r.email,
             trainingSessionId: sessionId,
-            targetUserId:      null,
+            targetUserId:      r.userId,
             targetRoleId:      null,
             expiresAt,
-          })
-        )
+          })),
       );
+
+      const sent   = results.filter((r) => r.status === 'fulfilled').length;
+      const failed = results.length - sent;
 
       setSuccessData({
         title:   nombre.trim(),
-        invites: validEmails.length,
+        invites: sent,
+        // Se informa explícitamente si alguna invitación falló: antes se reportaba
+        // como enviadas todas las que se intentaron.
+        failed,
       });
     } catch (e) {
       const msg = e?.response?.data?.message ?? e?.message ?? 'No se pudo crear la sesión.';
-      Alert.alert('Error al crear sesión', msg);
+      setFormError(msg);
     } finally {
       setSaving(false);
     }
@@ -204,11 +255,33 @@ export default function CrearSesionScreen({ navigation }) {
           <Text style={s.pageTitle}>Crear Nueva Sesión</Text>
           <Text style={s.pageSubtitle}>Configura los detalles de la sesión de monitoreo</Text>
         </View>
-        <TouchableOpacity style={s.volverBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={s.volverBtn}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.8}
+          {...a11yButton('Volver')}
+        >
           <Ionicons name="arrow-back" size={15} color="#2E2E2E" />
           <Text style={s.volverText}>Volver</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Errores del formulario: visibles en la propia pantalla porque Alert.alert
+          no muestra nada en web. */}
+      {!!formError && (
+        <View style={s.errorWrap} {...a11yAlert(formError)}>
+          <Toast message={formError} tone="error" />
+        </View>
+      )}
+
+      {extraEmails.length > 0 && (
+        <View style={s.errorWrap}>
+          <Toast
+            message={`${extraEmails.length} correo(s) adicional(es) se invitarán al crear la sesión.`}
+            tone="info"
+          />
+        </View>
+      )}
 
       {/* ── Barra de pasos ── */}
       <View style={s.stepsBar}>
@@ -257,16 +330,18 @@ export default function CrearSesionScreen({ navigation }) {
       <AddEmailModal
         visible={showAddMedico}
         title="Añadir Médico"
-        subtitle="Ingresa el correo electrónico del médico que deseas invitar"
+        subtitle="Los correos se invitarán al crear la sesión."
         onClose={() => setShowAddMedico(false)}
-        actionLabel="Enviar Invitación"
+        onSubmit={addExtraEmails}
+        actionLabel="Añadir a la sesión"
       />
       <AddEmailModal
         visible={showAddCap}
         title="Añadir Capacitador"
-        subtitle="Ingresa el correo electrónico del capacitador que deseas invitar"
+        subtitle="Los correos se invitarán al crear la sesión."
         onClose={() => setShowAddCap(false)}
-        actionLabel="Enviar Invitación"
+        onSubmit={addExtraEmails}
+        actionLabel="Añadir a la sesión"
       />
       <SuccessModal
         data={successData}
@@ -639,44 +714,102 @@ function SelectedTags({ people, onRemove }) {
   );
 }
 
-function AddEmailModal({ visible, title, subtitle, onClose, actionLabel }) {
+/**
+ * Modal para invitar personal por correo.
+ *
+ * Los correos se acumulan en `pendingEmails` del formulario principal y se envían como
+ * invitaciones reales al crear la sesión. Antes este modal solo mostraba un mensaje de
+ * éxito sin llamar a ninguna API: el usuario creía haber invitado a alguien que nunca
+ * recibió nada.
+ */
+function AddEmailModal({ visible, title, subtitle, onClose, onSubmit, actionLabel }) {
   const [emails, setEmails] = useState(['', '']);
-  function addEmail()          { setEmails(p => [...p, '']); }
-  function updateEmail(idx, v) { setEmails(p => p.map((e, i) => i === idx ? v : e)); }
-  function removeEmail(idx)    { setEmails(p => p.filter((_, i) => i !== idx)); }
+  const [error, setError]   = useState('');
+
+  function addEmail()          { setEmails((p) => [...p, '']); }
+  function updateEmail(idx, v) { setEmails((p) => p.map((e, i) => (i === idx ? v : e))); }
+  function removeEmail(idx)    { setEmails((p) => p.filter((_, i) => i !== idx)); }
+
   function handleEnviar() {
-    onClose();
-    Alert.alert('Invitación enviada', 'Las invitaciones fueron enviadas correctamente.');
+    const valid = emails.map((e) => e.trim()).filter(Boolean);
+    if (valid.length === 0) {
+      setError('Ingresa al menos un correo electrónico.');
+      return;
+    }
+    const malformed = valid.filter((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+    if (malformed.length) {
+      setError(`Correo no válido: ${malformed[0]}`);
+      return;
+    }
+    setError('');
+    onSubmit(valid);
     setEmails(['', '']);
+    onClose();
   }
+
+  function handleClose() {
+    setError('');
+    onClose();
+  }
+
   return (
-    <Modal visible={visible} transparent animationType="fade">
-      <Pressable style={m.overlay} onPress={onClose}>
-        <Pressable style={m.box} onPress={e => e.stopPropagation()}>
-          <TouchableOpacity style={m.closeBtn} onPress={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
+      <Pressable style={m.overlay} onPress={handleClose}>
+        <Pressable style={m.box} onPress={(e) => e.stopPropagation()} {...a11yModal(title)}>
+          <TouchableOpacity style={m.closeBtn} onPress={handleClose} {...a11yButton('Cerrar')}>
             <Ionicons name="close" size={20} color="#2E2E2E" />
           </TouchableOpacity>
-          <Text style={m.title}>{title}</Text>
+          <Text style={m.title} accessibilityRole="header">{title}</Text>
           <Text style={m.subtitle}>{subtitle}</Text>
+
+          {!!error && (
+            <Text style={m.errorText} {...a11yAlert(error)}>{error}</Text>
+          )}
+
           <View style={m.emailList}>
             {emails.map((e, idx) => (
-              <View key={idx} style={m.emailRow}>
+              <View key={`email-${idx}`} style={m.emailRow}>
                 <TextInput
-                  style={m.emailInput} value={e} onChangeText={v => updateEmail(idx, v)}
-                  placeholder="correo@ejemplo.com" placeholderTextColor="#B0B7C3"
-                  keyboardType="email-address" autoCapitalize="none"
+                  style={m.emailInput}
+                  value={e}
+                  onChangeText={(v) => { updateEmail(idx, v); setError(''); }}
+                  placeholder="correo@ejemplo.com"
+                  placeholderTextColor="#8A94A6"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  accessibilityLabel={`Correo ${idx + 1}`}
                 />
-                <TouchableOpacity style={m.removeBtn} onPress={() => removeEmail(idx)} activeOpacity={0.8}>
-                  <Ionicons name="close" size={14} color="#D83B35" />
-                </TouchableOpacity>
+                {emails.length > 1 && (
+                  <TouchableOpacity
+                    style={m.removeBtn}
+                    onPress={() => removeEmail(idx)}
+                    activeOpacity={0.8}
+                    {...a11yButton(`Quitar correo ${idx + 1}`)}
+                  >
+                    <Ionicons name="close" size={14} color="#B3261E" />
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
           </View>
-          <TouchableOpacity style={m.addMoreBtn} onPress={addEmail} activeOpacity={0.8}>
-            <Ionicons name="person-add-outline" size={14} color="#495565" />
+
+          <TouchableOpacity
+            style={m.addMoreBtn}
+            onPress={addEmail}
+            activeOpacity={0.8}
+            {...a11yButton('Añadir otro correo')}
+          >
+            <Ionicons name="person-add-outline" size={14} color="#475467" />
             <Text style={m.addMoreText}>Añadir otro correo</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={m.submitBtn} onPress={handleEnviar} activeOpacity={0.85}>
+
+          <TouchableOpacity
+            style={m.submitBtn}
+            onPress={handleEnviar}
+            activeOpacity={0.85}
+            {...a11yButton(actionLabel)}
+          >
             <Text style={m.submitText}>{actionLabel}</Text>
           </TouchableOpacity>
         </Pressable>
@@ -710,14 +843,29 @@ function SuccessModal({ data, onClose }) {
 
           {data?.invites > 0 && (
             <View style={sc.infoRow}>
-              <Ionicons name="mail-outline" size={16} color="#697282" />
+              <Ionicons name="mail-outline" size={16} color="#475467" />
               <Text style={sc.infoText}>
-                {data.invites} invitación{data.invites > 1 ? 'es enviadas' : ' enviada'} a bomberos
+                {data.invites} invitación{data.invites > 1 ? 'es enviadas' : ' enviada'}
               </Text>
             </View>
           )}
 
-          <TouchableOpacity style={sc.btn} onPress={onClose} activeOpacity={0.85}>
+          {/* Fallos parciales: el usuario debe saber que no todas se enviaron. */}
+          {data?.failed > 0 && (
+            <View style={sc.infoRow}>
+              <Ionicons name="alert-circle-outline" size={16} color="#B3261E" />
+              <Text style={[sc.infoText, sc.infoTextError]}>
+                {data.failed} invitación{data.failed > 1 ? 'es no se pudieron enviar' : ' no se pudo enviar'}
+              </Text>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={sc.btn}
+            onPress={onClose}
+            activeOpacity={0.85}
+            {...a11yButton('Ver sesiones')}
+          >
             <Ionicons name="arrow-back-outline" size={16} color="#fff" />
             <Text style={sc.btnText}>Ver Sesiones</Text>
           </TouchableOpacity>
@@ -732,6 +880,8 @@ function SuccessModal({ data, onClose }) {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F4F6F8' },
+
+  errorWrap: { paddingHorizontal: 20, paddingBottom: 8 },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -895,8 +1045,12 @@ const s = StyleSheet.create({
 });
 
 const m = StyleSheet.create({
-  overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
-  box:       { width: 460, backgroundColor: '#fff', borderRadius: 16, padding: 28, gap: 14 },
+  overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  box:       { width: '100%', maxWidth: 460, backgroundColor: '#fff', borderRadius: 16, padding: 28, gap: 14 },
+  errorText: {
+    fontSize: 13, color: '#B3261E', fontWeight: '600',
+    backgroundColor: '#FDECEA', borderRadius: 8, padding: 10,
+  },
   closeBtn:  { position: 'absolute', top: 16, right: 16, padding: 4 },
   title:     { fontSize: 18, fontWeight: '800', color: '#1A1A1A' },
   subtitle:  { fontSize: 13, color: '#697282', lineHeight: 20 },
@@ -923,6 +1077,7 @@ const m = StyleSheet.create({
 });
 
 const sc = StyleSheet.create({
+  infoTextError: { color: '#B3261E', fontWeight: '600' },
   iconCircle: {
     width: 80, height: 80, borderRadius: 40,
     backgroundColor: '#F0FDF4',

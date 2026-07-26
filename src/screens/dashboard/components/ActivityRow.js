@@ -1,49 +1,44 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import useTheme from '../../../hooks/useTheme';
+import { a11yDecorative, a11yGroup } from '../../../constants/a11y';
 
-// Single activity entry. Stateless, no logic.
+// Entrada de actividad. Sin estado ni lógica.
+// `tone` es una clave semántica del tema ('success' | 'danger' | 'warning' | 'info' |
+// 'neutral'); `dotColor` sigue aceptándose como color literal por compatibilidad.
 
-export default function ActivityRow({ title, subtitle, time, dotColor }) {
+export default function ActivityRow({ title, subtitle, time, tone = 'neutral', dotColor }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
+  const color = dotColor ?? theme.status[tone]?.solid ?? theme.status.neutral.solid;
+
   return (
-    <View style={styles.row}>
-      <View style={[styles.dot, { backgroundColor: dotColor }]} />
+    <View
+      style={styles.row}
+      {...a11yGroup([title, subtitle, time].filter(Boolean).join(', '))}
+    >
+      <View style={[styles.dot, { backgroundColor: color }]} {...a11yDecorative} />
       <View style={styles.textBlock}>
         <Text style={styles.title}>{title}</Text>
-        <Text style={styles.subtitle}>{subtitle}</Text>
+        {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
       </View>
-      <Text style={styles.time}>{time}</Text>
+      {!!time && <Text style={styles.time}>{time}</Text>}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    gap: 10,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  textBlock: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#2E2E2E',
-  },
-  subtitle: {
-    fontSize: 12,
-    color: '#4A5565',
-    marginTop: 1,
-  },
-  time: {
-    fontSize: 11,
-    color: '#4A5565',
-    whiteSpace: 'nowrap',
-  },
-});
+const makeStyles = (t) =>
+  StyleSheet.create({
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      gap: 10,
+    },
+    dot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
+    textBlock: { flex: 1 },
+    title: { fontSize: 14, fontWeight: '600', color: t.textPrimary },
+    subtitle: { fontSize: 13, color: t.textSecondary, marginTop: 1 },
+    time: { fontSize: 12, color: t.textMuted, flexShrink: 0 },
+  });

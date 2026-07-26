@@ -1,39 +1,48 @@
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-  Modal, View, Text, TouchableOpacity,
+  Modal, View, Text, TouchableOpacity, ActivityIndicator,
   StyleSheet, TouchableWithoutFeedback, TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import useTheme from '../../../hooks/useTheme';
+import { a11yButton, a11yDecorative, a11yModal, ICON_HIT_SLOP, MIN_TOUCH_SIZE } from '../../../constants/a11y';
 
-// Dos estados internos:
-//   'options'  → muestra Aprobar y Rechazar
-//   'reject'   → muestra campo de texto para el motivo
+// Dos vistas internas:
+//   'options' → Aprobar / Rechazar
+//   'reject'  → campo de texto con el motivo del rechazo
 
-export default function ConfirmApprovalModal({ visible, item, onApprove, onReject, onCancel }) {
-  const [view, setView]     = useState('options'); // 'options' | 'reject'
+export default function ConfirmApprovalModal({ visible, item, onApprove, onReject, onCancel, busy }) {
+  const theme = useTheme();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
+  const [view, setView]     = useState('options');
   const [reason, setReason] = useState('');
+
+  const reset = useCallback(() => {
+    setView('options');
+    setReason('');
+  }, []);
+
+  const handleClose = useCallback(() => {
+    reset();
+    onCancel();
+  }, [reset, onCancel]);
+
+  const handleApprove = useCallback(() => {
+    // No se limpia el estado aquí: la pantalla cierra el modal cuando la llamada al
+    // servidor termina. Limpiar antes haría parpadear la vista si la petición falla.
+    onApprove(item.id);
+  }, [onApprove, item]);
+
+  const handleSendReject = useCallback(() => {
+    if (!reason.trim()) return;
+    onReject(item.id, reason.trim());
+  }, [onReject, item, reason]);
 
   if (!item) return null;
 
-  function handleClose() {
-    setView('options');
-    setReason('');
-    onCancel();
-  }
-
-  function handleApprove() {
-    setView('options');
-    setReason('');
-    onApprove(item.id);
-  }
-
-  function handleSendReject() {
-    if (!reason.trim()) return;
-    setView('options');
-    const r = reason;
-    setReason('');
-    onReject(item.id, r);
-  }
+  const isReject = view === 'reject';
+  const tone = isReject ? theme.status.danger : theme.status.warning;
 
   return (
     <Modal
@@ -43,38 +52,40 @@ export default function ConfirmApprovalModal({ visible, item, onApprove, onRejec
       onRequestClose={handleClose}
       statusBarTranslucent
     >
-      <TouchableWithoutFeedback onPress={handleClose}>
+      <TouchableWithoutFeedback onPress={busy ? undefined : handleClose} accessible={false}>
         <View style={styles.overlay}>
-          <TouchableWithoutFeedback>
-            <View style={styles.card}>
-
-              {/* Header */}
+          <TouchableWithoutFeedback accessible={false}>
+            <View style={styles.card} {...a11yModal(isReject ? 'Motivo de rechazo' : 'Revisar solicitud')}>
               <View style={styles.header}>
-                <View style={[styles.iconBox, view === 'reject' && styles.iconBoxRed]}>
+                <View style={[styles.iconBox, { backgroundColor: tone.bg }]} {...a11yDecorative}>
                   <Ionicons
-                    name={view === 'reject' ? 'close-circle' : 'document-text'}
+                    name={isReject ? 'close-circle' : 'document-text'}
                     size={22}
-                    color={view === 'reject' ? '#C62828' : '#F57C00'}
+                    color={tone.fg}
                   />
                 </View>
-                <Text style={styles.title}>
-                  {view === 'reject' ? 'Motivo de rechazo' : 'Revisar Solicitud'}
+                <Text style={styles.title} accessibilityRole="header">
+                  {isReject ? 'Motivo de rechazo' : 'Revisar Solicitud'}
                 </Text>
-                <TouchableOpacity onPress={handleClose} hitSlop={8}>
-                  <Ionicons name="close" size={20} color="#697282" />
+                <TouchableOpacity
+                  onPress={handleClose}
+                  hitSlop={ICON_HIT_SLOP}
+                  disabled={busy}
+                  {...a11yButton('Cerrar', { disabled: busy })}
+                >
+                  <Ionicons name="close" size={22} color={theme.icon} />
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.divider} />
+              <View style={styles.divider} {...a11yDecorative} />
 
-              {/* Info del doctor — siempre visible */}
               <Text style={styles.sectionLabel}>PERSONAL MÉDICO</Text>
               <View style={styles.infoRow}>
-                <Ionicons name="person-circle-outline" size={16} color="#495565" />
+                <Ionicons name="person-circle-outline" size={16} color={theme.icon} {...a11yDecorative} />
                 <Text style={styles.infoText}>{item.doctorName}</Text>
               </View>
               <View style={styles.infoRow}>
-                <Ionicons name="medical-outline" size={16} color="#495565" />
+                <Ionicons name="medical-outline" size={16} color={theme.icon} {...a11yDecorative} />
                 <Text style={styles.infoText}>{item.specialty}</Text>
               </View>
 
@@ -82,74 +93,109 @@ export default function ConfirmApprovalModal({ visible, item, onApprove, onRejec
 
               <Text style={styles.sectionLabel}>JEFE A CARGO</Text>
               <View style={styles.infoRow}>
-                <Ionicons name="shield-outline" size={16} color="#495565" />
-                <View>
+                <Ionicons name="shield-outline" size={16} color={theme.icon} {...a11yDecorative} />
+                <View style={styles.infoBlock}>
                   <Text style={styles.infoText}>{item.requestedBy?.name}</Text>
                   <Text style={styles.infoSubtext}>{item.requestedBy?.role}</Text>
                 </View>
               </View>
 
-              <View style={styles.divider} />
+              <View style={styles.divider} {...a11yDecorative} />
 
-              {/* Vista opciones */}
-              {view === 'options' && (
+              {!isReject && (
                 <View style={styles.actions}>
                   <TouchableOpacity
                     style={styles.rejectBtn}
                     onPress={() => setView('reject')}
                     activeOpacity={0.8}
+                    disabled={busy}
+                    {...a11yButton('Rechazar', { disabled: busy })}
                   >
-                    <Ionicons name="close-circle-outline" size={16} color="#C62828" />
+                    <Ionicons
+                      name="close-circle-outline"
+                      size={16}
+                      color={theme.status.danger.fg}
+                      {...a11yDecorative}
+                    />
                     <Text style={styles.rejectBtnText}>Rechazar</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.approveBtn}
+                    style={[styles.approveBtn, busy && styles.btnBusy]}
                     onPress={handleApprove}
                     activeOpacity={0.8}
+                    disabled={busy}
+                    {...a11yButton('Aprobar', { disabled: busy, busy })}
                   >
-                    <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                    {busy ? (
+                      <ActivityIndicator size="small" color={theme.status.success.onSolid} />
+                    ) : (
+                      <Ionicons
+                        name="checkmark-circle-outline"
+                        size={16}
+                        color={theme.status.success.onSolid}
+                        {...a11yDecorative}
+                      />
+                    )}
                     <Text style={styles.approveBtnText}>Aprobar</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* Vista rechazo */}
-              {view === 'reject' && (
+              {isReject && (
                 <View style={styles.rejectView}>
-                  <Text style={styles.rejectLabel}>Escribe el motivo del rechazo:</Text>
+                  <Text style={styles.rejectLabel} nativeID="rejectReasonLabel">
+                    Escribe el motivo del rechazo:
+                  </Text>
                   <TextInput
                     style={styles.textInput}
-                    placeholder="Motivo..."
-                    placeholderTextColor="#BDBDBD"
+                    placeholder="Motivo…"
+                    placeholderTextColor={theme.textPlaceholder}
                     value={reason}
                     onChangeText={setReason}
                     multiline
                     numberOfLines={3}
                     textAlignVertical="top"
                     autoFocus
+                    editable={!busy}
+                    accessibilityLabel="Motivo del rechazo"
+                    accessibilityLabelledBy="rejectReasonLabel"
                   />
                   <View style={styles.actions}>
                     <TouchableOpacity
                       style={styles.cancelBtn}
                       onPress={() => setView('options')}
                       activeOpacity={0.8}
+                      disabled={busy}
+                      {...a11yButton('Volver', { disabled: busy })}
                     >
                       <Text style={styles.cancelBtnText}>Volver</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.approveBtn, !reason.trim() && styles.btnDisabled]}
+                      style={[styles.approveBtn, (!reason.trim() || busy) && styles.btnDisabled]}
                       onPress={handleSendReject}
                       activeOpacity={0.8}
-                      disabled={!reason.trim()}
+                      disabled={!reason.trim() || busy}
+                      {...a11yButton('Enviar rechazo', {
+                        disabled: !reason.trim() || busy,
+                        busy,
+                      })}
                     >
-                      <Ionicons name="send" size={14} color="#fff" />
+                      {busy ? (
+                        <ActivityIndicator size="small" color={theme.status.success.onSolid} />
+                      ) : (
+                        <Ionicons
+                          name="send"
+                          size={14}
+                          color={theme.status.success.onSolid}
+                          {...a11yDecorative}
+                        />
+                      )}
                       <Text style={styles.approveBtnText}>Enviar</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               )}
-
             </View>
           </TouchableWithoutFeedback>
         </View>
@@ -158,76 +204,74 @@ export default function ConfirmApprovalModal({ visible, item, onApprove, onRejec
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 22,
-    width: '100%',
-    maxWidth: 440,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 14,
-  },
-  iconBox: {
-    width: 36, height: 36, borderRadius: 10,
-    backgroundColor: '#FFF3E0',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  iconBoxRed: { backgroundColor: '#FFEBEE' },
-  title: { flex: 1, fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
-  divider: { height: 1, backgroundColor: '#F0F0F0', marginVertical: 14 },
-  spacer: { height: 10 },
-  sectionLabel: {
-    fontSize: 10, fontWeight: '700', color: '#9AA3B0',
-    letterSpacing: 1, marginBottom: 8,
-  },
-  infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
-  infoText: { fontSize: 14, color: '#2E2E2E', fontWeight: '500' },
-  infoSubtext: { fontSize: 11, color: '#697282', marginTop: 1 },
+const makeStyles = (t) =>
+  StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: t.overlay,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+    card: {
+      backgroundColor: t.card,
+      borderRadius: 18,
+      padding: 22,
+      width: '100%',
+      maxWidth: 440,
+      borderWidth: 1,
+      borderColor: t.border,
+      shadowColor: t.shadowColor,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: t.shadowOpacity * 3,
+      shadowRadius: 20,
+      elevation: 12,
+    },
+    header: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+    iconBox: {
+      width: 36, height: 36, borderRadius: 10,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    title: { flex: 1, fontSize: 17, fontWeight: '700', color: t.textPrimary },
+    divider: { height: 1, backgroundColor: t.divider, marginVertical: 14 },
+    spacer: { height: 10 },
+    sectionLabel: {
+      fontSize: 11, fontWeight: '700', color: t.textMuted,
+      letterSpacing: 1, marginBottom: 8,
+    },
+    infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
+    infoBlock: { flex: 1 },
+    infoText: { fontSize: 14, color: t.textPrimary, fontWeight: '500' },
+    infoSubtext: { fontSize: 13, color: t.textSecondary, marginTop: 1 },
 
-  actions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  cancelBtn: {
-    flex: 1, paddingVertical: 11, borderRadius: 10,
-    borderWidth: 1.5, borderColor: '#DDE1E7', alignItems: 'center',
-  },
-  cancelBtnText: { fontSize: 14, fontWeight: '600', color: '#495565' },
-  approveBtn: {
-    flex: 1, flexDirection: 'row', gap: 6,
-    paddingVertical: 11, borderRadius: 10,
-    backgroundColor: '#00A63E',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  approveBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  rejectBtn: {
-    flex: 1, flexDirection: 'row', gap: 6,
-    paddingVertical: 11, borderRadius: 10,
-    backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#C62828',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  rejectBtnText: { fontSize: 14, fontWeight: '700', color: '#C62828' },
-  btnDisabled: { backgroundColor: '#D0D0D0' },
+    actions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+    cancelBtn: {
+      flex: 1, minHeight: MIN_TOUCH_SIZE, justifyContent: 'center', borderRadius: 10,
+      borderWidth: 1.5, borderColor: t.borderStrong, alignItems: 'center',
+    },
+    cancelBtnText: { fontSize: 15, fontWeight: '600', color: t.textSecondary },
+    approveBtn: {
+      flex: 1, flexDirection: 'row', gap: 6,
+      minHeight: MIN_TOUCH_SIZE, borderRadius: 10,
+      backgroundColor: t.status.success.solid,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    approveBtnText: { fontSize: 15, fontWeight: '700', color: t.status.success.onSolid },
+    rejectBtn: {
+      flex: 1, flexDirection: 'row', gap: 6,
+      minHeight: MIN_TOUCH_SIZE, borderRadius: 10,
+      backgroundColor: t.card, borderWidth: 1.5, borderColor: t.status.danger.border,
+      alignItems: 'center', justifyContent: 'center',
+    },
+    rejectBtnText: { fontSize: 15, fontWeight: '700', color: t.status.danger.fg },
+    btnDisabled: { backgroundColor: t.disabledBg },
+    btnBusy: { opacity: 0.85 },
 
-  rejectView: { gap: 10 },
-  rejectLabel: { fontSize: 13, color: '#495565', fontWeight: '600' },
-  textInput: {
-    borderWidth: 1.5, borderColor: '#DDE1E7', borderRadius: 10,
-    padding: 12, fontSize: 13, color: '#2E2E2E',
-    minHeight: 80, backgroundColor: '#FAFAFA',
-  },
-});
+    rejectView: { gap: 10 },
+    rejectLabel: { fontSize: 14, color: t.textSecondary, fontWeight: '600' },
+    textInput: {
+      borderWidth: 1.5, borderColor: t.border, borderRadius: 10,
+      padding: 12, fontSize: 14, color: t.textPrimary,
+      minHeight: 80, backgroundColor: t.cardAlt,
+    },
+  });

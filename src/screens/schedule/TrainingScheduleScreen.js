@@ -9,25 +9,33 @@ import FilterTabs from '../sessions/components/FilterTabs';
 import MonthCalendar from './components/MonthCalendar';
 import DayAgendaPanel from './components/DayAgendaPanel';
 
-import { FILTER_KEYS, applyFilter } from '../sessions/__mocks__/sessionsData';
+import { FILTER_KEYS, applyFilter, countByFilter } from '../sessions/sessionFilters';
 import { buildMonthMatrix } from './utils/calendarUtils';
 import { useSessions } from '../sessions/hooks/useSessions';
 
-const TODAY = new Date();
+/**
+ * "Hoy" se calcula en cada llamada, no una vez al cargar el módulo.
+ * Con una constante de módulo, una app abierta cruzando la medianoche seguía
+ * resaltando el día anterior hasta recargarla por completo.
+ */
+function today() {
+  return new Date();
+}
 
-function closestSessionDate(sessions) {
+function closestSessionDate(sessions, reference) {
   let best = null;
   let bestDiff = Infinity;
-  sessions.forEach(session => {
+  sessions.forEach((session) => {
     if (!session.scheduledStart) return;
     const date = new Date(session.scheduledStart);
-    const diff = Math.abs(date.getTime() - TODAY.getTime());
+    if (Number.isNaN(date.getTime())) return;
+    const diff = Math.abs(date.getTime() - reference.getTime());
     if (diff < bestDiff) {
       bestDiff = diff;
       best = date;
     }
   });
-  return best ?? TODAY;
+  return best ?? reference;
 }
 
 export default function TrainingScheduleScreen({ navigation }) {

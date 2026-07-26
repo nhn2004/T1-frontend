@@ -9,23 +9,24 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
-  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import ResultadosGeneralesView from '../resultados/ResultadosGeneralesView';
 import { participantService } from '../../services/participantService';
-import { COLORS } from '../../constants';
+import { ROUTES } from '../../constants/routes';
+import { a11yButton, a11yDecorative, a11yGroup } from '../../constants/a11y';
+import useTheme from '../../hooks/useTheme';
 
 const STATUS_STYLES = {
-  COMPLETADO: { label: 'Completado', icon: 'checkmark',    bg: '#27AE60' },
-  CANCELADO:  { label: 'Cancelado',  icon: 'close',        bg: '#9E9E9E' },
-  PENDIENTE:  { label: 'Pendiente',  icon: 'time-outline', bg: '#F59E0B' },
-  'EN CURSO': { label: 'En curso',   icon: 'play',         bg: '#1E88E5' },
+  COMPLETADO: { label: 'Completado', icon: 'checkmark',    tone: 'success' },
+  CANCELADO:  { label: 'Cancelado',  icon: 'close',        tone: 'neutral' },
+  PENDIENTE:  { label: 'Pendiente',  icon: 'time-outline', tone: 'warning' },
+  'EN CURSO': { label: 'En curso',   icon: 'play',         tone: 'info' },
 };
 
-// Orden de prioridad: EN CURSO → PENDIENTE → COMPLETADO → CANCELADO
-const STATUS_ORDER = { 'EN CURSO': 0, 'PENDIENTE': 1, 'COMPLETADO': 2, 'CANCELADO': 3 };
+// El orden de prioridad (EN CURSO → PENDIENTE → COMPLETADO → CANCELADO) lo aplica
+// `participantService.getBySession`, que ya devuelve la lista ordenada.
 
 // Grid carousel
 const COLS = 4;
@@ -36,8 +37,11 @@ const PER_PAGE = COLS * ROWS;
 export default function PersonasSesionesScreen({ navigation, route }) {
   const sessionName = route?.params?.sessionName ?? 'la Capacitación';
   const sessionId   = route?.params?.sessionId   ?? null;
-  const { width } = useWindowDimensions();
-  const isCompact = width < 920;
+  // Número de quemas configurado al crear la sesión; se propaga al wizard de
+  // evaluación para que sepa cuántas rondas registrar.
+  const numQuemas   = route?.params?.numQuemas   ?? 2;
+  const theme = useTheme();
+  const styles = React.useMemo(() => makeStyles(theme), [theme]);
 
   const [people,         setPeople]         = React.useState([]);
   const [loading,        setLoading]        = React.useState(true);
@@ -143,7 +147,7 @@ export default function PersonasSesionesScreen({ navigation, route }) {
             <Text style={[styles.toggleText, activeTab === 'bomberos' && styles.toggleTextActive]}>Bomberos</Text>
           </Pressable>
           <Pressable
-            style={[styles.toggleButton, activeTab === 'generales' && { backgroundColor: '#E85D27' }]}
+            style={[styles.toggleButton, activeTab === 'generales' && { backgroundColor: theme.primarySolid }]}
             onPress={() => setActiveTab('generales')}
           >
             <Ionicons name="bar-chart-outline" size={16} color={activeTab === 'generales' ? '#fff' : '#697282'} />
@@ -152,7 +156,7 @@ export default function PersonasSesionesScreen({ navigation, route }) {
         </View>
 
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-          <Ionicons name="arrow-back" size={16} color="#2E2E2E" />
+          <Ionicons name="arrow-back" size={16} color={theme.textPrimary} />
           <Text style={styles.backBtnText}>Volver</Text>
         </TouchableOpacity>
       </View>
@@ -178,7 +182,7 @@ export default function PersonasSesionesScreen({ navigation, route }) {
 
           {/* Lupa — inmediatamente después de Cancelado */}
           <Pressable style={styles.searchIconBtn} onPress={toggleSearch}>
-            <Ionicons name={searchExpanded ? 'close' : 'search'} size={18} color="#2E2E2E" />
+            <Ionicons name={searchExpanded ? 'close' : 'search'} size={18} color={theme.textPrimary} />
           </Pressable>
 
           {/* Input expandible a la derecha de la lupa */}
@@ -199,7 +203,7 @@ export default function PersonasSesionesScreen({ navigation, route }) {
       <View style={styles.content} onLayout={onLayout}>
         {activeTab === 'bomberos' && loading && (
           <View style={styles.emptyBox}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
+            <ActivityIndicator size="large" color={theme.primary} />
           </View>
         )}
         {activeTab === 'bomberos' && !loading ? (
@@ -215,7 +219,7 @@ export default function PersonasSesionesScreen({ navigation, route }) {
                       onPress={() => animateTo(currentPage - 1)}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="chevron-back" size={arrowSize * 0.5} color="#E85D27" />
+                      <Ionicons name="chevron-back" size={arrowSize * 0.5} color={theme.primaryText} />
                     </TouchableOpacity>
                   ) : (
                     <View style={{ width: arrowSize }} />
@@ -226,7 +230,7 @@ export default function PersonasSesionesScreen({ navigation, route }) {
               {/* Grid */}
               <Animated.View style={[styles.carouselGrid, { gap: rowGap, opacity: fadeAnim }]}>
                 {gridRows.map((rowCards, ri) => (
-                  <View key={ri} style={[styles.gridRow, { gap: colGap }]}>
+                  <View key={`row-${ri}`} style={[styles.gridRow, { gap: colGap }]}>
                     {rowCards.map(person => (
                       <BomberoCard
                         key={person.id}
@@ -234,11 +238,14 @@ export default function PersonasSesionesScreen({ navigation, route }) {
                         cardW={cardW}
                         cardH={cardH}
                         navigation={navigation}
+                        styles={styles}
+                        theme={theme}
+                        numQuemas={numQuemas}
                       />
                     ))}
                     {rowCards.length < COLS &&
                       Array.from({ length: COLS - rowCards.length }).map((_, i) => (
-                        <View key={i} style={{ width: cardW }} />
+                        <View key={`filler-${ri}-${i}`} style={{ width: cardW }} />
                       ))}
                   </View>
                 ))}
@@ -258,7 +265,7 @@ export default function PersonasSesionesScreen({ navigation, route }) {
                       onPress={() => animateTo(currentPage + 1)}
                       activeOpacity={0.8}
                     >
-                      <Ionicons name="chevron-forward" size={arrowSize * 0.5} color="#E85D27" />
+                      <Ionicons name="chevron-forward" size={arrowSize * 0.5} color={theme.primaryText} />
                     </TouchableOpacity>
                   ) : (
                     <View style={{ width: arrowSize }} />
@@ -269,7 +276,7 @@ export default function PersonasSesionesScreen({ navigation, route }) {
             </View>
           )
         ) : !loading && activeTab !== 'bomberos' ? (
-          <ResultadosGeneralesView />
+          <ResultadosGeneralesView participants={people} />
         ) : null}
       </View>
 
@@ -279,16 +286,32 @@ export default function PersonasSesionesScreen({ navigation, route }) {
 
 // ── BomberoCard ────────────────────────────────────────────────────────────────
 
-function BomberoCard({ person, cardW, cardH, navigation }) {
-  const statusStyle = STATUS_STYLES[person.status];
+const FALLBACK_PHOTO = require('../../assets/people/bombero.png');
+
+function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuemas }) {
+  const statusStyle = STATUS_STYLES[person.status] ?? STATUS_STYLES.PENDIENTE;
+  const tone = theme.status[statusStyle.tone];
 
   function renderButton() {
     switch (person.status) {
       case 'EN CURSO':
       case 'PENDIENTE':
         return (
-          <Pressable style={[styles.cardBtn, styles.cardBtnSolid]} onPress={() => navigation.navigate('EvaluacionBombero', { bomberoId: person.id, bomberoName: person.name })}>
-            <Ionicons name="document-text-outline" size={13} color="#FFFFFF" />
+          <Pressable
+            style={[styles.cardBtn, styles.cardBtnSolid]}
+            onPress={() => navigation.navigate(ROUTES.EVALUATION, {
+              bomberoId: person.id,
+              bomberoName: person.name,
+              numQuemas,
+            })}
+            {...a11yButton(`Registrar reporte de ${person.name}`)}
+          >
+            <Ionicons
+              name="document-text-outline"
+              size={13}
+              color={theme.onPrimarySolid}
+              {...a11yDecorative}
+            />
             <Text style={styles.cardBtnSolidText}>Reporte</Text>
           </Pressable>
         );
@@ -296,32 +319,48 @@ function BomberoCard({ person, cardW, cardH, navigation }) {
         return (
           <Pressable
             style={[styles.cardBtn, styles.cardBtnOutline]}
-            onPress={() => navigation.navigate('ResultadosBombero', { bomberoId: person.id, bomberoName: person.name })}
+            onPress={() => navigation.navigate(ROUTES.RESULTS_TRAINEE, {
+              bomberoId: person.id,
+              bomberoName: person.name,
+            })}
+            {...a11yButton(`Ver resultados de ${person.name}`)}
           >
-            <Ionicons name="bar-chart-outline" size={13} color="#E85D27" />
+            <Ionicons name="bar-chart-outline" size={13} color={theme.primaryText} {...a11yDecorative} />
             <Text style={styles.cardBtnOutlineText}>Resultados</Text>
           </Pressable>
         );
       default: // CANCELADO
         return (
-          <Pressable style={[styles.cardBtn, styles.cardBtnDisabled]} disabled>
-            <Ionicons name="bar-chart-outline" size={13} color="#8E9399" />
+          <Pressable
+            style={[styles.cardBtn, styles.cardBtnDisabled]}
+            disabled
+            {...a11yButton('Resultados no disponibles', { disabled: true })}
+          >
+            <Ionicons name="bar-chart-outline" size={13} color={theme.textDisabled} {...a11yDecorative} />
             <Text style={styles.cardBtnDisabledText}>Resultados</Text>
           </Pressable>
         );
     }
   }
 
-  const FALLBACK_PHOTO = require('../../assets/people/bombero.png');
-
   return (
-    <View style={[styles.card, { width: cardW, height: cardH }]}>
+    <View
+      style={[styles.card, { width: cardW, height: cardH }]}
+      {...a11yGroup(`${person.name}, ${statusStyle.label}`)}
+    >
       <View style={styles.photoBox}>
-        <Image source={person.photoSource ?? FALLBACK_PHOTO} style={styles.photo} resizeMode="cover" />
+        <Image
+          source={person.photoSource ?? FALLBACK_PHOTO}
+          style={styles.photo}
+          resizeMode="cover"
+          accessible={false}
+        />
         <View style={styles.statusBadge}>
-          <View style={[styles.statusBadgeFill, { backgroundColor: statusStyle.bg }]}>
-            <Ionicons name={statusStyle.icon} size={10} color="#FFFFFF" />
-            <Text style={styles.statusBadgeText}>{statusStyle.label}</Text>
+          <View style={[styles.statusBadgeFill, { backgroundColor: tone.solid }]}>
+            <Ionicons name={statusStyle.icon} size={10} color={tone.onSolid} {...a11yDecorative} />
+            <Text style={[styles.statusBadgeText, { color: tone.onSolid }]}>
+              {statusStyle.label}
+            </Text>
           </View>
         </View>
       </View>
@@ -329,12 +368,12 @@ function BomberoCard({ person, cardW, cardH, navigation }) {
       <Text style={styles.personName} numberOfLines={1}>{person.name}</Text>
 
       <View style={styles.infoLine}>
-        <Ionicons name="calendar-outline" size={13} color="#FF6A00" />
+        <Ionicons name="calendar-outline" size={13} color={theme.iconMuted} />
         <Text style={styles.infoText}>{person.age} anos</Text>
       </View>
 
       <View style={styles.infoLine}>
-        <Ionicons name="scale-outline" size={13} color="#E6392E" />
+        <Ionicons name="scale-outline" size={13} color={theme.iconMuted} />
         <Text style={styles.infoText}>{person.weight}</Text>
       </View>
 
@@ -347,10 +386,10 @@ function BomberoCard({ person, cardW, cardH, navigation }) {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const makeStyles = (t) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#F1F4F8',
+    backgroundColor: t.background,
   },
 
   // Title bar
@@ -365,12 +404,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2C323A',
+    color: t.textPrimary,
     flex: 1,
   },
   toggleContainer: {
     flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
+    backgroundColor: t.pill,
     borderRadius: 10,
     padding: 3,
     gap: 3,
@@ -384,15 +423,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   toggleButtonActive: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
+    backgroundColor: t.card,
+    shadowColor: t.shadowColor,
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 2,
   },
-  toggleText: { fontSize: 13, fontWeight: '600', color: '#697282' },
-  toggleTextActive: { color: '#111' },
+  toggleText: { fontSize: 13, fontWeight: '600', color: t.textMuted },
+  toggleTextActive: { color: t.textPrimary },
   backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -400,11 +439,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderRadius: 10,
-    backgroundColor: '#fff',
+    backgroundColor: t.card,
     borderWidth: 1.5,
-    borderColor: 'rgba(0,0,0,0.1)',
+    borderColor: t.border,
   },
-  backBtnText: { fontSize: 13, fontWeight: '600', color: '#2E2E2E' },
+  backBtnText: { fontSize: 13, fontWeight: '600', color: t.textPrimary },
 
   // Filter bar
   filterBar: {
@@ -421,26 +460,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: t.card,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: t.border,
   },
-  pillActive: { backgroundColor: '#E85D27', borderColor: '#E85D27', shadowColor: '#E85D27', shadowOpacity: 0.3, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 3 },
-  pillText: { fontSize: 13, fontWeight: '600', color: '#2E2E2E' },
-  pillTextActive: { color: '#FFFFFF' },
+  pillActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid, shadowColor: t.primarySolid, shadowOpacity: 0.3, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 3 },
+  pillText: { fontSize: 13, fontWeight: '600', color: t.textPrimary },
+  pillTextActive: { color: t.card },
   countBadge: {
     minWidth: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: t.pill,
     alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 5,
   },
-  countBadgeActive: { backgroundColor: 'rgba(255,255,255,0.3)' },
-  countText: { fontSize: 11, fontWeight: '700', color: '#555' },
-  countTextActive: { color: '#FFFFFF' },
+  countBadgeActive: { backgroundColor: t.scrim },
+  countText: { fontSize: 11, fontWeight: '700', color: t.textSecondary },
+  countTextActive: { color: t.card },
 
   searchIconBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: t.pill,
     alignItems: 'center', justifyContent: 'center',
   },
   searchInput: {
@@ -448,11 +487,11 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#E5E8ED',
-    backgroundColor: '#F8F9FB',
+    borderColor: t.border,
+    backgroundColor: t.cardAlt,
     paddingHorizontal: 14,
     fontSize: 13,
-    color: '#1A1F26',
+    color: t.textPrimary,
   },
 
   // Content / carousel
@@ -472,9 +511,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   arrowBtn: {
-    backgroundColor: '#fff',
+    backgroundColor: t.card,
     borderWidth: 1.5,
-    borderColor: '#E85D27',
+    borderColor: t.primarySolid,
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 2,
@@ -490,10 +529,10 @@ const styles = StyleSheet.create({
 
   // Card
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: t.card,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E2E6EC',
+    borderColor: t.divider,
     padding: 11,
     overflow: 'hidden',
   },
@@ -501,8 +540,8 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E8ED',
-    backgroundColor: '#F7F9FB',
+    borderColor: t.border,
+    backgroundColor: t.cardAlt,
     marginBottom: 8,
     overflow: 'hidden',
   },
@@ -513,10 +552,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     gap: 3, paddingHorizontal: 7,
   },
-  statusBadgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: '600' },
-  personName: { color: '#2E333A', fontSize: 12, fontWeight: '600', marginBottom: 4 },
+  statusBadgeText: { color: t.card, fontSize: 9, fontWeight: '600' },
+  personName: { color: t.textPrimary, fontSize: 12, fontWeight: '600', marginBottom: 4 },
   infoLine: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
-  infoText: { color: '#4E5B68', fontSize: 11 },
+  infoText: { color: t.textSecondary, fontSize: 11 },
 
   actions: { marginTop: 8 },
   cardBtn: {
@@ -524,13 +563,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 5,
   },
-  cardBtnSolid: { backgroundColor: '#E85D27' },
-  cardBtnSolidText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
-  cardBtnOutline: { borderWidth: 1, borderColor: '#E85D27', backgroundColor: '#FFFFFF' },
-  cardBtnOutlineText: { color: '#E85D27', fontSize: 12, fontWeight: '500' },
-  cardBtnDisabled: { borderWidth: 1, borderColor: '#D6DADF', backgroundColor: '#F4F5F7' },
-  cardBtnDisabledText: { color: '#8E9399', fontSize: 12, fontWeight: '500' },
+  cardBtnSolid: { backgroundColor: t.primarySolid },
+  cardBtnSolidText: { color: t.card, fontSize: 12, fontWeight: '600' },
+  cardBtnOutline: { borderWidth: 1, borderColor: t.primarySolid, backgroundColor: t.card },
+  cardBtnOutlineText: { color: t.primarySolid, fontSize: 12, fontWeight: '500' },
+  cardBtnDisabled: { borderWidth: 1, borderColor: t.border, backgroundColor: t.disabledBg },
+  cardBtnDisabledText: { color: t.textDisabled, fontSize: 12, fontWeight: '500' },
 
   emptyBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { fontSize: 14, color: '#9AA3B0' },
+  emptyText: { fontSize: 14, color: t.textMuted },
 });

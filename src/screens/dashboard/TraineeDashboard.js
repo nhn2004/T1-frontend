@@ -1,12 +1,14 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { ROUTES } from '../../constants';
+import { ROUTES } from '../../constants/routes';
+import { a11yDecorative } from '../../constants/a11y';
 import useAuthStore from '../../store/authStore';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
+import Toast from '../../components/Toast';
 
 import WelcomeBanner          from './components/WelcomeBanner';
 import InvitationCard         from './components/InvitationCard';
@@ -19,77 +21,84 @@ import { sessionService }     from '../../services/sessionService';
 import { traineeService }     from '../../services/traineeService';
 import { vitalSignsService }  from '../../services/vitalSignsService';
 
-const STATUS_BAR = { ACTIVE: '#2E7D32', PLANNED: '#F57C00' };
+// Tono semántico por estado de sesión; el color lo resuelve el tema.
+const STATUS_TONE = { ACTIVE: 'success', PLANNED: 'warning' };
 
 export default function TraineeDashboard({ navigation }) {
-  const user = useAuthStore((s) => s.user);
+  const user  = useAuthStore((s) => s.user);
   const theme = useTheme();
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const isCompact = width < 900;
 
+  const styles = useMemo(() => makeStyles(theme), [theme]);
+
   const [invitation,       setInvitation]       = useState(null);
   const [weekSchedule,     setWeekSchedule]     = useState([]);
   const [modalVisible,     setModalVisible]     = useState(false);
   const [performanceStats, setPerformanceStats] = useState([]);
-
-  // ── Carga inicial ──────────────────────────────────────────────────────────
+  const [busy,             setBusy]             = useState(false);
+  const [toast,            setToast]            = useState(null);
 
   useEffect(() => {
-    if (!user?.email) return;
+    if (!user?.email) return undefined;
+    let alive = true;
 
-    Promise.all([
-      invitationService.getAll(),
-      sessionService.getAll(),
-    ])
-      .then(async ([invs, sessions]) => {
-        // Invitación pendiente para este usuario
+    (async () => {
+      try {
+        const [invs, sessions] = await Promise.all([
+          invitationService.getAll(),
+          sessionService.getAll(),
+        ]);
+        if (!alive) return;
+
         const myRaw = invs.find(
-          i => i.targetEmail === user.email && i.status === 'Pending'
+          (i) => i.targetEmail === user.email && i.status === 'Pending',
         );
         if (myRaw) {
           const session = myRaw.trainingSessionId
-            ? sessions.find(s => s.id === myRaw.trainingSessionId)
+            ? sessions.find((s) => s.id === myRaw.trainingSessionId)
             : null;
           setInvitation(invitationService.toPendingInvitation(myRaw, session));
         }
 
-        // Próximas 3 sesiones activas/planificadas como agenda semanal
         const upcoming = sessions
-          .filter(s => s.status === 'PLANNED' || s.status === 'ACTIVE')
+          .filter((s) => s.status === 'PLANNED' || s.status === 'ACTIVE')
           .slice(0, 3)
-          .map(s => {
+          .map((s) => {
             const start = s.scheduledStart ? new Date(s.scheduledStart) : null;
+            const valid = start && !Number.isNaN(start.getTime());
+            const tone = STATUS_TONE[s.status];
             return {
               id:       s.id,
-              day:      start ? start.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase().slice(0, 3) : '—',
-              date:     start ? String(start.getDate()) : '—',
+              day:      valid ? start.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase().slice(0, 3) : '—',
+              date:     valid ? String(start.getDate()) : '—',
               title:    s.title,
               time:     s.time,
-              location: 'Centro Alpha',
+              location: s.location ?? '—',
               status:   s.status === 'ACTIVE' ? 'CONFIRMED' : 'PENDING',
-              barColor: STATUS_BAR[s.status] ?? '#D0D0D0',
+              barColor: tone ? theme.status[tone].solid : theme.status.neutral.solid,
             };
           });
-        setWeekSchedule(upcoming);
+        if (alive) setWeekSchedule(upcoming);
 
-        // Signos vitales del trainee logueado
         const trainees = await traineeService.getAll().catch(() => []);
-        const me = trainees.find(t => t.userId === user.userId);
-        if (!me) return;
+        const me = trainees.find((x) => x.userId === user.userId);
+        if (!me || !alive) return;
 
         const history = await vitalSignsService.getHistoryForTrainee(me.id).catch(() => []);
-        if (!history.length) return;
+        if (!history.length || !alive) return;
 
-        const meanInt  = arr => arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : null;
-        const meanDec  = arr => arr.length ? (arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(1) : null;
+        const meanInt = (arr) => (arr.length ? Math.round(arr.reduce((s, v) => s + v, 0) / arr.length) : null);
+        const meanDec = (arr) => (arr.length ? (arr.reduce((s, v) => s + v, 0) / arr.length).toFixed(1) : null);
 
-        const pulses = history.map(h => h.vitals.frecuenciaCardiaca).filter(Boolean);
-        const temps  = history.map(h => h.vitals.temperatura).filter(Boolean);
+        // `!= null` en vez de `filter(Boolean)`: un 0 es un valor medido válido.
+        const pulses = history.map((h) => h.vitals.frecuenciaCardiaca).filter((v) => v != null);
+        const temps  = history.map((h) => h.vitals.temperatura).filter((v) => v != null);
         const latest = history[history.length - 1];
 
-        const totalInvited  = invs.filter(i => i.targetEmail === user.email).length;
-        const totalAccepted = invs.filter(i => i.targetEmail === user.email && i.status === 'Accepted').length;
+        const totalInvited  = invs.filter((i) => i.targetEmail === user.email).length;
+        const totalAccepted = invs.filter((i) => i.targetEmail === user.email && i.status === 'Accepted').length;
         const completionPct = totalInvited > 0 ? Math.round((totalAccepted / totalInvited) * 100) : 0;
 
         const avgPulse = meanInt(pulses);
@@ -97,106 +106,133 @@ export default function TraineeDashboard({ navigation }) {
 
         setPerformanceStats([
           {
-            id: 'p1', iconName: 'flame', iconBg: '#FFE8DD', iconColor: '#E85D27',
+            id: 'p1', iconName: 'flame', tone: 'warning',
             labelKey: 'sessionCompletion',
-            value: `${completionPct}%`, valueColor: '#1A1A1A', progress: completionPct / 100,
+            value: `${completionPct}%`, progress: completionPct / 100,
           },
           {
-            id: 'p2', iconName: 'pulse', iconBg: '#E3F2FD', iconColor: '#2196F3',
+            id: 'p2', iconName: 'pulse', tone: 'info',
             labelKey: 'avgPulse',
-            value: avgPulse ? `${avgPulse} bpm` : '—', valueColor: '#2F7828',
+            value: avgPulse != null ? `${avgPulse} bpm` : '—',
           },
           {
-            id: 'p3', iconName: 'speedometer', iconBg: '#E8F5E9', iconColor: '#4CAF50',
+            id: 'p3', iconName: 'speedometer', tone: 'success',
             labelKey: 'avgPressure',
-            value: latest?.vitals.presionArterial ?? '—', valueColor: '#2F7828',
+            value: latest?.vitals.presionArterial ?? '—',
           },
           {
-            id: 'p4', iconName: 'thermometer-outline', iconBg: '#FFF3E0', iconColor: '#F57C00',
+            id: 'p4', iconName: 'thermometer-outline', tone: 'danger',
             labelKey: 'avgTemperature',
-            value: avgTemp ? `${avgTemp}°C` : '—', valueColor: '#2F7828',
+            value: avgTemp != null ? `${avgTemp}°C` : '—',
           },
         ]);
-      })
-      .catch(() => {});
-  }, [user?.email, user?.userId]);
+      } catch {
+        if (alive) setToast({ message: 'No se pudieron cargar todos tus datos.', tone: 'error' });
+      }
+    })();
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
+    return () => { alive = false; };
+  }, [user?.email, user?.userId, theme]);
 
-  const handleConfirmPress = useCallback(() => {
-    setModalVisible(true);
-  }, []);
-
+  /**
+   * Acepta la invitación. La agenda solo se actualiza si el servidor confirmó: antes
+   * se movía la sesión a "confirmada" aunque la petición fallara, y el aspirante creía
+   * tener su asistencia registrada cuando el backend nunca la recibió.
+   */
   const handleConfirmAccept = useCallback(async (id) => {
-    setModalVisible(false);
-    try { await invitationService.accept(id); } catch {}
-    setInvitation(current => {
-      if (!current || current.id !== id) return current;
-      setWeekSchedule(prev => [
-        {
-          id:       current.id,
-          day:      current.weekDay,
-          date:     current.weekDate,
-          title:    current.title,
-          time:     current.time,
-          location: current.location,
-          status:   'CONFIRMED',
-          barColor: '#2E7D32',
-        },
-        ...prev,
-      ]);
-      return null;
-    });
-  }, []);
+    setBusy(true);
+    setToast(null);
+    try {
+      await invitationService.accept(id);
 
-  const handleConfirmCancel = useCallback(() => {
-    setModalVisible(false);
-  }, []);
+      setInvitation((current) => {
+        if (!current || current.id !== id) return current;
+        setWeekSchedule((prev) => [
+          {
+            id:       current.id,
+            day:      current.weekDay,
+            date:     current.weekDate,
+            title:    current.title,
+            time:     current.time,
+            location: current.location,
+            status:   'CONFIRMED',
+            barColor: theme.status.success.solid,
+          },
+          ...prev,
+        ]);
+        return null;
+      });
+
+      setModalVisible(false);
+      setToast({ message: 'Asistencia confirmada.', tone: 'success' });
+    } catch (error) {
+      const detail = error?.response?.data?.message ?? 'Revisa tu conexión e inténtalo de nuevo.';
+      setToast({ message: `No se pudo confirmar la asistencia. ${detail}`, tone: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  }, [theme]);
 
   const handleDetails = useCallback((id) => {
     navigation?.navigate(ROUTES.SESSION_DETAIL, { id });
   }, [navigation]);
 
-  // ── Render ──────────────────────────────────────────────────────────────────
-
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={styles.root} edges={['top']}>
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        <WelcomeBanner name={user?.name ?? t.dashboard.traineeTitle} title={t.dashboard.traineeTitle} />
+        <WelcomeBanner
+          name={user?.name ?? t.dashboard.traineeTitle}
+          title={t.dashboard.traineeTitle}
+        />
+
+        {!!toast && <Toast message={toast.message} tone={toast.tone} />}
 
         <View style={[styles.middleRow, isCompact && styles.middleRowCompact]}>
           {invitation ? (
             <InvitationCard
               invitation={invitation}
-              onConfirm={handleConfirmPress}
+              onConfirm={() => setModalVisible(true)}
               onDetails={handleDetails}
               compact={isCompact}
+              busy={busy}
             />
           ) : (
             <View
               style={[
                 styles.emptyInvitation,
-                { backgroundColor: theme.card },
-                isCompact ? styles.emptyInvitationCompact : { flex: 1.3 },
+                isCompact ? styles.emptyInvitationCompact : styles.emptyInvitationWide,
               ]}
             >
-              <Ionicons name="checkmark-done-circle-outline" size={28} color={theme.textMuted} />
-              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-                {t.dashboard.noInvitations}
-              </Text>
+              <Ionicons
+                name="checkmark-done-circle-outline"
+                size={28}
+                color={theme.iconMuted}
+                {...a11yDecorative}
+              />
+              <Text style={styles.emptyText}>{t.dashboard.noInvitations}</Text>
             </View>
           )}
 
-          <WeekScheduleCard items={weekSchedule} compact={isCompact} onViewDetails={handleDetails} />
+          <WeekScheduleCard
+            items={weekSchedule}
+            compact={isCompact}
+            onViewDetails={handleDetails}
+          />
         </View>
 
-        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>{t.dashboard.performanceOverview}</Text>
+        <Text style={styles.sectionTitle} accessibilityRole="header">
+          {t.dashboard.performanceOverview}
+        </Text>
         <View style={[styles.statsRow, isCompact && styles.statsRowCompact]}>
-          {performanceStats.map((stat) => (
-            <View key={stat.id} style={isCompact ? styles.statItemCompact : styles.statItem}>
-              <PerformanceStatCard {...stat} />
-            </View>
-          ))}
+          {performanceStats.length === 0 ? (
+            <Text style={styles.emptyText}>Aún no hay mediciones registradas.</Text>
+          ) : (
+            performanceStats.map((stat) => (
+              <View key={stat.id} style={isCompact ? styles.statItemCompact : styles.statItem}>
+                <PerformanceStatCard {...stat} />
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
 
@@ -204,64 +240,40 @@ export default function TraineeDashboard({ navigation }) {
         visible={modalVisible}
         invitation={invitation}
         onConfirm={handleConfirmAccept}
-        onCancel={handleConfirmCancel}
+        onCancel={() => setModalVisible(false)}
+        busy={busy}
       />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#F4F6F8',
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 14,
-    gap: 12,
-  },
-  middleRow: {
-    flexDirection: 'row',
-    gap: 12,
-    minHeight: 220,
-  },
-  middleRowCompact: {
-    flexDirection: 'column',
-    minHeight: 0,
-  },
-  emptyInvitation: {
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    gap: 8,
-  },
-  emptyInvitationCompact: {
-    width: '100%',
-    minHeight: 120,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: '#697282',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  statsRowCompact: {
-    flexWrap: 'wrap',
-  },
-  statItem: {
-    flex: 1,
-  },
-  statItemCompact: {
-    width: '47%',
-  },
-});
+const makeStyles = (t) =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: t.background },
+    content: { flex: 1 },
+    contentContainer: { padding: 14, gap: 12 },
+
+    middleRow: { flexDirection: 'row', gap: 12, minHeight: 220 },
+    middleRowCompact: { flexDirection: 'column', minHeight: 0 },
+
+    emptyInvitation: {
+      borderRadius: 18,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 16,
+      gap: 8,
+      backgroundColor: t.card,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    emptyInvitationWide: { flex: 1.3 },
+    emptyInvitationCompact: { width: '100%', minHeight: 120 },
+    emptyText: { fontSize: 14, color: t.textSecondary, textAlign: 'center' },
+
+    sectionTitle: { fontSize: 17, fontWeight: '700', color: t.textPrimary },
+
+    statsRow: { flexDirection: 'row', gap: 12 },
+    statsRowCompact: { flexWrap: 'wrap' },
+    statItem: { flex: 1 },
+    statItemCompact: { width: '47%', flexGrow: 1 },
+  });

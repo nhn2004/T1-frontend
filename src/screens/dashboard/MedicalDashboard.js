@@ -1,10 +1,17 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  View, Text, TouchableOpacity, StyleSheet, ScrollView,
+  ActivityIndicator, useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { COLORS } from '../../constants';
+import { ROUTES } from '../../constants/routes';
+import { a11yButton, a11yDecorative, MIN_TOUCH_SIZE } from '../../constants/a11y';
 import useAuthStore from '../../store/authStore';
+import useTheme from '../../hooks/useTheme';
+import { useAuditOnMount } from '../../hooks/useAuditTrail';
+import Toast from '../../components/Toast';
 
 import WelcomeBanner        from './components/WelcomeBanner';
 import ValidationCard       from './components/ValidationCard';
@@ -21,167 +28,226 @@ const MAX_VISIBLE = 1;
 function timeAgo(iso) {
   if (!iso) return '—';
   const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
-  if (mins < 60)  return `Hace ${mins} min`;
+  if (mins < 60) return `Hace ${mins} min`;
   const hrs = Math.floor(mins / 60);
-  if (hrs  < 24)  return `Hace ${hrs} hora${hrs > 1 ? 's' : ''}`;
+  if (hrs < 24) return `Hace ${hrs} hora${hrs > 1 ? 's' : ''}`;
   const days = Math.floor(hrs / 24);
   return `Hace ${days} día${days > 1 ? 's' : ''}`;
 }
 
-export default function MedicalDashboard({ navigation, Sidebar }) {
-  const user = useAuthStore((s) => s.user);
+export default function MedicalDashboard({ navigation }) {
+  const user  = useAuthStore((s) => s.user);
+  const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 900;
+  const styles = useMemo(() => makeStyles(theme, isWide), [theme, isWide]);
 
-  const [rawInvitations,  setRawInvitations]  = useState([]);
-  const [allInvitations,  setAllInvitations]  = useState([]);
-  const [staffCount,      setStaffCount]      = useState(0);
-  const [sessionCount,    setSessionCount]    = useState(0);
-  const [approvedCount,   setApproved]        = useState(0);
+  // Requisito de auditoría: esta pantalla lista solicitudes de personal médico.
+  useAuditOnMount('MEDICAL_VALIDATION_QUEUE', user?.userId);
 
-  const [modalVisible,  setModalVisible]  = useState(false);
-  const [selectedItem,  setSelectedItem]  = useState(null);
+  const [rawInvitations, setRawInvitations] = useState([]);
+  const [allInvitations, setAllInvitations] = useState([]);
+  const [staffCount,     setStaffCount]     = useState(null);
+  const [sessionCount,   setSessionCount]   = useState(null);
+  const [loading,        setLoading]        = useState(true);
+  const [busyId,         setBusyId]         = useState(null);
+  const [toast,          setToast]          = useState(null);
 
-  // ── Carga inicial ──────────────────────────────────────────────────────────
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
 
-  useEffect(() => {
-    Promise.all([
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const results = await Promise.allSettled([
       invitationService.getAll(),
       healthPersonnelService.getAll(),
       sessionService.getAll(),
-    ])
-      .then(([invs, staff, sessions]) => {
-        setAllInvitations(invs);
-        setRawInvitations(invs.filter(i => i.status === 'Pending'));
-        setStaffCount(staff.length);
-        setSessionCount(sessions.length);
-      })
-      .catch(() => {});
+    ]);
+    const [invsR, staffR, sessR] = results;
+
+    if (invsR.status === 'fulfilled') {
+      setAllInvitations(invsR.value);
+      setRawInvitations(invsR.value.filter((i) => i.status === 'Pending'));
+    }
+    if (staffR.status === 'fulfilled') setStaffCount(staffR.value.length);
+    if (sessR.status === 'fulfilled')  setSessionCount(sessR.value.length);
+
+    if (results.some((r) => r.status === 'rejected')) {
+      setToast({ message: 'Algunos datos no se pudieron cargar.', tone: 'error' });
+    }
+    setLoading(false);
   }, []);
 
-  // Cola derivada — mapea InvitationDto al shape que ValidationCard espera
-  const queue = rawInvitations.map(invitationService.toValidationItem);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
+  const queue = useMemo(
+    () => rawInvitations.map(invitationService.toValidationItem),
+    [rawInvitations],
+  );
 
-  const handleApprovePress = useCallback(async (id) => {
-    try { await invitationService.accept(id); } catch {}
-    setRawInvitations(prev => prev.filter(i => i.invitationId !== id));
-    setApproved(n => n + 1);
+  /**
+   * Ejecuta una acción sobre una invitación y SOLO actualiza la lista si el servidor
+   * confirmó el cambio. Antes se quitaba el elemento pasara lo que pasara, así que un
+   * fallo de red mostraba "aprobado" mientras el backend seguía con la invitación
+   * pendiente.
+   */
+  const runInvitationAction = useCallback(async (id, action, successMessage) => {
+    setBusyId(id);
+    setToast(null);
+    try {
+      await action(id);
+      setRawInvitations((prev) => prev.filter((i) => i.invitationId !== id));
+      setToast({ message: successMessage, tone: 'success' });
+      setModalVisible(false);
+      setSelectedItem(null);
+      // Refresca la actividad reciente con el estado real del servidor.
+      invitationService.getAll().then(setAllInvitations).catch(() => {});
+    } catch (error) {
+      const detail = error?.response?.data?.message ?? 'Revisa tu conexión e inténtalo de nuevo.';
+      setToast({ message: `No se pudo completar la acción. ${detail}`, tone: 'error' });
+    } finally {
+      setBusyId(null);
+    }
   }, []);
+
+  const handleApprovePress = useCallback(
+    (id) => runInvitationAction(id, invitationService.accept, 'Invitación aprobada.'),
+    [runInvitationAction],
+  );
+
+  const handleConfirmApproval = useCallback(
+    (id) => runInvitationAction(id, invitationService.accept, 'Invitación aprobada.'),
+    [runInvitationAction],
+  );
+
+  const handleRejectWithReason = useCallback(
+    (id, reason) => runInvitationAction(
+      id,
+      invitationService.reject,
+      `Invitación rechazada. Motivo registrado: "${reason}"`,
+    ),
+    [runInvitationAction],
+  );
 
   const handleReview = useCallback((id) => {
-    const item = queue.find(v => v.id === id);
-    setSelectedItem(item);
+    setSelectedItem(queue.find((v) => v.id === id) ?? null);
     setModalVisible(true);
   }, [queue]);
-
-  const handleConfirmApproval = useCallback(async (id) => {
-    setModalVisible(false);
-    setSelectedItem(null);
-    try { await invitationService.accept(id); } catch {}
-    setRawInvitations(prev => prev.filter(i => i.invitationId !== id));
-    setApproved(n => n + 1);
-  }, []);
-
-  const handleRejectWithReason = useCallback(async (id, reason) => {
-    setModalVisible(false);
-    setSelectedItem(null);
-    try { await invitationService.reject(id); } catch {}
-    setRawInvitations(prev => prev.filter(i => i.invitationId !== id));
-    setApproved(n => n + 1);
-    Alert.alert('Rechazado', `Motivo enviado: "${reason}"`);
-  }, []);
 
   const handleCancelModal = useCallback(() => {
     setModalVisible(false);
     setSelectedItem(null);
   }, []);
 
-  const handleViewAll = useCallback(() => {
-    navigation?.navigate('ValidationQueue');
-  }, [navigation]);
+  const displayQueue   = queue.slice(0, MAX_VISIBLE);
+  const remainingCount = rawInvitations.length;
 
-  // ── Datos derivados ──────────────────────────────────────────────────────
+  const director = {
+    name: user?.name ?? 'Personal médico',
+    title: 'Dirección Médica',
+  };
 
-  const displayQueue     = queue.slice(0, MAX_VISIBLE);
-  const remainingCount   = rawInvitations.length;
+  const statCards = useMemo(() => {
+    const fmt = (v) => (loading || v === null ? '—' : String(v));
+    return [
+      {
+        id: 'stat_invitations',
+        title: 'Invitaciones Pendientes',
+        value: loading ? '—' : String(remainingCount),
+        subtitle: 'Esperando confirmación',
+        iconName: 'send',
+        iconBg: 'warning',
+      },
+      {
+        id: 'stat_staff',
+        title: 'Personal Activo',
+        value: fmt(staffCount),
+        subtitle: 'Médicos y enfermeros',
+        iconName: 'people',
+        iconBg: 'info',
+      },
+      {
+        id: 'stat_sessions',
+        title: 'Total Sesiones',
+        value: fmt(sessionCount),
+        subtitle: 'Registradas en el sistema',
+        iconName: 'calendar',
+        iconBg: 'success',
+      },
+    ];
+  }, [loading, remainingCount, staffCount, sessionCount]);
 
-  const director = user
-    ? { name: user.name, title: 'Medical Director' }
-    : { name: 'Medical Director', title: 'Medical Director' };
-
-  const statCards = [
-    {
-      id: 'stat_invitations',
-      title: 'Invitaciones Pendientes',
-      value: String(remainingCount),
-      subtitle: 'Esperando confirmación',
-      iconName: 'send',
-      iconBg: '#F6D622',
-    },
-    {
-      id: 'stat_staff',
-      title: 'Personal Activo',
-      value: String(staffCount),
-      subtitle: 'Médicos y enfermeros',
-      iconName: 'people',
-      iconBg: '#2690F3',
-    },
-    {
-      id: 'stat_sessions',
-      title: 'Total Sesiones',
-      value: String(sessionCount),
-      subtitle: 'Registradas en el sistema',
-      iconName: 'calendar',
-      iconBg: '#1EB91E',
-    },
-  ];
-
-  const recentActivities = allInvitations
-    .filter(i => i.status === 'Accepted' || i.status === 'Rejected')
-    .sort((a, b) => new Date(b.respondedAt ?? b.createdAt) - new Date(a.respondedAt ?? a.createdAt))
-    .slice(0, 4)
-    .map(i => ({
-      id:       i.invitationId,
-      title:    i.status === 'Accepted' ? 'Invitación aceptada' : 'Invitación rechazada',
-      subtitle: i.targetEmail,
-      time:     timeAgo(i.respondedAt ?? i.createdAt),
-      dotColor: i.status === 'Accepted' ? '#1EB91E' : '#D83B35',
-    }));
-
-  // ── Render ──────────────────────────────────────────────────────────────────
+  const recentActivities = useMemo(
+    () => allInvitations
+      .filter((i) => i.status === 'Accepted' || i.status === 'Rejected')
+      .sort((a, b) => new Date(b.respondedAt ?? b.createdAt) - new Date(a.respondedAt ?? a.createdAt))
+      .slice(0, 4)
+      .map((i) => ({
+        id:       i.invitationId,
+        title:    i.status === 'Accepted' ? 'Invitación aceptada' : 'Invitación rechazada',
+        subtitle: i.targetEmail,
+        time:     timeAgo(i.respondedAt ?? i.createdAt),
+        tone:     i.status === 'Accepted' ? 'success' : 'danger',
+      })),
+    [allInvitations],
+  );
 
   return (
-    <SafeAreaView style={styles.root}>
-      {Sidebar && <Sidebar />}
-
-      <View style={styles.content}>
-
+    <SafeAreaView style={styles.root} edges={['top']}>
+      <ScrollView contentContainerStyle={styles.content}>
         <WelcomeBanner name={director.name} title={director.title} />
 
+        {!!toast && <Toast message={toast.message} tone={toast.tone} />}
+
         <View style={styles.middleRow}>
-
-          {/* Validation queue */}
+          {/* Cola de validaciones */}
           <View style={styles.queuePanel}>
-            <QueueHeader count={remainingCount} />
+            <View style={styles.queueHeader}>
+              <View style={styles.queueTitleRow}>
+                <Ionicons name="people-outline" size={18} color={theme.icon} {...a11yDecorative} />
+                <Text style={styles.queueTitle} accessibilityRole="header">
+                  Cola de Validaciones
+                </Text>
+              </View>
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>
+                  {loading ? '—' : `${remainingCount} Pendientes`}
+                </Text>
+              </View>
+            </View>
 
-            {displayQueue.length > 0 ? (
+            {loading ? (
+              <View style={styles.emptyBox}>
+                <ActivityIndicator size="small" color={theme.primary} />
+              </View>
+            ) : displayQueue.length > 0 ? (
               displayQueue.map((item) => (
                 <ValidationCard
                   key={item.id}
                   item={item}
                   onApprove={handleApprovePress}
                   onReview={handleReview}
+                  busy={busyId === item.id}
                 />
               ))
             ) : (
-              <EmptyQueue />
+              <View style={styles.emptyBox}>
+                <Ionicons
+                  name="checkmark-done-circle-outline"
+                  size={32}
+                  color={theme.status.success.fg}
+                  {...a11yDecorative}
+                />
+                <Text style={styles.emptyText}>Sin solicitudes pendientes</Text>
+              </View>
             )}
 
             {remainingCount > 0 && (
               <TouchableOpacity
                 style={styles.viewAllBtn}
-                onPress={handleViewAll}
+                onPress={() => navigation?.navigate(ROUTES.VALIDATION_QUEUE)}
                 activeOpacity={0.8}
+                {...a11yButton(`Ver todas las solicitudes, ${remainingCount} pendientes`)}
               >
                 <Text style={styles.viewAllText}>
                   Ver Todas las Solicitudes ({remainingCount})
@@ -190,29 +256,24 @@ export default function MedicalDashboard({ navigation, Sidebar }) {
             )}
           </View>
 
-          {/* Stat cards */}
+          {/* Estadísticas */}
           <View style={styles.statsPanel}>
-            {statCards.map((card) => (
-              <StatCard key={card.id} {...card} />
-            ))}
+            {statCards.map((card) => <StatCard key={card.id} {...card} />)}
           </View>
         </View>
 
-        {/* Recent activity */}
+        {/* Actividad reciente */}
         <View style={styles.activityPanel}>
-          <Text style={styles.sectionTitle}>Actividades recientes</Text>
+          <Text style={styles.sectionTitle} accessibilityRole="header">
+            Actividades recientes
+          </Text>
           {recentActivities.length > 0 ? (
-            recentActivities.map((activity) => (
-              <ActivityRow key={activity.id} {...activity} />
-            ))
+            recentActivities.map((activity) => <ActivityRow key={activity.id} {...activity} />)
           ) : (
-            <Text style={{ fontSize: 13, color: '#9AA3B0', paddingVertical: 8 }}>
-              Sin actividad reciente
-            </Text>
+            <Text style={styles.emptyText}>Sin actividad reciente</Text>
           )}
         </View>
-
-      </View>
+      </ScrollView>
 
       <ConfirmApprovalModal
         visible={modalVisible}
@@ -220,131 +281,69 @@ export default function MedicalDashboard({ navigation, Sidebar }) {
         onApprove={handleConfirmApproval}
         onReject={handleRejectWithReason}
         onCancel={handleCancelModal}
+        busy={busyId != null}
       />
     </SafeAreaView>
   );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+const makeStyles = (t, isWide) =>
+  StyleSheet.create({
+    root: { flex: 1, backgroundColor: t.background },
+    content: { padding: 14, gap: 12 },
 
-function QueueHeader({ count }) {
-  return (
-    <View style={styles.queueHeader}>
-      <View style={styles.queueTitleRow}>
-        <Ionicons name="people-outline" size={18} color="#2E2E2E" />
-        <Text style={styles.queueTitle}>Cola de Validaciones</Text>
-      </View>
-      <View style={styles.countBadge}>
-        <Text style={styles.countBadgeText}>{count} Pendientes</Text>
-      </View>
-    </View>
-  );
-}
+    middleRow: {
+      flexDirection: isWide ? 'row' : 'column',
+      gap: 12,
+    },
 
-function EmptyQueue() {
-  return (
-    <View style={styles.emptyBox}>
-      <Ionicons name="checkmark-done-circle-outline" size={32} color="#00A63E" />
-      <Text style={styles.emptyText}>Sin solicitudes pendientes</Text>
-    </View>
-  );
-}
+    queuePanel: {
+      flex: isWide ? 1.1 : undefined,
+      backgroundColor: t.card,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: t.border,
+      padding: 14,
+    },
+    queueHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 10,
+      gap: 8,
+    },
+    queueTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
+    queueTitle: { fontSize: 16, fontWeight: '700', color: t.textPrimary },
+    countBadge: {
+      backgroundColor: t.status.warning.bg,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    countBadgeText: { color: t.status.warning.fg, fontSize: 12, fontWeight: '700' },
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+    viewAllBtn: {
+      marginTop: 8,
+      borderRadius: 8,
+      borderWidth: 1.5,
+      borderColor: t.status.danger.border,
+      minHeight: MIN_TOUCH_SIZE,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    viewAllText: { color: t.status.danger.fg, fontSize: 14, fontWeight: '600' },
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: '#F4F6F8',
-  },
-  content: {
-    flex: 1,
-    padding: 14,
-    gap: 12,
-  },
-  middleRow: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 12,
-  },
+    emptyBox: { alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 24 },
+    emptyText: { fontSize: 14, color: t.textMuted, paddingVertical: 4 },
 
-  queuePanel: {
-    flex: 1.1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,0,0,0.08)',
-    padding: 14,
-  },
-  queueHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  queueTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  queueTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#2E2E2E',
-  },
-  countBadge: {
-    backgroundColor: '#F0B100',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  countBadgeText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  viewAllBtn: {
-    marginTop: 8,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: '#C62828',
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  viewAllText: {
-    color: '#C62828',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  emptyBox: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 24,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: '#697282',
-  },
+    statsPanel: { flex: isWide ? 0.9 : undefined, gap: 10 },
 
-  statsPanel: {
-    flex: 0.9,
-    gap: 10,
-  },
-
-  activityPanel: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,0,0,0.08)',
-    padding: 14,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#2E2E2E',
-    marginBottom: 6,
-  },
-});
+    activityPanel: {
+      backgroundColor: t.card,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: t.border,
+      padding: 14,
+    },
+    sectionTitle: { fontSize: 16, fontWeight: '700', color: t.textPrimary, marginBottom: 6 },
+  });

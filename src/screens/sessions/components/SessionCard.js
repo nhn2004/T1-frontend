@@ -1,190 +1,157 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SESSION_STATUS } from '../__mocks__/sessionsData';
+import { SESSION_STATUS } from '../sessionFilters';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
 import { useAuth } from '../../../hooks';
-import { ROLES } from '../../../constants';
+import { ROLES } from '../../../constants/roles';
+import { a11yButton, a11yDecorative, a11yGroup, MIN_TOUCH_SIZE } from '../../../constants/a11y';
 
+// Tono semántico + icono por estado. El color lo resuelve el tema en ambos modos.
 const STATUS_CONFIG = {
-  [SESSION_STATUS.PLANNED]: {
-    badge: { label: 'Pendiente', bg: '#F59E0B', icon: 'time-outline' },
-    btnBg: '#E85D27',
-    btnOpacity: 1,
-  },
-  [SESSION_STATUS.ACTIVE]: {
-    badge: { label: 'En Curso', bg: '#1E88E5', icon: 'play' },
-    btnBg: '#E85D27',
-    btnOpacity: 1,
-  },
-  [SESSION_STATUS.COMPLETED]: {
-    badge: { label: 'Realizado', bg: '#27AE60', icon: 'checkmark' },
-    btnBg: '#E85D27',
-    btnOpacity: 1,
-  },
-  [SESSION_STATUS.CANCELLED]: {
-    badge: { label: 'Cancelado', bg: '#9E9E9E', icon: 'close' },
-    btnBg: '#9E9E9E',
-    btnOpacity: 0.6,
-  },
+  [SESSION_STATUS.PLANNED]:   { tone: 'warning', icon: 'time-outline', labelKey: 'pending' },
+  [SESSION_STATUS.ACTIVE]:    { tone: 'info',    icon: 'play',         labelKey: 'inProgress' },
+  [SESSION_STATUS.COMPLETED]: { tone: 'success', icon: 'checkmark',    labelKey: 'completed' },
+  [SESSION_STATUS.CANCELLED]: { tone: 'neutral', icon: 'close',        labelKey: 'cancelled' },
 };
 
 export default function SessionCard({ session, onViewDetails, cardWidth, cardHeight }) {
   const theme = useTheme();
   const { t } = useTranslation();
-  const cfg = STATUS_CONFIG[session.status] ?? STATUS_CONFIG[SESSION_STATUS.PLANNED];
-  const { badge } = cfg;
-  const { role } = useAuth();
-  const isTrainee = role === ROLES.FIREFIGHTER_TRAINEE;
-  const isBtnDisabled = isTrainee && (
-    session.status === SESSION_STATUS.PLANNED ||
-    session.status === SESSION_STATUS.CANCELLED
-  );
+  const { roles } = useAuth();
+  const styles = useMemo(() => makeStyles(theme), [theme]);
 
+  const cfg  = STATUS_CONFIG[session.status] ?? STATUS_CONFIG[SESSION_STATUS.PLANNED];
+  const tone = theme.status[cfg.tone];
+  const statusLabel = t.common.status[cfg.labelKey] ?? cfg.labelKey;
+
+  const isTrainee = roles.includes(ROLES.FIREFIGHTER_TRAINEE);
+
+  // El aspirante solo tiene resultados que consultar en sesiones ya realizadas.
+  const isBtnDisabled = isTrainee && session.status !== SESSION_STATUS.COMPLETED;
+
+  // La etiqueta refleja lo que la pantalla destino puede mostrar realmente: antes
+  // decía "Ver Resultados" en sesiones en curso, que no tienen resultados todavía.
   const btnLabel = isTrainee
-    ? 'Ver Resultados'
-    : session.status === SESSION_STATUS.COMPLETED
-      ? 'Ver Reportes'
-      : t.sessions.viewDetails;
+    ? (session.status === SESSION_STATUS.COMPLETED ? 'Ver Resultados' : statusLabel)
+    : (session.status === SESSION_STATUS.COMPLETED ? 'Ver Reportes' : t.sessions.viewDetails);
+
+  const spoken = [
+    session.title,
+    `${session.applicants} ${t.sessions.applicants}`,
+    statusLabel,
+    session.date,
+    session.time,
+    session.type,
+  ].filter(Boolean).join(', ');
 
   return (
-    <View style={[
-      styles.card,
-      { backgroundColor: theme.card },
-      { width: cardWidth },
-      cardHeight ? { height: cardHeight } : null,
-    ]}>
-
-      {/* Header */}
+    <View
+      style={[styles.card, { width: cardWidth }, cardHeight ? { height: cardHeight } : null]}
+      {...a11yGroup(spoken)}
+    >
       <View style={styles.header}>
         <View style={styles.titleBlock}>
-          <Text style={[styles.title, { color: theme.textPrimary }]} numberOfLines={1}>{session.title}</Text>
-          <Text style={styles.applicants}>{session.applicants} {t.sessions.applicants}</Text>
+          <Text style={styles.title} numberOfLines={2}>{session.title}</Text>
+          <Text style={styles.applicants}>
+            {session.applicants} {t.sessions.applicants}
+          </Text>
         </View>
 
-        {/* Badge estilo pill con icono */}
-        <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-          <Ionicons name={badge.icon} size={10} color="#FFFFFF" />
-          <Text style={styles.badgeText}>{badge.label}</Text>
+        <View style={[styles.badge, { backgroundColor: tone.bg }]}>
+          <Ionicons name={cfg.icon} size={11} color={tone.fg} {...a11yDecorative} />
+          <Text style={[styles.badgeText, { color: tone.fg }]}>{statusLabel}</Text>
         </View>
       </View>
 
-      {/* Details */}
-      <View style={[styles.details, { borderTopColor: theme.divider ?? '#F0F0F0' }]}>
-        <DetailRow icon="calendar-outline"  label={session.date} color={theme.textSecondary} />
-        <DetailRow icon="time-outline"      label={session.time} color={theme.textSecondary} />
-        <DetailRow icon="clipboard-outline" label={session.type} color={theme.textSecondary} />
+      <View style={styles.details}>
+        <DetailRow icon="calendar-outline"  label={session.date} styles={styles} theme={theme} />
+        <DetailRow icon="time-outline"      label={session.time} styles={styles} theme={theme} />
+        <DetailRow icon="clipboard-outline" label={session.type} styles={styles} theme={theme} />
       </View>
 
-      {/* Botón */}
       <TouchableOpacity
-        style={[
-          styles.btn,
-          isBtnDisabled
-            ? { backgroundColor: '#F4F5F7', borderWidth: 1, borderColor: '#D6DADF' }
-            : { backgroundColor: cfg.btnBg, opacity: cfg.btnOpacity },
-        ]}
+        style={[styles.btn, isBtnDisabled ? styles.btnDisabled : styles.btnEnabled]}
         onPress={() => onViewDetails(session.id)}
         activeOpacity={isBtnDisabled ? 1 : 0.8}
         disabled={isBtnDisabled}
-        accessibilityRole="button"
-        accessibilityLabel={`${btnLabel} — ${session.title}`}
+        {...a11yButton(`${btnLabel} — ${session.title}`, { disabled: isBtnDisabled })}
       >
-        <Text style={[styles.btnText, isBtnDisabled && { color: '#8E9399' }]}>
+        <Text style={[styles.btnText, isBtnDisabled && styles.btnTextDisabled]}>
           {btnLabel}
         </Text>
-        <Ionicons name="arrow-forward" size={12} color={isBtnDisabled ? '#8E9399' : '#fff'} />
+        {!isBtnDisabled && (
+          <Ionicons
+            name="arrow-forward"
+            size={13}
+            color={theme.onPrimarySolid}
+            {...a11yDecorative}
+          />
+        )}
       </TouchableOpacity>
-
     </View>
   );
 }
 
-function DetailRow({ icon, label, color }) {
+function DetailRow({ icon, label, styles, theme }) {
   return (
     <View style={styles.detailRow}>
-      <Ionicons name={icon} size={12} color={color ?? '#697282'} />
-      <Text style={[styles.detailText, { color: color ?? '#495565' }]} numberOfLines={1}>{label}</Text>
+      <Ionicons name={icon} size={13} color={theme.iconMuted} {...a11yDecorative} />
+      <Text style={styles.detailText} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    paddingTop: '1%',
-    paddingHorizontal: '3%',
-    paddingBottom: '4%',
-    gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    overflow: 'hidden',
-  },
+const makeStyles = (t) =>
+  StyleSheet.create({
+    card: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: t.border,
+      backgroundColor: t.card,
+      paddingTop: 10,
+      paddingHorizontal: 12,
+      paddingBottom: 12,
+      gap: 6,
+      shadowColor: t.shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: t.shadowOpacity,
+      shadowRadius: 4,
+      elevation: 2,
+      overflow: 'hidden',
+    },
 
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  titleBlock: { flex: 1, marginRight: 6 },
-  title: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  applicants: {
-    fontSize: 11,
-    color: '#9AA3B0',
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '700',
-  },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 },
+    titleBlock: { flex: 1 },
+    title: { fontSize: 14, fontWeight: '700', color: t.textPrimary },
+    applicants: { fontSize: 12, color: t.textMuted, fontWeight: '500', marginTop: 2 },
 
-  details: {
-    borderTopWidth: 1,
-    paddingTop: '1.5%',
-    gap: 3,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  detailText: {
-    fontSize: 11,
-    flex: 1,
-  },
+    badge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      borderRadius: 10,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+    },
+    badgeText: { fontSize: 10, fontWeight: '700' },
 
-  btn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    borderRadius: 8,
-    paddingVertical: '2%',
-    marginTop: 'auto',
-    marginBottom: 0,
-  },
-  btnText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-});
+    details: { borderTopWidth: 1, borderTopColor: t.divider, paddingTop: 8, gap: 4 },
+    detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    detailText: { fontSize: 12, flex: 1, color: t.textSecondary },
+
+    btn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 4,
+      borderRadius: 8,
+      minHeight: MIN_TOUCH_SIZE - 8,
+      marginTop: 'auto',
+    },
+    btnEnabled:  { backgroundColor: t.primarySolid },
+    btnDisabled: { backgroundColor: t.disabledBg, borderWidth: 1, borderColor: t.border },
+    btnText: { color: t.onPrimarySolid, fontSize: 13, fontWeight: '700' },
+    btnTextDisabled: { color: t.textDisabled },
+  });

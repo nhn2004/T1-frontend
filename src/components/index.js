@@ -1,6 +1,5 @@
-// Barrel export for shared UI components.
-// Dev 1 / Dev 2 / Dev 3: add your components here as you build them.
-// Example:
-//   export { default as Button } from './Button';
-//   export { default as Card } from './Card';
-//   export { default as AlertBanner } from './AlertBanner';
+// Barrel de componentes UI compartidos.
+export { default as MainLayout } from './MainLayout';
+export { default as Sidebar } from './Sidebar';
+export { default as ConfirmDialog } from './ConfirmDialog';
+export { default as Toast } from './Toast';
