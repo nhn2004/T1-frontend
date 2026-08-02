@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, ActivityIndicator,
   StyleSheet, TouchableWithoutFeedback, TextInput,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
@@ -52,6 +53,7 @@ export default function ConfirmApprovalModal({ visible, item, onApprove, onRejec
       onRequestClose={handleClose}
       statusBarTranslucent
     >
+      <KeyboardAvoidingView style={styles.kbAvoid} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <TouchableWithoutFeedback onPress={busy ? undefined : handleClose} accessible={false}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback accessible={false}>
@@ -82,11 +84,11 @@ export default function ConfirmApprovalModal({ visible, item, onApprove, onRejec
               <Text style={styles.sectionLabel}>PERSONAL MÉDICO</Text>
               <View style={styles.infoRow}>
                 <Ionicons name="person-circle-outline" size={16} color={theme.icon} {...a11yDecorative} />
-                <Text style={styles.infoText}>{item.doctorName}</Text>
+                <Text style={styles.infoText} numberOfLines={2}>{item.doctorName}</Text>
               </View>
               <View style={styles.infoRow}>
                 <Ionicons name="medical-outline" size={16} color={theme.icon} {...a11yDecorative} />
-                <Text style={styles.infoText}>{item.specialty}</Text>
+                <Text style={styles.infoText} numberOfLines={2}>{item.specialty}</Text>
               </View>
 
               <View style={styles.spacer} />
@@ -200,12 +202,14 @@ export default function ConfirmApprovalModal({ visible, item, onApprove, onRejec
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const makeStyles = (t) =>
   StyleSheet.create({
+    kbAvoid: { flex: 1 },
     overlay: {
       flex: 1,
       backgroundColor: t.overlay,
@@ -219,6 +223,7 @@ const makeStyles = (t) =>
       padding: 22,
       width: '100%',
       maxWidth: 440,
+      maxHeight: '90%',
       borderWidth: 1,
       borderColor: t.border,
       shadowColor: t.shadowColor,
@@ -240,8 +245,8 @@ const makeStyles = (t) =>
       letterSpacing: 1, marginBottom: 8,
     },
     infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
-    infoBlock: { flex: 1 },
-    infoText: { fontSize: 14, color: t.textPrimary, fontWeight: '500' },
+    infoBlock: { flex: 1, minWidth: 0 },
+    infoText: { flex: 1, minWidth: 0, fontSize: 14, color: t.textPrimary, fontWeight: '500' },
     infoSubtext: { fontSize: 13, color: t.textSecondary, marginTop: 1 },
 
     actions: { flexDirection: 'row', gap: 10, marginTop: 4 },

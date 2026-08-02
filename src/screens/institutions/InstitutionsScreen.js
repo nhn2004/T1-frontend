@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -283,6 +285,7 @@ function InstitutionModal({ visible, institution, onClose, onSaved }) {
 
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={handleClose} statusBarTranslucent>
+      <KeyboardAvoidingView style={styles.kbAvoid} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <TouchableWithoutFeedback onPress={handleClose} accessible={false}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback accessible={false}>
@@ -291,12 +294,14 @@ function InstitutionModal({ visible, institution, onClose, onSaved }) {
                 {isEdit ? 'Editar Institución' : 'Agregar Institución'}
               </Text>
 
-              <ModalField label="Nombre" value={name} onChangeText={setName} styles={styles} theme={theme} required />
-              <ModalField label="Sigla (opcional)" value={acronym} onChangeText={setAcronym} styles={styles} theme={theme} />
-              <View style={styles.row}>
-                <ModalField label="Ciudad (opcional)" value={city} onChangeText={setCity} styles={styles} theme={theme} />
-                <ModalField label="País (opcional)" value={country} onChangeText={setCountry} styles={styles} theme={theme} />
-              </View>
+              <ScrollView style={styles.formScrollArea} contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
+                <ModalField label="Nombre" value={name} onChangeText={setName} styles={styles} theme={theme} required />
+                <ModalField label="Sigla (opcional)" value={acronym} onChangeText={setAcronym} styles={styles} theme={theme} />
+                <View style={styles.row}>
+                  <ModalField label="Ciudad (opcional)" value={city} onChangeText={setCity} styles={styles} theme={theme} />
+                  <ModalField label="País (opcional)" value={country} onChangeText={setCountry} styles={styles} theme={theme} />
+                </View>
+              </ScrollView>
 
               {!!error && <Text style={styles.errorText} accessibilityRole="alert">{error}</Text>}
 
@@ -319,6 +324,7 @@ function InstitutionModal({ visible, institution, onClose, onSaved }) {
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -384,6 +390,7 @@ function LocationModal({ visible, location, institutions, onClose, onSaved }) {
 
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={handleClose} statusBarTranslucent>
+      <KeyboardAvoidingView style={styles.kbAvoid} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <TouchableWithoutFeedback onPress={handleClose} accessible={false}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback accessible={false}>
@@ -392,32 +399,40 @@ function LocationModal({ visible, location, institutions, onClose, onSaved }) {
                 {isEdit ? 'Editar Centro de Entrenamiento' : 'Agregar Centro de Entrenamiento'}
               </Text>
 
-              {!isEdit && (
-                <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Institución<Text style={styles.required}> *</Text></Text>
-                  <View style={styles.chipRow}>
-                    {institutions.map((inst) => {
-                      const active = institutionId === inst.id;
-                      return (
-                        <TouchableOpacity
-                          key={inst.id}
-                          style={[styles.chip, active && styles.chipActive]}
-                          onPress={() => setInstitutionId(inst.id)}
-                          {...a11yButton(inst.name, { selected: active })}
-                          accessibilityRole="radio"
-                        >
-                          <Text style={[styles.chipText, active && styles.chipTextActive]}>{inst.name}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+              <ScrollView style={styles.formScrollArea} contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
+                {!isEdit && (
+                  <View style={styles.field}>
+                    <Text style={styles.fieldLabel}>Institución<Text style={styles.required}> *</Text></Text>
+                    <View style={styles.chipRow}>
+                      {institutions.map((inst) => {
+                        const active = institutionId === inst.id;
+                        return (
+                          <TouchableOpacity
+                            key={inst.id}
+                            style={[styles.chip, active && styles.chipActive]}
+                            onPress={() => setInstitutionId(inst.id)}
+                            {...a11yButton(inst.name, { selected: active })}
+                            accessibilityRole="radio"
+                          >
+                            <Text
+                              style={[styles.chipText, active && styles.chipTextActive]}
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                            >
+                              {inst.name}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
                   </View>
-                </View>
-              )}
+                )}
 
-              <ModalField label="Nombre" value={name} onChangeText={setName} styles={styles} theme={theme} required />
-              <ModalField label="Tipo (opcional)" value={locationType} onChangeText={setLocationType} placeholder="Sede principal, aula, patio…" styles={styles} theme={theme} />
-              <ModalField label="Dirección (opcional)" value={address} onChangeText={setAddress} styles={styles} theme={theme} />
-              <ModalField label="Capacidad máxima (opcional)" value={maxCapacity} onChangeText={setMaxCapacity} keyboardType="numeric" styles={styles} theme={theme} />
+                <ModalField label="Nombre" value={name} onChangeText={setName} styles={styles} theme={theme} required />
+                <ModalField label="Tipo (opcional)" value={locationType} onChangeText={setLocationType} placeholder="Sede principal, aula, patio…" styles={styles} theme={theme} />
+                <ModalField label="Dirección (opcional)" value={address} onChangeText={setAddress} styles={styles} theme={theme} />
+                <ModalField label="Capacidad máxima (opcional)" value={maxCapacity} onChangeText={setMaxCapacity} keyboardType="numeric" styles={styles} theme={theme} />
+              </ScrollView>
 
               {!!error && <Text style={styles.errorText} accessibilityRole="alert">{error}</Text>}
 
@@ -440,21 +455,25 @@ function LocationModal({ visible, location, institutions, onClose, onSaved }) {
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const modalStyles = (t) =>
   StyleSheet.create({
+    kbAvoid: { flex: 1 },
     overlay: {
       flex: 1, justifyContent: 'center', alignItems: 'center',
       padding: 20, backgroundColor: t.overlay,
     },
     card: {
-      borderRadius: 16, padding: 20, width: '100%', maxWidth: 440, gap: 12,
+      borderRadius: 16, padding: 20, width: '100%', maxWidth: 440, maxHeight: '90%', gap: 12,
       backgroundColor: t.card, borderWidth: 1, borderColor: t.border,
     },
     title: { fontSize: 16, fontWeight: '700', color: t.textPrimary, marginBottom: 2 },
+    formScrollArea: { flexShrink: 1 },
+    formScroll: { gap: 10, paddingBottom: 2 },
     row: { flexDirection: 'row', gap: 10 },
     field: { flex: 1, gap: 5 },
     fieldLabel: { fontSize: 12, color: t.textSecondary },
@@ -467,6 +486,7 @@ const modalStyles = (t) =>
     },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: {
+      maxWidth: '100%', flexShrink: 1,
       paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8,
       borderWidth: 1.5, backgroundColor: t.card, borderColor: t.border,
     },

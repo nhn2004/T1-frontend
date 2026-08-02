@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -166,10 +166,9 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
       return false;
     }
     if (!healthPersonnelId) {
-      setSaveNotice({
-        tone: 'error',
-        message: 'Tu usuario no está registrado como personal de salud, así que no puede firmar mediciones.',
-      });
+      // No se duplica el aviso aquí: el banner persistente de arriba (visible mientras
+      // dure el bloqueo) ya explica esto. Mostrar además un saveNotice al intentar
+      // guardar hacía aparecer dos mensajes casi idénticos a la vez.
       return false;
     }
 
@@ -289,13 +288,14 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
     }
     setShowPreErrors(false);
     const result = verificarAptitud(preData);
-    setAptitud(result);
 
-    // Solo se avanza si la medición quedó registrada: antes se pasaba a APTO/NO APTO
-    // aunque el guardado hubiera fallado en silencio.
+    // Solo se marca la aptitud (y se avanza) si la medición quedó registrada: antes
+    // `setAptitud` se llamaba antes de guardar, así que el banner "NO APTO" aparecía
+    // aunque el guardado hubiera fallado y la evaluación siguiera en Pre-sesión.
     const ok = await submitVitals(preData, 'Medición pre-sesión');
     if (!ok) return;
 
+    setAptitud(result);
     setStage(result.apto ? S.APTO : S.NO_APTO);
   }
 
@@ -431,7 +431,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
       )}
 
       {/* ── Body ── */}
-      <View style={st.body}>
+      <ScrollView style={st.body} contentContainerStyle={st.bodyContent} showsVerticalScrollIndicator={false}>
         <View style={st.card}>
 
           {stage === S.PRE_SESION && (
@@ -502,7 +502,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
           )}
 
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -1139,7 +1139,8 @@ const makeSt = (t) =>
     backgroundColor: t.status.danger.solid, paddingHorizontal: 20, paddingVertical: 8,
   },
   noAptoBannerText: { color: t.onPrimarySolid, fontSize: 12, fontWeight: '700' },
-  body: { flex: 1, paddingHorizontal: 16, paddingBottom: 14 },
+  body: { flex: 1 },
+  bodyContent: { flexGrow: 1, paddingHorizontal: 16, paddingBottom: 14 },
   card: {
     flex: 1, backgroundColor: t.card, borderRadius: 14,
     borderWidth: 1, borderColor: t.border, padding: 22,

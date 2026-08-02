@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -486,6 +488,18 @@ const EMPTY_CREATE = {
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Inserta los guiones aaaa-mm-dd automáticamente a medida que se escriben los dígitos. */
+function formatBirthDateInput(text) {
+  const digits = text.replace(/\D/g, '').slice(0, 8);
+  const year = digits.slice(0, 4);
+  const month = digits.slice(4, 6);
+  const day = digits.slice(6, 8);
+  let out = year;
+  if (month) out += `-${month}`;
+  if (day) out += `-${day}`;
+  return out;
+}
+
 function CreatePersonModal({ visible, isFireChief, institutionId, onClose, onCreated }) {
   const theme = useTheme();
   const styles = useMemo(() => modalStyles(theme), [theme]);
@@ -570,6 +584,7 @@ function CreatePersonModal({ visible, isFireChief, institutionId, onClose, onCre
 
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={handleClose} statusBarTranslucent>
+      <KeyboardAvoidingView style={styles.kbAvoid} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <TouchableWithoutFeedback onPress={handleClose} accessible={false}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback accessible={false}>
@@ -589,7 +604,15 @@ function CreatePersonModal({ visible, isFireChief, institutionId, onClose, onCre
                 {isFireChief ? (
                   <>
                     <ModalField label="Código de aspirante" value={form.applicantCode} onChangeText={set('applicantCode')} styles={styles} />
-                    <ModalField label="Fecha de nacimiento (AAAA-MM-DD)" value={form.birthDate} onChangeText={set('birthDate')} placeholder="1998-05-20" styles={styles} />
+                    <ModalField
+                      label="Fecha de nacimiento (AAAA-MM-DD)"
+                      value={form.birthDate}
+                      onChangeText={(v) => setForm((f) => ({ ...f, birthDate: formatBirthDateInput(v) }))}
+                      placeholder="1998-05-20"
+                      keyboardType="numeric"
+                      maxLength={10}
+                      styles={styles}
+                    />
                     <ChipRow label="Sexo" options={SEX_OPTIONS} value={form.sex} onChange={set('sex')} styles={styles} />
                     <ModalField label="Tipo de sangre (opcional)" value={form.bloodType} onChangeText={set('bloodType')} placeholder="O+" styles={styles} />
                     <ModalField label="Contacto de emergencia (opcional)" value={form.emergencyContactName} onChangeText={set('emergencyContactName')} styles={styles} />
@@ -623,6 +646,7 @@ function CreatePersonModal({ visible, isFireChief, institutionId, onClose, onCre
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -689,6 +713,7 @@ function EditPersonModal({ visible, person, isFireChief, onClose, onSaved }) {
 
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={handleClose} statusBarTranslucent>
+      <KeyboardAvoidingView style={styles.kbAvoid} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <TouchableWithoutFeedback onPress={handleClose} accessible={false}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback accessible={false}>
@@ -728,12 +753,14 @@ function EditPersonModal({ visible, person, isFireChief, onClose, onSaved }) {
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const modalStyles = (t) =>
   StyleSheet.create({
+    kbAvoid: { flex: 1 },
     overlay: {
       flex: 1,
       justifyContent: 'center',

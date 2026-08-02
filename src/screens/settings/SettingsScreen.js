@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, useWindowDimensions, Modal, TouchableWithoutFeedback, ActivityIndicator,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -435,36 +436,39 @@ function ChangePasswordModal({ visible, t, theme, onClose, onSuccess }) {
 
   return (
     <Modal transparent animationType="fade" visible={visible} onRequestClose={handleClose} statusBarTranslucent>
+      <KeyboardAvoidingView style={styles.kbAvoid} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <TouchableWithoutFeedback onPress={handleClose} accessible={false}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback accessible={false}>
             <View style={styles.card} {...a11yModal(t.changePasswordTitle)}>
               <Text style={styles.title} accessibilityRole="header">{t.changePasswordTitle}</Text>
 
-              <FormField
-                label={t.currentPasswordLabel}
-                value={currentPassword}
-                onChangeText={(v) => { setCurrentPassword(v); setError(''); }}
-                secureTextEntry
-                textContentType="password"
-                autoComplete="current-password"
-              />
-              <FormField
-                label={t.newPasswordLabel}
-                value={newPassword}
-                onChangeText={(v) => { setNewPassword(v); setError(''); }}
-                secureTextEntry
-                textContentType="newPassword"
-                autoComplete="new-password"
-              />
-              <FormField
-                label={t.confirmNewPasswordLabel}
-                value={confirmPassword}
-                onChangeText={(v) => { setConfirmPassword(v); setError(''); }}
-                secureTextEntry
-                textContentType="newPassword"
-                autoComplete="new-password"
-              />
+              <ScrollView style={styles.formScrollArea} contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
+                <FormField
+                  label={t.currentPasswordLabel}
+                  value={currentPassword}
+                  onChangeText={(v) => { setCurrentPassword(v); setError(''); }}
+                  secureTextEntry
+                  textContentType="password"
+                  autoComplete="current-password"
+                />
+                <FormField
+                  label={t.newPasswordLabel}
+                  value={newPassword}
+                  onChangeText={(v) => { setNewPassword(v); setError(''); }}
+                  secureTextEntry
+                  textContentType="newPassword"
+                  autoComplete="new-password"
+                />
+                <FormField
+                  label={t.confirmNewPasswordLabel}
+                  value={confirmPassword}
+                  onChangeText={(v) => { setConfirmPassword(v); setError(''); }}
+                  secureTextEntry
+                  textContentType="newPassword"
+                  autoComplete="new-password"
+                />
+              </ScrollView>
 
               {!!error && (
                 <Text style={styles.errorText} accessibilityRole="alert">{error}</Text>
@@ -497,12 +501,14 @@ function ChangePasswordModal({ visible, t, theme, onClose, onSuccess }) {
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const modalStyles = (t) =>
   StyleSheet.create({
+    kbAvoid: { flex: 1 },
     overlay: {
       flex: 1,
       justifyContent: 'center',
@@ -515,11 +521,14 @@ const modalStyles = (t) =>
       padding: 20,
       width: '100%',
       maxWidth: 380,
+      maxHeight: '90%',
       gap: 12,
       backgroundColor: t.card,
       borderWidth: 1,
       borderColor: t.border,
     },
+    formScrollArea: { flexShrink: 1 },
+    formScroll: { gap: 12, paddingBottom: 2 },
     title: { fontSize: 17, fontWeight: '700', color: t.textPrimary, marginBottom: 4 },
     errorText: { fontSize: 13, color: t.status.danger.fg },
     actions: { flexDirection: 'row', gap: 10, marginTop: 4 },

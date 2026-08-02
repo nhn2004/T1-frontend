@@ -1,8 +1,9 @@
 import api from './api';
 
 // ⚠️ Límite del backend (verificado contra BomberosAPI, tabla VitalSignsMeasurement y
-// VitalSignsMeasurementDto): esta API en particular SOLO persiste estos cinco valores:
-//   heartRate, systolicPressure, diastolicPressure, temperatureC, spo2
+// VitalSignsMeasurementDto): esta API en particular SOLO persiste estos ocho valores:
+//   heartRate, systolicPressure, diastolicPressure, temperatureC, spo2,
+//   practiceRole, isSmoker, exposedToSmoke48h
 //
 // Síntomas, peso, grasa corporal e hidratación SÍ tienen soporte en el backend, pero a
 // través de otros endpoints (symptomReportService, bioimpedanceService) — la pantalla
@@ -110,6 +111,11 @@ export const vitalSignsService = {
       diastolicPressure: num(formData.presionDiastolica),
       temperatureC:      num(formData.temperatura),
       spo2:              num(formData.nivelOxigeno),
+      // Solo se capturan en Pre-sesión (ver EMPTY_PRE); en post-quema/cierre
+      // `formData.rol` etc. vienen `undefined` y se envían como `null`.
+      practiceRole:       formData.rol || null,
+      isSmoker:           formData.esFumador ?? null,
+      exposedToSmoke48h:  formData.expuestoHumo ?? null,
     };
 
     const unsupported = Object.entries(UNSUPPORTED_FIELDS)

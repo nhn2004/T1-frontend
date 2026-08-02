@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Modal, Pressable, ActivityIndicator,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,18 @@ const PUNTOS_QUEMA = [
 function useSheets() {
   const t = useTheme();
   return useMemo(() => ({ s: makeS(t), m: makeM(t), sc: makeSC(t), t }), [t]);
+}
+
+/** Inserta las barras dd/mm/aaaa automáticamente a medida que se escriben los dígitos. */
+function formatFechaInput(text) {
+  const digits = text.replace(/\D/g, '').slice(0, 8);
+  const day = digits.slice(0, 2);
+  const month = digits.slice(2, 4);
+  const year = digits.slice(4, 8);
+  let out = day;
+  if (month) out += `/${month}`;
+  if (year) out += `/${year}`;
+  return out;
 }
 
 function parseDatetime(fecha, hora) {
@@ -396,6 +409,11 @@ function Step1({
 
         {/* ── Izquierda: Info + Punto de quema + N Quemas ── */}
         <View style={[s.card, { flex: 0.9 }]}>
+          <ScrollView
+            style={s.leftCardScroll}
+            contentContainerStyle={s.leftCardScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
           <SectionHeader icon="calendar-outline" title="Información de la Sesión" />
 
           <View style={s.infoFields}>
@@ -419,8 +437,11 @@ function Step1({
               </View>
               <TextInput
                 style={[s.input, errFecha && s.inputError]}
-                value={fecha} onChangeText={setFecha}
+                value={fecha}
+                onChangeText={(v) => setFecha(formatFechaInput(v))}
                 placeholder="dd/mm/aaaa" placeholderTextColor={t.textPlaceholder}
+                keyboardType="numeric"
+                maxLength={10}
               />
               {errFecha && <Text style={s.errorMsg}>Campo obligatorio</Text>}
             </View>
@@ -462,7 +483,13 @@ function Step1({
                     <View style={[s.radio, sel && s.radioSel]}>
                       {sel && <View style={s.radioDot} />}
                     </View>
-                    <Text style={[s.radioLabel, sel && s.radioLabelSel]}>{loc.name}</Text>
+                    <Text
+                      style={[s.radioLabel, sel && s.radioLabelSel]}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {loc.name}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -508,6 +535,7 @@ function Step1({
               </TouchableOpacity>
             ))}
           </View>
+          </ScrollView>
         </View>
 
         {/* ── Derecha: Médicos a Cargo ── */}
@@ -817,6 +845,7 @@ function AddEmailModal({ visible, title, subtitle, onClose, onSubmit, actionLabe
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
+      <KeyboardAvoidingView style={m.kbAvoid} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Pressable style={m.overlay} onPress={handleClose}>
         <Pressable style={m.box} onPress={(e) => e.stopPropagation()} {...a11yModal(title)}>
           <TouchableOpacity style={m.closeBtn} onPress={handleClose} {...a11yButton('Cerrar')}>
@@ -877,6 +906,7 @@ function AddEmailModal({ visible, title, subtitle, onClose, onSubmit, actionLabe
           </TouchableOpacity>
         </Pressable>
       </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -982,6 +1012,8 @@ const makeS = (t) =>
     shadowColor: t.shadowColor, shadowOpacity: 0.04,
     shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 2,
   },
+  leftCardScroll:        { flex: 1 },
+  leftCardScrollContent: { gap: 12, paddingBottom: 4 },
   cardHeaderRow:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle:     { fontSize: 14, fontWeight: '700', color: t.textPrimary },
@@ -1005,7 +1037,7 @@ const makeS = (t) =>
 
   // Radio buttons (single-select punto de quema)
   radioList:     { gap: 10 },
-  radioRow:      { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 2 },
+  radioRow:      { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 2, minWidth: 0 },
   radioRowError: { opacity: 0.8 },
   radio: {
     width: 20, height: 20, borderRadius: 10,
@@ -1015,7 +1047,7 @@ const makeS = (t) =>
   },
   radioSel:   { borderColor: t.primary },
   radioDot:   { width: 10, height: 10, borderRadius: 5, backgroundColor: t.primarySolid },
-  radioLabel: { fontSize: 13, color: t.textPrimary, fontWeight: '500' },
+  radioLabel: { fontSize: 13, color: t.textPrimary, fontWeight: '500', flexShrink: 1 },
   radioLabelSel: { color: t.primaryText, fontWeight: '700' },
 
   // Num quemas
@@ -1111,6 +1143,7 @@ const makeS = (t) =>
 
 const makeM = (t) =>
   StyleSheet.create({
+  kbAvoid:   { flex: 1 },
   overlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 20 },
   box:       { width: '100%', maxWidth: 460, backgroundColor: t.card, borderRadius: 16, padding: 28, gap: 14 },
   errorText: {

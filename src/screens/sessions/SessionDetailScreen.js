@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Modal, TextInput, Pressable, ActivityIndicator, useWindowDimensions,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +21,18 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import { sessionService, environmentalDataService } from '../../services';
 import { traineeService } from '../../services/traineeService';
 import api from '../../services/api';
+
+/** Inserta las barras dd/mm/aaaa automáticamente a medida que se escriben los dígitos. */
+function formatFechaInput(text) {
+  const digits = text.replace(/\D/g, '').slice(0, 8);
+  const day = digits.slice(0, 2);
+  const month = digits.slice(2, 4);
+  const year = digits.slice(4, 8);
+  let out = day;
+  if (month) out += `/${month}`;
+  if (year) out += `/${year}`;
+  return out;
+}
 
 function parseDatetime(fecha, hora) {
   const parts = fecha.trim().split('/').map(Number);
@@ -590,6 +603,7 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
         animationType="fade"
         onRequestClose={() => !savingEdit && setShowEditModal(false)}
       >
+        <KeyboardAvoidingView style={styles.kbAvoid} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={styles.overlay} onPress={() => !savingEdit && setShowEditModal(false)}>
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()} {...a11yModal('Editar sesión')}>
             <View style={styles.sheetHeader}>
@@ -648,9 +662,11 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
                 <TextInput
                   style={[styles.input, editErrors && !parseDatetime(editFecha, editHora) && styles.inputErr]}
                   value={editFecha}
-                  onChangeText={setEditFecha}
+                  onChangeText={(v) => setEditFecha(formatFechaInput(v))}
                   placeholder="dd/mm/aaaa"
                   placeholderTextColor={theme.textPlaceholder}
+                  keyboardType="numeric"
+                  maxLength={10}
                   accessibilityLabel={t.sessionDetail.dateLabel}
                   accessibilityLabelledBy="edit-fecha"
                 />
@@ -706,6 +722,7 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
             </View>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       <ConfirmDialog
@@ -815,6 +832,7 @@ const makeStyles = (t, isCompact) =>
     editScroll: { maxHeight: 360 },
 
     // ── Modal ──
+    kbAvoid: { flex: 1 },
     overlay: {
       flex: 1, backgroundColor: t.overlay,
       alignItems: 'center', justifyContent: 'center', padding: 20,

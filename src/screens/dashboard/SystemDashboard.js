@@ -2,7 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -502,6 +504,7 @@ export default function SystemDashboard({ navigation }) {
         animationType="fade"
         onRequestClose={() => !inviteSending && setInviteVisible(false)}
       >
+        <KeyboardAvoidingView style={styles.kbAvoid} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <TouchableWithoutFeedback onPress={() => !inviteSending && setInviteVisible(false)} accessible={false}>
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback accessible={false}>
@@ -549,6 +552,7 @@ export default function SystemDashboard({ navigation }) {
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── Modal: editar permisos ── */}
@@ -572,7 +576,11 @@ export default function SystemDashboard({ navigation }) {
                 {permLoading ? (
                   <ActivityIndicator size="small" color={theme.primary} style={styles.loading} />
                 ) : (
-                  <View style={styles.roleList}>
+                  <ScrollView
+                    style={styles.roleList}
+                    contentContainerStyle={styles.roleListContent}
+                    showsVerticalScrollIndicator={false}
+                  >
                     {ALL_ROLE_CODES.map((code) => {
                       const checked = permSelected.includes(code);
                       return (
@@ -593,7 +601,7 @@ export default function SystemDashboard({ navigation }) {
                         </TouchableOpacity>
                       );
                     })}
-                  </View>
+                  </ScrollView>
                 )}
 
                 {!!permError && <Text style={styles.modalError} accessibilityRole="alert">{permError}</Text>}
@@ -808,6 +816,7 @@ const makeStyles = (t, isCompact) =>
     auditResource: { fontSize: 12, color: t.textSecondary },
 
     // ── Modales (invitar / editar permisos) ──
+    kbAvoid: { flex: 1 },
     modalOverlay: {
       flex: 1, backgroundColor: t.overlay,
       alignItems: 'center', justifyContent: 'center', padding: 20,
@@ -837,7 +846,8 @@ const makeStyles = (t, isCompact) =>
     modalSubmitBtnDisabled: { opacity: 0.7 },
     modalSubmitText: { fontSize: 14, fontWeight: '700', color: t.onPrimarySolid },
 
-    roleList: { gap: 8, maxHeight: 260 },
+    roleList: { maxHeight: 260 },
+    roleListContent: { gap: 8, paddingBottom: 2 },
     roleRow: {
       flexDirection: 'row', alignItems: 'center', gap: 10,
       paddingVertical: 9, paddingHorizontal: 10, borderRadius: 8,
