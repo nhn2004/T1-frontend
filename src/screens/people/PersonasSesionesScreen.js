@@ -311,7 +311,7 @@ function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuema
         if (!canEvaluate) {
           return (
             <View style={[styles.cardBtn, styles.cardBtnDisabled]}>
-              <Text style={styles.cardBtnDisabledText}>Pendiente de evaluación</Text>
+              <Text style={styles.cardBtnDisabledText} numberOfLines={1} ellipsizeMode="tail">Pendiente</Text>
             </View>
           );
         }
@@ -331,7 +331,7 @@ function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuema
               color={theme.onPrimarySolid}
               {...a11yDecorative}
             />
-            <Text style={styles.cardBtnSolidText}>Reporte</Text>
+            <Text style={styles.cardBtnSolidText} numberOfLines={1} ellipsizeMode="tail">Reporte</Text>
           </Pressable>
         );
       case 'COMPLETADO':
@@ -345,7 +345,7 @@ function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuema
             {...a11yButton(`Ver resultados de ${person.name}`)}
           >
             <Ionicons name="bar-chart-outline" size={13} color={theme.primaryText} {...a11yDecorative} />
-            <Text style={styles.cardBtnOutlineText}>Resultados</Text>
+            <Text style={styles.cardBtnOutlineText} numberOfLines={1} ellipsizeMode="tail">Resultados</Text>
           </Pressable>
         );
       default: // CANCELADO
@@ -356,7 +356,7 @@ function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuema
             {...a11yButton('Resultados no disponibles', { disabled: true })}
           >
             <Ionicons name="bar-chart-outline" size={13} color={theme.textDisabled} {...a11yDecorative} />
-            <Text style={styles.cardBtnDisabledText}>Resultados</Text>
+            <Text style={styles.cardBtnDisabledText} numberOfLines={1} ellipsizeMode="tail">Resultados</Text>
           </Pressable>
         );
     }
@@ -408,7 +408,7 @@ function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuema
             {...a11yButton(`Historial médico de ${person.name}`)}
           >
             <Ionicons name="medkit-outline" size={13} color={theme.primaryText} {...a11yDecorative} />
-            <Text style={styles.cardBtnOutlineText}>Historial</Text>
+            <Text style={styles.cardBtnOutlineText} numberOfLines={1} ellipsizeMode="tail">Historial</Text>
           </Pressable>
         )}
       </View>
@@ -592,16 +592,20 @@ const makeStyles = (t) => StyleSheet.create({
   actions: { marginTop: 8, flexDirection: 'row', gap: 6 },
   cardBtn: {
     flex: 1,
-    height: 28, borderRadius: 7,
+    // minWidth:0 permite que el botón se achique por debajo del ancho intrínseco de su
+    // texto — sin esto, en tarjetas angostas con dos botones (ej. "Historial" junto a
+    // "Pendiente") el segundo se desbordaba de la fila en vez de truncar.
+    minWidth: 0,
+    height: 28, borderRadius: 7, paddingHorizontal: 4,
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 5,
   },
   cardBtnSolid: { backgroundColor: t.primarySolid },
-  cardBtnSolidText: { color: t.card, fontSize: 12, fontWeight: '600' },
+  cardBtnSolidText: { color: t.card, fontSize: 12, fontWeight: '600', flexShrink: 1 },
   cardBtnOutline: { borderWidth: 1, borderColor: t.primarySolid, backgroundColor: t.card },
-  cardBtnOutlineText: { color: t.primarySolid, fontSize: 12, fontWeight: '500' },
+  cardBtnOutlineText: { color: t.primarySolid, fontSize: 12, fontWeight: '500', flexShrink: 1 },
   cardBtnDisabled: { borderWidth: 1, borderColor: t.border, backgroundColor: t.disabledBg },
-  cardBtnDisabledText: { color: t.textDisabled, fontSize: 12, fontWeight: '500' },
+  cardBtnDisabledText: { color: t.textDisabled, fontSize: 12, fontWeight: '500', flexShrink: 1 },
 
   emptyBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: 14, color: t.textMuted },

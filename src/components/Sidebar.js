@@ -58,6 +58,11 @@ const MENU = [
     icon: { lib: 'Ionicons', name: 'person-circle-outline' },
   },
   {
+    key: 'institutions',
+    route: ROUTES.INSTITUTIONS,
+    icon: { lib: 'Ionicons', name: 'business-outline' },
+  },
+  {
     key: 'settings',
     route: ROUTES.SETTINGS,
     icon: { lib: 'Ionicons', name: 'settings' },

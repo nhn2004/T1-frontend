@@ -38,6 +38,7 @@ import ProgressHistoryScreen from '../screens/progress/ProgressHistoryScreen';
 import ValidationQueueScreen from '../screens/dashboard/ValidationQueueScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import MedicalHistoryScreen from '../screens/medical/MedicalHistoryScreen';
+import InstitutionsScreen from '../screens/institutions/InstitutionsScreen';
 
 const Stack = createStackNavigator();
 
@@ -143,6 +144,9 @@ function RoleNavigator({ roles, primaryRole }) {
       )}
       {allows(ROUTES.SESSION_CREATE) && (
         <Stack.Screen name={ROUTES.SESSION_CREATE} component={withMainLayout(CrearSesionScreen)} />
+      )}
+      {allows(ROUTES.INSTITUTIONS) && (
+        <Stack.Screen name={ROUTES.INSTITUTIONS} component={withMainLayout(InstitutionsScreen)} />
       )}
     </Stack.Navigator>
   );

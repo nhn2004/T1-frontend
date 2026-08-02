@@ -35,6 +35,10 @@ export default function ProgressHistoryScreen({ navigation }) {
   const { user } = useAuth();
 
   const [history, setHistory] = useState([]);
+  // Marcadores de investigación (lactato/Stroop/bioimpedancia) de sesiones marcadas
+  // I+D+i — son un dato aparte de "peso" (que sí se fusiona en `history.vitals.peso`),
+  // se muestran en su propia tarjeta solo cuando existen.
+  const [investigationEntries, setInvestigationEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState(RANGE.ALL);
   const [view, setView] = useState(VIEW.BIOMETRIC);
@@ -42,16 +46,20 @@ export default function ProgressHistoryScreen({ navigation }) {
 
   useEffect(() => {
     if (!user?.userId) return;
-    traineeService.getAll()
-      .then(async (trainees) => {
+    let alive = true;
+
+    (async () => {
+      try {
+        const trainees = await traineeService.getAll();
         const me = trainees.find(t => t.userId === user.userId);
-        if (!me) return null;
+        if (!me || !alive) return;
 
         const [vitalsEntries, symptomReports, bioimpedanceEntries] = await Promise.all([
           vitalSignsService.getHistoryForTrainee(me.id),
           symptomReportService.getByTrainee(me.id).catch(() => []),
           bioimpedanceService.getByTrainee(me.id).catch(() => []),
         ]);
+        if (!alive) return;
 
         // Síntomas y peso viven en tablas separadas (SymptomReport / BioimpedanceMeasurement),
         // ambas ligadas al mismo sessionParticipantId que la medición de vitales — se cruzan
@@ -68,7 +76,7 @@ export default function ProgressHistoryScreen({ navigation }) {
           if (b.weightKg != null) weightByParticipant[b.sessionParticipantId] = b.weightKg;
         });
 
-        return vitalsEntries.map((entry) => ({
+        setHistory(vitalsEntries.map((entry) => ({
           ...entry,
           // `[]` aquí sí significa "no reportó síntomas" — la petición se hizo y no hubo error.
           sintomas: [...new Set(symptomsByParticipant[entry.sessionParticipantId] ?? [])],
@@ -76,12 +84,33 @@ export default function ProgressHistoryScreen({ navigation }) {
             ...entry.vitals,
             peso: weightByParticipant[entry.sessionParticipantId] ?? null,
           },
-        }));
-      })
-      .then(entries => { if (entries) setHistory(entries); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+        })));
+        setInvestigationEntries(bioimpedanceEntries);
+      } catch {
+        // Se deja `history`/`investigationEntries` en su estado inicial (vacío); la UI
+        // ya distingue "cargando" de "sin datos" por separado.
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+
+    return () => { alive = false; };
   }, [user]);
+
+  // Última medición que trae al menos un marcador de investigación real (lactato,
+  // % músculo, edad metabólica o Stroop) — el peso/grasa "normales" ya se muestran en
+  // las tarjetas de arriba, así que no cuentan para decidir si se muestra esta sección.
+  const latestInvestigation = useMemo(() => {
+    const withMarkers = investigationEntries.filter((b) => (
+      b.lactatePreMmol != null || b.lactatePostMmol != null ||
+      b.muscleMassKg != null || b.metabolicAgeYears != null ||
+      b.stroopTimeSeconds != null || b.stroopErrors != null
+    ));
+    if (!withMarkers.length) return null;
+    return withMarkers.reduce((latest, b) => (
+      !latest || new Date(b.takenAt) > new Date(latest.takenAt) ? b : latest
+    ), null);
+  }, [investigationEntries]);
 
   const chronological = useMemo(() => {
     return [...history].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -222,6 +251,37 @@ export default function ProgressHistoryScreen({ navigation }) {
                 </View>
               ))}
             </View>
+
+            {!!latestInvestigation && (
+              <View style={[styles.card, { backgroundColor: theme.card }]}>
+                <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>
+                  {t.progress.investigationTitle}
+                </Text>
+                <Text style={[styles.cardSubtitle, { color: theme.textSecondary }]}>
+                  {t.progress.investigationSubtitle(new Date(latestInvestigation.takenAt).toLocaleDateString())}
+                </Text>
+                <View style={styles.investigationGrid}>
+                  {[
+                    ['fatPercentage', latestInvestigation.fatPercentage, '%'],
+                    ['muscleMassKg', latestInvestigation.muscleMassKg, 'kg'],
+                    ['metabolicAgeYears', latestInvestigation.metabolicAgeYears, ''],
+                    ['lactatePreMmol', latestInvestigation.lactatePreMmol, 'mmol/L'],
+                    ['lactatePostMmol', latestInvestigation.lactatePostMmol, 'mmol/L'],
+                    ['stroopTimeSeconds', latestInvestigation.stroopTimeSeconds, 's'],
+                    ['stroopErrors', latestInvestigation.stroopErrors, ''],
+                  ].filter(([, value]) => value != null).map(([key, value, unit]) => (
+                    <View key={key} style={styles.investigationItem}>
+                      <Text style={[styles.investigationLabel, { color: theme.textMuted }]}>
+                        {t.progress.investigationFields[key]}
+                      </Text>
+                      <Text style={[styles.investigationValue, { color: theme.textPrimary }]}>
+                        {value}{unit}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
           </>
         ) : (
           <>
@@ -336,6 +396,11 @@ const makeStyles = (t) =>
   statsGridCompact: { flexWrap: 'wrap' },
   statItem: { flex: 1 },
   statItemCompact: { width: '47%' },
+
+  investigationGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 10 },
+  investigationItem: { minWidth: 110 },
+  investigationLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
+  investigationValue: { fontSize: 18, fontWeight: '800', marginTop: 2 },
 
   clearFilterText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
   filteredByText: { fontSize: 12, marginTop: -8, marginBottom: 4 },

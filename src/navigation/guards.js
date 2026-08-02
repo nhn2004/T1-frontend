@@ -25,15 +25,19 @@ export const PERMISSIONS = {
   manageUsers:          [ROLES.SYSTEM_ADMIN],
   manageAuditLog:       [ROLES.SYSTEM_ADMIN],
 
-  // Investigación / exportaciones
+  // Investigación / exportaciones — acotado a los roles que realmente tienen una
+  // pantalla para ejercerlo (ResearcherDashboard solo se monta para RESEARCHER).
+  // Antes incluía también ADMIN/CAPACITATOR/FIRE_CHIEF sin que existiera ninguna UI
+  // donde pudieran usarlo — un permiso "de papel" que no correspondía a nada real.
   exportAnonymizedData: [ROLES.RESEARCHER, ROLES.SYSTEM_ADMIN],
-  generateReports:      [ROLES.RESEARCHER, ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.FIRE_CHIEF],
+  generateReports:      [ROLES.RESEARCHER, ROLES.SYSTEM_ADMIN],
 
   // Gestión de personal
   viewPeople:           [ROLES.MEDICAL, ROLES.CAPACITATOR, ROLES.FIRE_CHIEF, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
   manageFirefighters:   [ROLES.FIRE_CHIEF, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
   manageCapacitators:   [ROLES.FIRE_CHIEF, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
   manageHealthPersonnel: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
+  manageInstitutions:   [ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
 
   // Progreso personal del aspirante
   viewOwnProgress:      [ROLES.FIREFIGHTER_TRAINEE],
@@ -59,6 +63,7 @@ export const ROUTE_PERMISSIONS = {
   [ROUTES.RESULTS_INDIVIDUAL]: 'readMedicalRecord',
   [ROUTES.EVALUATION]:         'readMedicalRecord',
   [ROUTES.MEDICAL_HISTORY]:    'readMedicalRecord',
+  [ROUTES.INSTITUTIONS]:       'manageInstitutions',
 };
 
 /** Normaliza a array: acepta un rol suelto o la lista completa de roles del usuario. */

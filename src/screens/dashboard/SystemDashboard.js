@@ -70,13 +70,17 @@ export default function SystemDashboard({ navigation }) {
   const isCompact = width < 900;
   const styles = useMemo(() => makeStyles(theme, isCompact), [theme, isCompact]);
 
-  const [loading,        setLoading]        = useState(true);
-  const [users,          setUsers]          = useState([]);
-  const [sessions,       setSessions]       = useState([]);
-  const [pendingInvites, setPendingInvites] = useState(null);
-  const [roleFilter,     setRoleFilter]     = useState(ROLE_OPTIONS[0]);
-  const [failedSources,  setFailedSources]  = useState([]);
-  const [toast,          setToast]          = useState(null);
+  const [loading,          setLoading]          = useState(true);
+  const [users,            setUsers]            = useState([]);
+  const [sessions,         setSessions]         = useState([]);
+  const [pendingInvitesList, setPendingInvitesList] = useState([]);
+  const [roleFilter,       setRoleFilter]       = useState(ROLE_OPTIONS[0]);
+  const [failedSources,    setFailedSources]    = useState([]);
+  const [toast,            setToast]            = useState(null);
+
+  // ── Invitaciones pendientes (ver/revocar) ──
+  const [invitesModalVisible, setInvitesModalVisible] = useState(false);
+  const [revokingId, setRevokingId] = useState(null);
 
   // ── Enviar invitación ──
   const [inviteVisible, setInviteVisible] = useState(false);
@@ -106,13 +110,21 @@ export default function SystemDashboard({ navigation }) {
     return () => { alive = false; };
   }, []);
 
+  const loadInvites = useCallback(() => (
+    invitationService.getAll().then((all) => {
+      const pending = all.filter((i) => i.status === 'Pending');
+      setPendingInvitesList(pending);
+      return pending;
+    })
+  ), []);
+
   useEffect(() => {
     let alive = true;
 
     Promise.allSettled([
       api.get('/users'),
       sessionService.getAll(),
-      invitationService.getAll(),
+      loadInvites(),
     ]).then(([usersR, sessionsR, invitesR]) => {
       if (!alive) return;
       const failed = [];
@@ -123,14 +135,25 @@ export default function SystemDashboard({ navigation }) {
       if (sessionsR.status === 'fulfilled') setSessions(sessionsR.value);
       else failed.push('sesiones');
 
-      if (invitesR.status === 'fulfilled') {
-        setPendingInvites(invitesR.value.filter((i) => i.status === 'Pending').length);
-      } else failed.push('invitaciones');
+      if (invitesR.status === 'rejected') failed.push('invitaciones');
 
       setFailedSources(failed);
     }).finally(() => { if (alive) setLoading(false); });
 
     return () => { alive = false; };
+  }, [loadInvites]);
+
+  const handleRevokeInvite = useCallback(async (invitation) => {
+    setRevokingId(invitation.invitationId);
+    try {
+      await invitationService.revoke(invitation.invitationId);
+      setPendingInvitesList((prev) => prev.filter((i) => i.invitationId !== invitation.invitationId));
+      setToast({ message: `Invitación a ${invitation.targetEmail} revocada.`, tone: 'success' });
+    } catch (e) {
+      setToast({ message: e?.response?.data?.message ?? 'No se pudo revocar la invitación.', tone: 'error' });
+    } finally {
+      setRevokingId(null);
+    }
   }, []);
 
   // Sin fallback a datos ficticios: si la API de usuarios falla, la tabla queda vacía
@@ -167,11 +190,12 @@ export default function SystemDashboard({ navigation }) {
       },
       {
         id: 'invites', label: 'INVITACIONES\nPENDIENTES',
-        value: fmt(pendingInvites),
+        value: fmt(failedSources.includes('invitaciones') ? null : pendingInvitesList.length),
         icon: 'person-add-outline', tone: 'warning',
+        onPress: () => setInvitesModalVisible(true),
       },
     ];
-  }, [loading, users, sessions, pendingInvites, failedSources]);
+  }, [loading, users, sessions, pendingInvitesList, failedSources]);
 
   const cycleRoleFilter = useCallback(() => {
     setRoleFilter((current) => {
@@ -309,12 +333,17 @@ export default function SystemDashboard({ navigation }) {
             const tone = stat.tone === 'primary'
               ? { bg: theme.primarySoft, fg: theme.primaryText, solid: theme.primarySolid }
               : theme.status[stat.tone];
+            const CardComponent = stat.onPress ? TouchableOpacity : View;
 
             return (
-              <View
+              <CardComponent
                 key={stat.id}
                 style={[styles.statCard, { borderLeftColor: tone.solid }]}
-                {...a11yGroup(`${stat.label.replace('\n', ' ')}: ${stat.value}`)}
+                activeOpacity={stat.onPress ? 0.8 : undefined}
+                onPress={stat.onPress}
+                {...(stat.onPress
+                  ? a11yButton(`${stat.label.replace('\n', ' ')}: ${stat.value}`, { hint: 'Ver invitaciones pendientes' })
+                  : a11yGroup(`${stat.label.replace('\n', ' ')}: ${stat.value}`))}
               >
                 <View style={[styles.statIcon, { backgroundColor: tone.bg }]} {...a11yDecorative}>
                   <Ionicons name={stat.icon} size={22} color={tone.fg} />
@@ -330,7 +359,10 @@ export default function SystemDashboard({ navigation }) {
                   </View>
                   <Text style={styles.statValue}>{stat.value}</Text>
                 </View>
-              </View>
+                {stat.onPress && (
+                  <Ionicons name="chevron-forward" size={16} color={theme.iconMuted} {...a11yDecorative} />
+                )}
+              </CardComponent>
             );
           })}
         </View>
@@ -591,6 +623,67 @@ export default function SystemDashboard({ navigation }) {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* ── Modal: invitaciones pendientes (ver / revocar) ── */}
+      <Modal
+        visible={invitesModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInvitesModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setInvitesModalVisible(false)} accessible={false}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback accessible={false}>
+              <View style={styles.modalCard} {...a11yModal('Invitaciones pendientes')}>
+                <Text style={styles.modalTitle} accessibilityRole="header">Invitaciones Pendientes</Text>
+                <Text style={styles.modalSub}>
+                  Cancela una invitación antes de que el destinatario responda.
+                </Text>
+
+                {pendingInvitesList.length === 0 ? (
+                  <Text style={styles.emptyListText}>No hay invitaciones pendientes.</Text>
+                ) : (
+                  <ScrollView style={styles.inviteList} contentContainerStyle={{ gap: 8 }}>
+                    {pendingInvitesList.map((inv) => {
+                      const revoking = revokingId === inv.invitationId;
+                      return (
+                        <View key={inv.invitationId} style={styles.inviteRow}>
+                          <View style={styles.inviteRowText}>
+                            <Text style={styles.inviteEmailText} numberOfLines={1}>{inv.targetEmail}</Text>
+                            <Text style={styles.inviteAgoText}>
+                              Enviada el {new Date(inv.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            style={[styles.inviteRevokeBtn, revoking && styles.modalSubmitBtnDisabled]}
+                            onPress={() => handleRevokeInvite(inv)}
+                            disabled={revoking}
+                            {...a11yButton(`Revocar invitación a ${inv.targetEmail}`, { disabled: revoking, busy: revoking })}
+                          >
+                            {revoking
+                              ? <ActivityIndicator size="small" color={theme.status.danger.fg} />
+                              : <Text style={styles.inviteRevokeText}>Revocar</Text>}
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                )}
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalCancelBtn}
+                    onPress={() => setInvitesModalVisible(false)}
+                    {...a11yButton('Cerrar')}
+                  >
+                    <Text style={styles.modalCancelText}>Cerrar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -757,4 +850,20 @@ const makeStyles = (t, isCompact) =>
     },
     checkboxActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
     roleRowText: { fontSize: 13, fontWeight: '600', color: t.textPrimary },
+
+    emptyListText: { fontSize: 13, color: t.textSecondary, textAlign: 'center', paddingVertical: 12 },
+    inviteList: { maxHeight: 320 },
+    inviteRow: {
+      flexDirection: 'row', alignItems: 'center', gap: 10,
+      paddingVertical: 9, paddingHorizontal: 10, borderRadius: 8,
+      borderWidth: 1, borderColor: t.border, backgroundColor: t.card,
+    },
+    inviteRowText: { flex: 1, minWidth: 0, gap: 2 },
+    inviteEmailText: { fontSize: 13, fontWeight: '700', color: t.textPrimary },
+    inviteAgoText: { fontSize: 11, color: t.textSecondary },
+    inviteRevokeBtn: {
+      minHeight: 36, paddingHorizontal: 12, justifyContent: 'center', alignItems: 'center',
+      borderRadius: 8, borderWidth: 1.5, borderColor: t.status.danger.fg,
+    },
+    inviteRevokeText: { fontSize: 12, fontWeight: '700', color: t.status.danger.fg },
   });

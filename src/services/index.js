@@ -13,3 +13,5 @@ export { bioimpedanceService }         from './bioimpedanceService';
 export { symptomReportService }        from './symptomReportService';
 export { auditService }                from './auditService';
 export { reportsService }              from './reportsService';
+export { institutionService }          from './institutionService';
+export { trainingLocationService }     from './trainingLocationService';

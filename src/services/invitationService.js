@@ -115,7 +115,7 @@ export function toPendingInvitation(raw, session) {
     description:     session?.description ?? 'Sesión de entrenamiento. Presentarse hidratado y con equipo completo.',
     date:            session?.date ?? '—',
     time:            session?.time ?? '—',
-    location:        'Centro de Entrenamiento Alpha',
+    location:        session?.location ?? '—',
     invitedHoursAgo: h,
     weekDay:         start ? start.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase().slice(0, 3) : '—',
     weekDate:        start ? String(start.getDate()) : '—',
@@ -147,6 +147,11 @@ export const invitationService = {
 
   async reject(id) {
     await api.post(`/invitations/${id}/reject`);
+  },
+
+  /** Cancela una invitación pendiente antes de que el destinatario responda (la revoca quien la envió). */
+  async revoke(id) {
+    await api.post(`/invitations/${id}/revoke`);
   },
 
   toValidationItem,

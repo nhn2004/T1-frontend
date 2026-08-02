@@ -25,4 +25,5 @@ export const ROUTES = {
   SETTINGS: 'Configuration',
   PROFILE: 'Profile',
   MEDICAL_HISTORY: 'MedicalHistory',
+  INSTITUTIONS: 'Institutions',
 };

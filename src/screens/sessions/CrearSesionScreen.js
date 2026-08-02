@@ -11,6 +11,7 @@ import { a11yAlert, a11yButton, a11yModal } from '../../constants/a11y';
 import Toast from '../../components/Toast';
 import useTheme from '../../hooks/useTheme';
 import { healthPersonnelService } from '../../services/healthPersonnelService';
+import { trainingLocationService } from '../../services/trainingLocationService';
 import api from '../../services/api';
 
 const COLS = 3;
@@ -50,6 +51,11 @@ export default function CrearSesionScreen({ navigation }) {
   const [puntoQuema, setPuntoQuema] = useState('');
   const [numQuemas,  setNumQuemas]  = useState(2);
   const [showErrors, setShowErrors] = useState(false);
+
+  // Step 1 — Ubicación de entrenamiento (API)
+  const [locations,         setLocations]         = useState([]);
+  const [loadingLocations,  setLoadingLocations]  = useState(true);
+  const [locationId,        setLocationId]        = useState('');
 
   // Step 1 — Médicos (API)
   const [allMedicos,      setAllMedicos]      = useState([]);
@@ -92,6 +98,18 @@ export default function CrearSesionScreen({ navigation }) {
       }))))
       .catch(() => {})
       .finally(() => setLoadingMedicos(false));
+  }, []);
+
+  useEffect(() => {
+    trainingLocationService.getAll()
+      .then((list) => {
+        setLocations(list);
+        // Preselecciona la primera ubicación para no obligar a elegir cuando solo hay
+        // una registrada; el usuario puede cambiarla si hay más de un centro disponible.
+        setLocationId((prev) => prev || list[0]?.id || '');
+      })
+      .catch(() => {})
+      .finally(() => setLoadingLocations(false));
   }, []);
 
   useEffect(() => {
@@ -156,7 +174,7 @@ export default function CrearSesionScreen({ navigation }) {
   }
 
   function handleSiguiente() {
-    if (!nombre.trim() || !fecha.trim() || !puntoQuema) {
+    if (!nombre.trim() || !fecha.trim() || !puntoQuema || !locationId) {
       setShowErrors(true);
       return;
     }
@@ -185,6 +203,11 @@ export default function CrearSesionScreen({ navigation }) {
       setFormError('Selecciona el punto de quema en el paso 1.');
       return;
     }
+    const selectedLocation = locations.find((l) => l.id === locationId);
+    if (!selectedLocation) {
+      setFormError('Selecciona una ubicación de entrenamiento en el paso 1.');
+      return;
+    }
 
     const end = new Date(start.getTime() + 4 * 3_600_000);
     const puntoLabel = PUNTOS_QUEMA.find((p) => p.key === puntoQuema)?.label ?? puntoQuema;
@@ -192,21 +215,9 @@ export default function CrearSesionScreen({ navigation }) {
     setFormError('');
     setSaving(true);
     try {
-      const [{ data: instWrap }, { data: locWrap }] = await Promise.all([
-        api.get('/institutions'),
-        api.get('/training-locations'),
-      ]);
-      const institutionId      = instWrap.data?.[0]?.institutionId;
-      const trainingLocationId = locWrap.data?.[0]?.trainingLocationId;
-
-      if (!institutionId || !trainingLocationId) {
-        setFormError('No se encontró institución o ubicación de entrenamiento.');
-        return;
-      }
-
       const { data: sessionWrap } = await api.post('/training-sessions', {
-        institutionId,
-        trainingLocationId,
+        institutionId: selectedLocation.institutionId,
+        trainingLocationId: selectedLocation.id,
         title:           nombre.trim(),
         description:     `Punto de quema: ${puntoLabel}. Número de quemas: ${numQuemas}.`,
         sessionCode:     null,
@@ -306,6 +317,8 @@ export default function CrearSesionScreen({ navigation }) {
           capacidad={capacidad} setCapacidad={setCapacidad}
           puntoQuema={puntoQuema} setPuntoQuema={setPuntoQuema}
           numQuemas={numQuemas}   setNumQuemas={setNumQuemas}
+          locations={locations}   loadingLocations={loadingLocations}
+          locationId={locationId} setLocationId={setLocationId}
           medicoFilter={medicoFilter} setMedicoFilter={setMedicoFilter}
           medicoSearch={medicoSearch} setMedicoSearch={setMedicoSearch}
           filteredMedicos={filteredMedicos}
@@ -366,14 +379,16 @@ function Step1({
   nombre, setNombre, fecha, setFecha, hora, setHora,
   capacidad, setCapacidad,
   puntoQuema, setPuntoQuema, numQuemas, setNumQuemas,
+  locations, loadingLocations, locationId, setLocationId,
   medicoFilter, setMedicoFilter, medicoSearch, setMedicoSearch,
   filteredMedicos, loadingMedicos, selectedMedicos, toggleMedico, onAddMedico,
   showErrors, onSiguiente,
 }) {
   const { s, t } = useSheets();
-  const errNombre = showErrors && !nombre.trim();
-  const errFecha  = showErrors && !fecha.trim();
-  const errPunto  = showErrors && !puntoQuema;
+  const errNombre   = showErrors && !nombre.trim();
+  const errFecha    = showErrors && !fecha.trim();
+  const errPunto    = showErrors && !puntoQuema;
+  const errLocation = showErrors && !locationId;
 
   return (
     <View style={s.body}>
@@ -421,6 +436,38 @@ function Step1({
               />
             </View>
           </View>
+
+          <View style={s.divider} />
+
+          <View style={s.sectionLabelRow}>
+            <SectionHeader icon="location-outline" title="Ubicación de Entrenamiento" />
+            <Text style={s.required}>*</Text>
+          </View>
+          {errLocation && <Text style={s.errorMsg}>Selecciona una ubicación</Text>}
+          {loadingLocations ? (
+            <ActivityIndicator size="small" color={t.primaryText} style={{ marginVertical: 4 }} />
+          ) : locations.length === 0 ? (
+            <Text style={s.errorMsg}>
+              No hay centros de entrenamiento registrados. Pide a un administrador que agregue uno.
+            </Text>
+          ) : (
+            <View style={s.radioList}>
+              {locations.map((loc) => {
+                const sel = locationId === loc.id;
+                return (
+                  <TouchableOpacity
+                    key={loc.id} style={[s.radioRow, errLocation && s.radioRowError]}
+                    onPress={() => setLocationId(loc.id)} activeOpacity={0.7}
+                  >
+                    <View style={[s.radio, sel && s.radioSel]}>
+                      {sel && <View style={s.radioDot} />}
+                    </View>
+                    <Text style={[s.radioLabel, sel && s.radioLabelSel]}>{loc.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
 
           <View style={s.divider} />
 

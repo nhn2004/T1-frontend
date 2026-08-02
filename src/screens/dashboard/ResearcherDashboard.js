@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 
 import { a11yButton, a11yDecorative, a11yGroup, MIN_TOUCH_SIZE } from '../../constants/a11y';
 import { useAuth } from '../../hooks';
@@ -122,8 +124,8 @@ export default function ResearcherDashboard() {
       }
 
       if (Platform.OS === 'web') {
-        // Descarga real de archivo — solo disponible en web (APIs de Blob/URL del
-        // navegador). En nativo se informa el conteo real sin fingir una descarga.
+        // Descarga directa vía Blob/URL — solo existen en el navegador; en nativo
+        // se usa expo-file-system + expo-sharing (rama de abajo).
         const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -135,10 +137,21 @@ export default function ResearcherDashboard() {
         URL.revokeObjectURL(url);
         setToast({ message: `${rows.length} registros exportados.`, tone: 'success' });
       } else {
-        setToast({
-          message: `${rows.length} registros obtenidos del servidor. La descarga de archivo aún solo está disponible en la versión web.`,
-          tone: 'info',
+        // En nativo no hay una carpeta de "Descargas" accesible sin permisos extra:
+        // se escribe el JSON al sandbox de la app y se abre la hoja de compartir para
+        // que el usuario lo guarde o lo envíe a donde necesite.
+        const fileUri = `${FileSystem.documentDirectory}export-anonimizado-${Date.now()}.json`;
+        await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(rows, null, 2), {
+          encoding: FileSystem.EncodingType.UTF8,
         });
+
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'application/json',
+            dialogTitle: 'Exportar dataset anonimizado',
+          });
+        }
+        setToast({ message: `${rows.length} registros exportados.`, tone: 'success' });
       }
     } catch (e) {
       setToast({ message: e?.response?.data?.message ?? 'No se pudo exportar el dataset.', tone: 'error' });

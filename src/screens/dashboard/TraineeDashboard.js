@@ -16,10 +16,11 @@ import WeekScheduleCard       from './components/WeekScheduleCard';
 import PerformanceStatCard    from './components/PerformanceStatCard';
 import ConfirmAttendanceModal from './components/ConfirmAttendanceModal';
 
-import { invitationService }  from '../../services/invitationService';
-import { sessionService }     from '../../services/sessionService';
-import { traineeService }     from '../../services/traineeService';
-import { vitalSignsService }  from '../../services/vitalSignsService';
+import { invitationService }      from '../../services/invitationService';
+import { sessionService }         from '../../services/sessionService';
+import { traineeService }         from '../../services/traineeService';
+import { vitalSignsService }      from '../../services/vitalSignsService';
+import { trainingLocationService } from '../../services/trainingLocationService';
 
 // Tono semántico por estado de sesión; el color lo resuelve el tema.
 const STATUS_TONE = { ACTIVE: 'success', PLANNED: 'warning' };
@@ -46,11 +47,15 @@ export default function TraineeDashboard({ navigation }) {
 
     (async () => {
       try {
-        const [invs, sessions] = await Promise.all([
+        const [invs, sessions, locations] = await Promise.all([
           invitationService.getAll(),
           sessionService.getAll(),
+          trainingLocationService.getAll().catch(() => []),
         ]);
         if (!alive) return;
+
+        const locationNameById = Object.fromEntries(locations.map((l) => [l.id, l.name]));
+        const locationName = (s) => locationNameById[s?.trainingLocationId] ?? null;
 
         const myRaw = invs.find(
           (i) => i.targetEmail === user.email && i.status === 'Pending',
@@ -59,7 +64,10 @@ export default function TraineeDashboard({ navigation }) {
           const session = myRaw.trainingSessionId
             ? sessions.find((s) => s.id === myRaw.trainingSessionId)
             : null;
-          setInvitation(invitationService.toPendingInvitation(myRaw, session));
+          setInvitation(invitationService.toPendingInvitation(
+            myRaw,
+            session ? { ...session, location: locationName(session) } : session,
+          ));
         }
 
         const upcoming = sessions
@@ -75,7 +83,7 @@ export default function TraineeDashboard({ navigation }) {
               date:     valid ? String(start.getDate()) : '—',
               title:    s.title,
               time:     s.time,
-              location: s.location ?? '—',
+              location: locationName(s) ?? '—',
               status:   s.status === 'ACTIVE' ? 'CONFIRMED' : 'PENDING',
               barColor: tone ? theme.status[tone].solid : theme.status.neutral.solid,
             };
