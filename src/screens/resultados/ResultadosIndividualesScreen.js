@@ -10,6 +10,9 @@ import Step3Nutricion     from './components/Step3Nutricion';
 import Step4Certificados  from './components/Step4Certificados';
 import { MOMENTOS_CONFIG, SINTOMAS_LIST } from './__mocks__/resultadosData';
 import { vitalSignsService } from '../../services/vitalSignsService';
+import { bioimpedanceService } from '../../services/bioimpedanceService';
+import { symptomReportService } from '../../services/symptomReportService';
+import { useAuth } from '../../hooks';
 import { useAuditOnMount } from '../../hooks/useAuditTrail';
 import { a11yButton, a11yDecorative, MIN_TOUCH_SIZE } from '../../constants/a11y';
 import useTheme from '../../hooks/useTheme';
@@ -48,6 +51,7 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
   const momentoConfig    = MOMENTOS_CONFIG[momento] ?? MOMENTOS_CONFIG.T4;
   const isFullWizard     = momento === 'T4';
 
+  const { user } = useAuth();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
@@ -118,13 +122,42 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
     setSaving(true);
     try {
       const { unsupported } = await vitalSignsService.submit(participantId, healthPersonnelId, formData);
-      if (unsupported.length) {
-        // No se cierra la pantalla en silencio: el médico debe enterarse de qué
-        // campos no quedaron almacenados.
-        setNotice({
-          tone: 'warning',
-          message: `Guardado. Sin soporte en el servidor: ${unsupported.join(', ')}.`,
-        });
+
+      // Peso/grasa corporal/hidratación van a BioimpedanceMeasurement, y los síntomas a
+      // SymptomReport — son endpoints aparte de /vital-signs. Un fallo en cualquiera de
+      // los dos se reporta como advertencia adicional, sin deshacer lo que sí se guardó.
+      const warnings = [];
+
+      const wantsBioimpedance = formData.peso || formData.grasaCorporal || formData.hidratacion;
+      if (wantsBioimpedance) {
+        try {
+          await bioimpedanceService.submit(participantId, healthPersonnelId, {
+            weightKg: formData.peso,
+            fatPercentage: formData.grasaCorporal,
+            bodyWaterPct: formData.hidratacion,
+          });
+        } catch {
+          warnings.push('los datos de peso/composición corporal');
+        }
+      }
+
+      if (formData.sintomasSeleccionados?.length) {
+        try {
+          await symptomReportService.submit(participantId, user?.userId, {
+            symptoms: formData.sintomasSeleccionados,
+            severity: formData.severidad,
+          });
+        } catch {
+          warnings.push('los síntomas reportados');
+        }
+      }
+
+      if (unsupported.length || warnings.length) {
+        const parts = [
+          unsupported.length ? `Sin soporte en el servidor: ${unsupported.join(', ')}.` : '',
+          warnings.length ? `No se pudieron guardar: ${warnings.join(', ')}.` : '',
+        ].filter(Boolean).join(' ');
+        setNotice({ tone: 'warning', message: `Guardado. ${parts}` });
         return;
       }
       navigation.goBack();

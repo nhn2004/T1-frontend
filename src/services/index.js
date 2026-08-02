@@ -1,5 +1,6 @@
 export { default as api }              from './api';
 export { authService }                 from './authService';
+export { userService }                 from './userService';
 export { sessionService }              from './sessionService';
 export { traineeService }              from './traineeService';
 export { healthPersonnelService }      from './healthPersonnelService';
@@ -7,3 +8,8 @@ export { invitationService }           from './invitationService';
 export { participantService }          from './participantService';
 export { vitalSignsService }           from './vitalSignsService';
 export { environmentalDataService }    from './environmentalDataService';
+export { medicalHistoryService }       from './medicalHistoryService';
+export { bioimpedanceService }         from './bioimpedanceService';
+export { symptomReportService }        from './symptomReportService';
+export { auditService }                from './auditService';
+export { reportsService }              from './reportsService';

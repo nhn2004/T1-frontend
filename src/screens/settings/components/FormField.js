@@ -7,6 +7,7 @@ import useTheme from '../../../hooks/useTheme';
 
 export default function FormField({
   label, value, onChangeText, editable = true, keyboardType, autoComplete,
+  secureTextEntry = false, textContentType,
 }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -21,6 +22,8 @@ export default function FormField({
         editable={editable}
         keyboardType={keyboardType}
         autoComplete={autoComplete}
+        secureTextEntry={secureTextEntry}
+        textContentType={textContentType}
         placeholderTextColor={theme.textPlaceholder}
         autoCapitalize="none"
         accessibilityLabel={label}

@@ -129,6 +129,18 @@ export const invitationService = {
     return wrapper.data;
   },
 
+  /** Invitación "suelta" (sin sesión) — ej. la que envía SystemDashboard para dar de alta un usuario. */
+  async create({ targetEmail, targetUserId = null, trainingSessionId = null, targetRoleId = null, expiresAt }) {
+    const { data: wrapper } = await api.post('/invitations', {
+      targetUserId,
+      trainingSessionId,
+      targetRoleId,
+      targetEmail,
+      expiresAt,
+    });
+    return wrapper.data;
+  },
+
   async accept(id) {
     await api.post(`/invitations/${id}/accept`);
   },

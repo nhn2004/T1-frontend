@@ -30,4 +30,32 @@ export const traineeService = {
     const { data: wrapper } = await api.get(`/trainee-firefighters/${id}`);
     return toPersona(wrapper.data);
   },
+
+  async create({ userId, applicantCode, birthDate, sex, bloodType, emergencyContactName, emergencyContactPhone }) {
+    const { data: wrapper } = await api.post('/trainee-firefighters', {
+      userId,
+      applicantCode,
+      birthDate,
+      sex,
+      bloodType: bloodType ?? null,
+      emergencyContactName: emergencyContactName ?? null,
+      emergencyContactPhone: emergencyContactPhone ?? null,
+    });
+    return toPersona(wrapper.data);
+  },
+
+  /** Solo BloodType/EmergencyContact* son editables — ApplicantCode/BirthDate/Sex son inmutables en el backend. */
+  async update(id, { bloodType, emergencyContactName, emergencyContactPhone }) {
+    const { data: wrapper } = await api.put(`/trainee-firefighters/${id}`, {
+      bloodType: bloodType ?? null,
+      emergencyContactName: emergencyContactName ?? null,
+      emergencyContactPhone: emergencyContactPhone ?? null,
+    });
+    return toPersona(wrapper.data);
+  },
+
+  /** Borrado lógico: "Withdrawn" es el estado que usa la UI para "dar de baja". */
+  async setTrainingStatus(id, status) {
+    await api.patch(`/trainee-firefighters/${id}/training-status`, { status });
+  },
 };

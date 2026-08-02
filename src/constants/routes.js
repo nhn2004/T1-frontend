@@ -23,4 +23,6 @@ export const ROUTES = {
   EVALUATION: 'EvaluacionBombero',
   RESULTS_TRAINEE: 'ResultadosBombero',
   SETTINGS: 'Configuration',
+  PROFILE: 'Profile',
+  MEDICAL_HISTORY: 'MedicalHistory',
 };

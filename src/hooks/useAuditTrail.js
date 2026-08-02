@@ -3,18 +3,15 @@ import api from '../services/api';
 
 // Registro de auditoría de acceso a datos médicos (requisito de cumplimiento).
 //
-// ⚠️ El endpoint POST /audit todavía NO existe en el backend (no hay AuditController;
-// las tablas AccessAudit/ChangeAudit están creadas pero sin API). Hasta que exista, los
-// eventos se acumulan en memoria y se registran en consola durante el desarrollo, para
-// que el hueco sea visible en vez de desaparecer en un `catch {}` vacío.
-//
-// Las pantallas deben llamarlo igualmente: cuando el endpoint se implemente, la
-// auditoría empezará a funcionar sin tocar ninguna pantalla.
+// POST /audit ya existe en el backend (AuditController, respaldado por la tabla
+// AccessAudit). Esta cola en memoria + aviso en consola se conserva como red de
+// seguridad: si la petición falla por cualquier motivo (red, backend caído, token
+// vencido), el acceso no debe bloquearse ni perderse en silencio en un `catch {}` vacío.
 
 const pendingEvents = [];
 
-// El endpoint no existe todavía, así que el aviso se emitiría en cada montaje de cada
-// pantalla médica y ahogaría la consola. Se avisa una sola vez por tipo de fallo.
+// Evita que un mismo motivo de fallo (ej. red caída) inunde la consola en cada montaje
+// de cada pantalla médica. Se avisa una sola vez por tipo de fallo.
 const warnedReasons = new Set();
 
 /** Eventos de auditoría que no se pudieron enviar (para diagnóstico/reintento futuro). */
@@ -46,13 +43,11 @@ export function useAuditTrail(resourceType) {
         // pero tampoco puede silenciarse por completo: se conserva y se avisa en dev.
         pendingEvents.push(event);
         if (__DEV__) {
-          const missingEndpoint = error?.response?.status === 404;
-          const reason = missingEndpoint
-            ? 'el endpoint POST /audit no existe en el backend'
+          const notFound = error?.response?.status === 404;
+          const reason = notFound
+            ? 'el endpoint POST /audit respondió 404 (¿backend desactualizado?)'
             : error?.message ?? 'error desconocido';
-          // Un 404 es siempre la misma causa: se reporta una vez y luego se cuentan
-          // los eventos en cola (getPendingAuditEvents) sin repetir el mensaje.
-          const key = missingEndpoint ? '404' : reason;
+          const key = notFound ? '404' : reason;
           if (!warnedReasons.has(key)) {
             warnedReasons.add(key);
             console.warn(

@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ROLES } from '../../constants/roles';
 import { ROUTES } from '../../constants/routes';
-import { a11yAlert, a11yButton, a11yDecorative, a11yModal, ICON_HIT_SLOP, MIN_TOUCH_SIZE } from '../../constants/a11y';
+import { a11yAlert, a11yButton, a11yDecorative, a11yLiveRegion, a11yModal, ICON_HIT_SLOP, MIN_TOUCH_SIZE } from '../../constants/a11y';
 import AgendaTimeline from './components/AgendaTimeline';
 import TrainingCenterSidebar from './components/TrainingCenterSidebar';
 import { STATUS_DISPLAY, TRAINEE_STATUS_DISPLAY } from './sessionDisplay';
@@ -16,9 +16,39 @@ import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
 import Toast from '../../components/Toast';
+import ConfirmDialog from '../../components/ConfirmDialog';
 import { sessionService, environmentalDataService } from '../../services';
 import { traineeService } from '../../services/traineeService';
 import api from '../../services/api';
+
+function parseDatetime(fecha, hora) {
+  const parts = fecha.trim().split('/').map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  const [day, month, year] = parts;
+  const [timePart, period] = hora.trim().split(' ');
+  let [h, m] = (timePart || '09:00').split(':').map(Number);
+  if (period === 'PM' && h < 12) h += 12;
+  if (period === 'AM' && h === 12) h = 0;
+  return new Date(year, month - 1, day, h, m, 0);
+}
+
+function formatFechaForInput(iso) {
+  const d = iso ? new Date(iso) : null;
+  if (!d || Number.isNaN(d.getTime())) return '';
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+function formatHoraForInput(iso) {
+  const d = iso ? new Date(iso) : null;
+  if (!d || Number.isNaN(d.getTime())) return '';
+  let h = d.getHours();
+  const m = String(d.getMinutes()).padStart(2, '0');
+  const period = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if (h === 0) h = 12;
+  return `${String(h).padStart(2, '0')}:${m} ${period}`;
+}
 
 const EMPTY_SESSION = {
   id: null,
@@ -50,7 +80,7 @@ const AMBIENTAL_FIELDS = [
 export default function SessionDetailScreen({ navigation, route, sessionId, onBack }) {
   const theme = useTheme();
   const { t } = useTranslation();
-  const { roles, user, canAccessRoute } = useAuth();
+  const { roles, user, can, canAccessRoute } = useAuth();
   const { width } = useWindowDimensions();
   const isCompact = width < 980;
   const isTrainee = roles.includes(ROLES.FIREFIGHTER_TRAINEE);
@@ -61,6 +91,7 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
   const [session, setSession] = useState({ ...EMPTY_SESSION });
   const [syncing, setSyncing] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [notice, setNotice] = useState(null);
   const myParticipantIdRef = useRef(null);
 
   const [showAmbientalModal, setShowAmbientalModal] = useState(false);
@@ -68,6 +99,24 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
   const [ambErrors, setAmbErrors] = useState(false);
   const [savingAmbiental, setSavingAmbiental] = useState(false);
   const [ambSaveError, setAmbSaveError] = useState('');
+
+  // Editar/Cancelar solo tiene sentido para quien puede crear sesiones (mismos roles
+  // que CrearSesionScreen) y solo mientras el backend acepta la operación: una vez
+  // iniciada/finalizada/cancelada, PUT y PATCH .../status responden 422.
+  const canManageSession = can('createSession') && session.status === 'PLANNED';
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editFecha, setEditFecha] = useState('');
+  const [editHora, setEditHora] = useState('');
+  const [editCapacidad, setEditCapacidad] = useState('');
+  const [editErrors, setEditErrors] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editSaveError, setEditSaveError] = useState('');
+
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (!id) return undefined;
@@ -108,6 +157,12 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
 
     return () => { alive = false; };
   }, [isTrainee, id, user]);
+
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = setTimeout(() => setNotice(null), 3000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const display = isTrainee
     ? (TRAINEE_STATUS_DISPLAY[session.status] ?? TRAINEE_STATUS_DISPLAY.PLANNED)
@@ -204,6 +259,68 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
     else navigation?.goBack();
   }, [onBack, navigation]);
 
+  const handleOpenEdit = useCallback(() => {
+    setEditTitle(session.title ?? '');
+    setEditDescription(session.description ?? '');
+    setEditFecha(formatFechaForInput(session.scheduledStart));
+    setEditHora(formatHoraForInput(session.scheduledStart));
+    setEditCapacidad(session.capacityCount ? String(session.capacityCount) : '');
+    setEditErrors(false);
+    setEditSaveError('');
+    setShowEditModal(true);
+  }, [session]);
+
+  const handleSaveEdit = useCallback(async () => {
+    const start = parseDatetime(editFecha, editHora);
+    if (!editTitle.trim() || !start) {
+      setEditErrors(true);
+      return;
+    }
+    setEditErrors(false);
+    setSavingEdit(true);
+    setEditSaveError('');
+    try {
+      // Se preserva la duración original (scheduledEnd - scheduledStart) — la pantalla
+      // de creación tampoco pide una hora de fin explícita, usa una duración fija.
+      const originalStart = session.scheduledStart ? new Date(session.scheduledStart) : start;
+      const originalEnd = session.scheduledEnd ? new Date(session.scheduledEnd) : new Date(start.getTime() + 4 * 3_600_000);
+      const durationMs = Math.max(originalEnd.getTime() - originalStart.getTime(), 60 * 60_000);
+      const end = new Date(start.getTime() + durationMs);
+
+      const updated = await sessionService.update(session.id, {
+        title: editTitle.trim(),
+        description: editDescription.trim() || null,
+        scheduledStart: start.toISOString(),
+        scheduledEnd: end.toISOString(),
+        plannedCapacity: editCapacidad.trim() ? parseInt(editCapacidad, 10) : null,
+      });
+      setSession((prev) => ({ ...prev, ...updated }));
+      setShowEditModal(false);
+      setNotice(t.sessionDetail.updatedToast);
+    } catch (error) {
+      const detail = error?.response?.data?.message ?? error?.message ?? 'Error desconocido.';
+      setEditSaveError(`${t.sessionDetail.saveError}: ${detail}`);
+    } finally {
+      setSavingEdit(false);
+    }
+  }, [editFecha, editHora, editTitle, editDescription, editCapacidad, session, t]);
+
+  const handleCancelSession = useCallback(async () => {
+    setCancelling(true);
+    try {
+      const updated = await sessionService.cancel(session.id);
+      setSession((prev) => ({ ...prev, ...updated }));
+      setShowCancelConfirm(false);
+      setNotice(t.sessionDetail.cancelledToast);
+    } catch (error) {
+      const detail = error?.response?.data?.message ?? error?.message ?? 'Error desconocido.';
+      setLoadError(`${t.sessionDetail.cancelError}: ${detail}`);
+      setShowCancelConfirm(false);
+    } finally {
+      setCancelling(false);
+    }
+  }, [session.id, t]);
+
   const BodyContainer = isCompact ? ScrollView : View;
 
   const btnBackground = display.btnDisabled
@@ -243,6 +360,11 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
         {!!loadError && (
           <View {...a11yAlert(loadError)}>
             <Toast message={loadError} tone="error" />
+          </View>
+        )}
+        {!!notice && (
+          <View {...a11yLiveRegion('polite')}>
+            <Toast message={notice} tone="success" />
           </View>
         )}
 
@@ -333,6 +455,29 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
                   {t.sessionDetail[display.btnLabelKey]}
                 </Text>
               </TouchableOpacity>
+
+              {canManageSession && (
+                <View style={styles.manageRow}>
+                  <TouchableOpacity
+                    style={styles.manageBtn}
+                    onPress={handleOpenEdit}
+                    activeOpacity={0.8}
+                    {...a11yButton(t.sessionDetail.editSession)}
+                  >
+                    <Ionicons name="create-outline" size={15} color={theme.textPrimary} {...a11yDecorative} />
+                    <Text style={styles.manageBtnText}>{t.sessionDetail.edit}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.manageBtn, styles.manageBtnDanger]}
+                    onPress={() => setShowCancelConfirm(true)}
+                    activeOpacity={0.8}
+                    {...a11yButton(t.sessionDetail.cancelSession)}
+                  >
+                    <Ionicons name="close-circle-outline" size={15} color={theme.status.danger.fg} {...a11yDecorative} />
+                    <Text style={[styles.manageBtnText, { color: theme.status.danger.fg }]}>{t.sessionDetail.cancelSession}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
 
@@ -437,6 +582,142 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* ── Modal de edición de sesión ── */}
+      <Modal
+        visible={showEditModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !savingEdit && setShowEditModal(false)}
+      >
+        <Pressable style={styles.overlay} onPress={() => !savingEdit && setShowEditModal(false)}>
+          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()} {...a11yModal('Editar sesión')}>
+            <View style={styles.sheetHeader}>
+              <View style={styles.sheetIcon} {...a11yDecorative}>
+                <Ionicons name="create-outline" size={22} color={theme.primaryText} />
+              </View>
+              <View style={styles.sheetHeaderText}>
+                <Text style={styles.sheetTitle} accessibilityRole="header">{t.sessionDetail.editModalTitle}</Text>
+                <Text style={styles.sheetSub}>{t.sessionDetail.editModalSub}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => !savingEdit && setShowEditModal(false)}
+                hitSlop={ICON_HIT_SLOP}
+                {...a11yButton(t.sessionDetail.close)}
+              >
+                <Ionicons name="close" size={22} color={theme.icon} />
+              </TouchableOpacity>
+            </View>
+
+            {!!editSaveError && (
+              <View {...a11yAlert(editSaveError)}>
+                <Toast message={editSaveError} tone="error" />
+              </View>
+            )}
+
+            <ScrollView style={styles.editScroll} contentContainerStyle={styles.fields}>
+              <View style={styles.fieldWrap}>
+                <Text style={[styles.fieldLabel, editErrors && !editTitle.trim() && styles.fieldLabelErr]} nativeID="edit-title">
+                  {t.sessionDetail.titleLabel}{editErrors && !editTitle.trim() && <Text style={styles.required}>{t.sessionDetail.requiredSuffix}</Text>}
+                </Text>
+                <TextInput
+                  style={[styles.input, editErrors && !editTitle.trim() && styles.inputErr]}
+                  value={editTitle}
+                  onChangeText={setEditTitle}
+                  accessibilityLabel={t.sessionDetail.titleLabel}
+                  accessibilityLabelledBy="edit-title"
+                />
+              </View>
+
+              <View style={styles.fieldWrap}>
+                <Text style={styles.fieldLabel} nativeID="edit-desc">{t.sessionDetail.descriptionLabel}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editDescription}
+                  onChangeText={setEditDescription}
+                  multiline
+                  accessibilityLabel={t.sessionDetail.descriptionLabel}
+                  accessibilityLabelledBy="edit-desc"
+                />
+              </View>
+
+              <View style={styles.fieldWrap}>
+                <Text style={[styles.fieldLabel, editErrors && !parseDatetime(editFecha, editHora) && styles.fieldLabelErr]} nativeID="edit-fecha">
+                  {t.sessionDetail.dateLabel}{editErrors && !parseDatetime(editFecha, editHora) && <Text style={styles.required}>{t.sessionDetail.requiredSuffix}</Text>}
+                </Text>
+                <TextInput
+                  style={[styles.input, editErrors && !parseDatetime(editFecha, editHora) && styles.inputErr]}
+                  value={editFecha}
+                  onChangeText={setEditFecha}
+                  placeholder="dd/mm/aaaa"
+                  placeholderTextColor={theme.textPlaceholder}
+                  accessibilityLabel={t.sessionDetail.dateLabel}
+                  accessibilityLabelledBy="edit-fecha"
+                />
+              </View>
+
+              <View style={styles.fieldWrap}>
+                <Text style={styles.fieldLabel} nativeID="edit-hora">{t.sessionDetail.timeLabel}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editHora}
+                  onChangeText={setEditHora}
+                  placeholder="09:00 AM"
+                  placeholderTextColor={theme.textPlaceholder}
+                  accessibilityLabel={t.sessionDetail.timeLabel}
+                  accessibilityLabelledBy="edit-hora"
+                />
+              </View>
+
+              <View style={styles.fieldWrap}>
+                <Text style={styles.fieldLabel} nativeID="edit-capacidad">{t.sessionDetail.capacityLabel}</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editCapacidad}
+                  onChangeText={setEditCapacidad}
+                  keyboardType="number-pad"
+                  accessibilityLabel={t.sessionDetail.capacityLabel}
+                  accessibilityLabelledBy="edit-capacidad"
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.footer}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setShowEditModal(false)}
+                activeOpacity={0.8}
+                disabled={savingEdit}
+                {...a11yButton(t.sessionDetail.cancel, { disabled: savingEdit })}
+              >
+                <Text style={styles.cancelBtnText}>{t.sessionDetail.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmBtn, savingEdit && styles.confirmBtnBusy]}
+                onPress={handleSaveEdit}
+                activeOpacity={0.85}
+                disabled={savingEdit}
+                {...a11yButton(t.sessionDetail.saveChanges, { disabled: savingEdit, busy: savingEdit })}
+              >
+                {savingEdit
+                  ? <ActivityIndicator size="small" color={theme.onPrimarySolid} />
+                  : <Text style={styles.confirmBtnText}>{t.sessionDetail.saveChanges}</Text>}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <ConfirmDialog
+        visible={showCancelConfirm}
+        title={t.sessionDetail.cancelConfirmTitle}
+        message={t.sessionDetail.cancelConfirmMessage}
+        confirmLabel={cancelling ? t.sessionDetail.cancelling : t.sessionDetail.cancelConfirmYes}
+        cancelLabel={t.sessionDetail.back}
+        destructive
+        onCancel={() => setShowCancelConfirm(false)}
+        onConfirm={handleCancelSession}
+      />
     </SafeAreaView>
   );
 }
@@ -523,6 +804,15 @@ const makeStyles = (t, isCompact) =>
       alignItems: 'center', justifyContent: 'center',
     },
     actionBtnText: { fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+    manageRow: { flexDirection: 'row', gap: 10, marginTop: 2 },
+    manageBtn: {
+      flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+      minHeight: MIN_TOUCH_SIZE, borderRadius: 10, borderWidth: 1.5, borderColor: t.border,
+      backgroundColor: t.card,
+    },
+    manageBtnDanger: { borderColor: t.status.danger.border },
+    manageBtnText: { fontSize: 13, fontWeight: '700', color: t.textPrimary },
+    editScroll: { maxHeight: 360 },
 
     // ── Modal ──
     overlay: {

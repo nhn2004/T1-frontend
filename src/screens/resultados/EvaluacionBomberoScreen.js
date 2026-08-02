@@ -7,6 +7,8 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SINTOMAS_LIST } from './__mocks__/resultadosData';
 import { vitalSignsService } from '../../services/vitalSignsService';
 import { healthPersonnelService } from '../../services/healthPersonnelService';
+import { bioimpedanceService } from '../../services/bioimpedanceService';
+import { symptomReportService } from '../../services/symptomReportService';
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import { useAuditOnMount } from '../../hooks/useAuditTrail';
@@ -174,14 +176,32 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
     setSaving(true);
     try {
       const { unsupported } = await vitalSignsService.submit(participantId, healthPersonnelId, form);
-      // El backend solo almacena 5 signos vitales: se avisa explícitamente de lo que
-      // NO quedó guardado en vez de mostrar un éxito que sería parcialmente falso.
-      setSaveNotice(unsupported.length
-        ? {
-            tone: 'warning',
-            message: `${etiqueta} guardada. No se almacenaron (sin soporte en el servidor): ${unsupported.join(', ')}.`,
-          }
-        : { tone: 'success', message: `${etiqueta} guardada correctamente.` });
+
+      // Los síntomas de esta etapa van por un endpoint aparte (SymptomReport). Un fallo
+      // aquí no debe hacer parecer que la medición de vitales tampoco se guardó — se
+      // reporta como una advertencia adicional, no como error de toda la operación.
+      let symptomWarning = null;
+      if (form.sintomas?.length) {
+        try {
+          await symptomReportService.submit(participantId, user?.userId, { symptoms: form.sintomas });
+        } catch {
+          symptomWarning = 'los síntomas reportados';
+        }
+      }
+
+      const unsupportedMsg = unsupported.length
+        ? `No se almacenaron (sin soporte en el servidor): ${unsupported.join(', ')}.`
+        : '';
+      const symptomMsg = symptomWarning ? `No se pudieron guardar ${symptomWarning}.` : '';
+
+      if (unsupportedMsg || symptomMsg) {
+        setSaveNotice({
+          tone: 'warning',
+          message: `${etiqueta} guardada. ${unsupportedMsg} ${symptomMsg}`.trim(),
+        });
+      } else {
+        setSaveNotice({ tone: 'success', message: `${etiqueta} guardada correctamente.` });
+      }
       return true;
     } catch (error) {
       const detail = error?.response?.data?.message ?? error?.message ?? 'Error desconocido.';
@@ -329,6 +349,29 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
 
     const ok = await submitVitals(cierreData, 'Medición de cierre');
     if (!ok) return;
+
+    // Los marcadores de investigación (lactato/bioimpedancia/Stroop) son opcionales y
+    // solo se envían si la sesión se marcó como I+D+i. Un fallo aquí no debe bloquear
+    // el cierre: los vitales ya quedaron guardados en el paso anterior.
+    if (esInvestigacion) {
+      try {
+        await bioimpedanceService.submit(participantId, healthPersonnelId, {
+          fatPercentage: invData.bioimpedancia_grasa,
+          muscleMassKg: invData.bioimpedancia_musculo,
+          metabolicAgeYears: invData.bioimpedancia_edad_metabolica,
+          lactatePreMmol: invData.lactato_pre,
+          lactatePostMmol: invData.lactato_post,
+          stroopTimeSeconds: invData.stroop_tiempo,
+          stroopErrors: invData.stroop_errores,
+        });
+      } catch (error) {
+        const detail = error?.response?.data?.message ?? error?.message ?? 'Error desconocido.';
+        setSaveNotice({
+          tone: 'warning',
+          message: `Cierre guardado, pero los marcadores de investigación no se pudieron registrar: ${detail}`,
+        });
+      }
+    }
 
     setStage(S.LISTO);
   }
@@ -817,13 +860,13 @@ function CierrePanel({
             fijo en false, así que se podía finalizar con los vitales vacíos. */}
         <VitalesForm data={data} onChange={onChange} showErrors={showErrors} />
 
-        {/* Los marcadores de investigación y las observaciones se capturan pero el
-            backend no tiene dónde almacenarlos todavía; se avisa para no dar por
-            guardado algo que no lo está. */}
-        {(esInvestigacion || data.eventosEspeciales) && (
+        {/* Las observaciones libres ("eventosEspeciales") todavía no tienen columna en
+            el backend — los marcadores de investigación sí se envían (ver
+            handleFinalizarEvaluacion), por eso la nota ya solo menciona observaciones. */}
+        {!!data.eventosEspeciales && (
           <Text style={p.unsupportedNote}>
-            Nota: observaciones y marcadores de investigación aún no se envían al
-            servidor (sin soporte en la API).
+            Nota: las observaciones de texto libre aún no se envían al servidor (sin
+            soporte en la API).
           </Text>
         )}
 

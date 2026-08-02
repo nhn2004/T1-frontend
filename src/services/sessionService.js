@@ -162,6 +162,29 @@ export const sessionService = {
     return toSession(wrapper.data);
   },
 
+  /**
+   * Edita una sesión. Solo permitido por el backend mientras status === 'Scheduled'
+   * (PLANNED en el vocabulario del frontend) — el backend rechaza el resto con 422.
+   */
+  async update(id, { title, description, scheduledStart, scheduledEnd, plannedCapacity }) {
+    const { data: wrapper } = await api.put(`/training-sessions/${id}`, {
+      title,
+      description: description ?? null,
+      scheduledStart,
+      scheduledEnd,
+      plannedCapacity: plannedCapacity ?? null,
+    });
+    return toSession(wrapper.data);
+  },
+
+  /** Cancela la sesión (Scheduled -> Cancelled). El backend rechaza cancelar una ya Finished/Cancelled. */
+  async cancel(id) {
+    const { data: wrapper } = await api.patch(`/training-sessions/${id}/status`, {
+      status: STATUS_TO_API.CANCELLED,
+    });
+    return toSession(wrapper.data);
+  },
+
   STATUS_MAP,
   STATUS_TO_API,
 };

@@ -1,2 +1,1 @@
-// TODO Sprint 4: Profile and settings screens
-// Profile, Settings
+export { default as ProfileScreen } from './ProfileScreen';

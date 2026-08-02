@@ -36,6 +36,8 @@ import ResultadosBomberoScreen from '../screens/resultados/ResultadosBomberoScre
 import TrainingScheduleScreen from '../screens/schedule/TrainingScheduleScreen';
 import ProgressHistoryScreen from '../screens/progress/ProgressHistoryScreen';
 import ValidationQueueScreen from '../screens/dashboard/ValidationQueueScreen';
+import ProfileScreen from '../screens/profile/ProfileScreen';
+import MedicalHistoryScreen from '../screens/medical/MedicalHistoryScreen';
 
 const Stack = createStackNavigator();
 
@@ -119,12 +121,16 @@ function RoleNavigator({ roles, primaryRole }) {
       <Stack.Screen name={ROUTES.PROGRESS}        component={withMainLayout(ProgressHistoryScreen)} />
       <Stack.Screen name={ROUTES.RESULTS_TRAINEE} component={ResultadosBomberoScreen} />
       <Stack.Screen name={ROUTES.SETTINGS}        component={withMainLayout(SettingsScreen)} />
+      <Stack.Screen name={ROUTES.PROFILE}         component={withMainLayout(ProfileScreen)} />
 
       {allows(ROUTES.RESULTS_INDIVIDUAL) && (
         <Stack.Screen name={ROUTES.RESULTS_INDIVIDUAL} component={ResultadosIndividualesScreen} />
       )}
       {allows(ROUTES.EVALUATION) && (
         <Stack.Screen name={ROUTES.EVALUATION} component={EvaluacionBomberoScreen} />
+      )}
+      {allows(ROUTES.MEDICAL_HISTORY) && (
+        <Stack.Screen name={ROUTES.MEDICAL_HISTORY} component={MedicalHistoryScreen} />
       )}
       {allows(ROUTES.PEOPLE) && (
         <Stack.Screen name={ROUTES.PEOPLE} component={withMainLayout(PersonasScreen)} />

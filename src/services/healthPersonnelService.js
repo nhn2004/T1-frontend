@@ -10,6 +10,8 @@ function toPersona(raw) {
     phone:             raw.phone ?? '—',
     specialty:         raw.specialty,
     licenseNumber:     raw.licenseNumber,
+    canApproveDischarges: raw.canApproveDischarges ?? false,
+    isActive:          raw.isActive ?? true,
     // El backend no expone todavía el conteo de sesiones por persona. `null` significa
     // "no disponible" y la UI lo muestra como «—»; usar [] haría que se renderizara un
     // "0" que el usuario leería como un dato real.
@@ -40,5 +42,31 @@ export const healthPersonnelService = {
     const { data: wrapper } = await api.get('/health-personnel');
     const match = (wrapper.data ?? []).find((hp) => hp.userId === userId);
     return match ? toPersona(match) : null;
+  },
+
+  async create({ userId, profession, specialty, licenseNumber, canApproveDischarges }) {
+    const { data: wrapper } = await api.post('/health-personnel', {
+      userId,
+      profession: profession ?? null,
+      specialty: specialty ?? null,
+      licenseNumber: licenseNumber ?? null,
+      canApproveDischarges: !!canApproveDischarges,
+    });
+    return toPersona(wrapper.data);
+  },
+
+  async update(id, { profession, specialty, licenseNumber, canApproveDischarges }) {
+    const { data: wrapper } = await api.put(`/health-personnel/${id}`, {
+      profession: profession ?? null,
+      specialty: specialty ?? null,
+      licenseNumber: licenseNumber ?? null,
+      canApproveDischarges: !!canApproveDischarges,
+    });
+    return toPersona(wrapper.data);
+  },
+
+  /** Borrado lógico: desactiva/reactiva el perfil sin eliminar el registro. */
+  async setActive(id, isActive) {
+    await api.patch(`/health-personnel/${id}/status`, { isActive });
   },
 };

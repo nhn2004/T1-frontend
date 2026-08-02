@@ -1,34 +1,47 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks';
 import { ROLES } from '../../constants/roles';
-import { a11yButton, a11yDecorative, a11yGroup, a11yTab, MIN_TOUCH_SIZE } from '../../constants/a11y';
+import { a11yButton, a11yDecorative, a11yGroup, a11yModal, a11yTab, ICON_HIT_SLOP, MIN_TOUCH_SIZE } from '../../constants/a11y';
 import useTheme from '../../hooks/useTheme';
 import Toast from '../../components/Toast';
+import ConfirmDialog from '../../components/ConfirmDialog';
+import { healthPersonnelService, traineeService, userService } from '../../services';
 import { usePersonas } from './hooks/usePersonas';
+
+const SEX_OPTIONS = ['M', 'F', 'Otro'];
+const PROFESSION_OPTIONS = ['Médico', 'Enfermero', 'Nutricionista'];
 
 const COLS = 3;
 const ROWS = 2;
 const PER_PAGE = COLS * ROWS;
 
 export default function PersonasScreen() {
-  const { roles } = useAuth();
+  const { user, roles, can } = useAuth();
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const isFireChief = roles.includes(ROLES.FIRE_CHIEF);
   const isAdmin     = roles.includes(ROLES.ADMIN);
+  // Bomberos los administra quien tiene manageFirefighters; personal médico requiere
+  // manageHealthPersonnel — son permisos distintos porque dar de alta/baja a un colega
+  // médico es una acción de RR.HH. que ni Capacitador ni el propio Médico deberían tener.
+  const canManage = isFireChief ? can('manageFirefighters') : can('manageHealthPersonnel');
+
   const [notice, setNotice] = useState(null);
   const [query, setQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('Todos');
@@ -36,8 +49,44 @@ export default function PersonasScreen() {
   const [page, setPage] = useState(0);
   const [box, setBox] = useState({ w: 0, h: 0 });
 
+  const [institutionId, setInstitutionId] = useState(null);
+  const [createVisible, setCreateVisible] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+  const [deactivateTarget, setDeactivateTarget] = useState(null);
+  const [deactivating, setDeactivating] = useState(false);
+
   const primaryRole = isFireChief ? ROLES.FIRE_CHIEF : roles[0];
   const { personas, filters, loading, error, refresh } = usePersonas(primaryRole);
+
+  // Necesario para crear un User nuevo (POST /users exige institutionId) — se asume la
+  // misma institución de quien está dando de alta al personal.
+  useEffect(() => {
+    if (!canManage || !user?.userId) return;
+    let cancelled = false;
+    userService.getById(user.userId)
+      .then((full) => { if (!cancelled) setInstitutionId(full.institutionId); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [canManage, user?.userId]);
+
+  const handleDeactivate = useCallback(async () => {
+    if (!deactivateTarget) return;
+    setDeactivating(true);
+    try {
+      if (isFireChief) {
+        await traineeService.setTrainingStatus(deactivateTarget.id, 'Withdrawn');
+      } else {
+        await healthPersonnelService.setActive(deactivateTarget.id, false);
+      }
+      setDeactivateTarget(null);
+      setNotice(`${deactivateTarget.name} fue dado de baja.`);
+      refresh();
+    } catch (e) {
+      setNotice(e?.response?.data?.message ?? 'No se pudo dar de baja. Intenta de nuevo.');
+    } finally {
+      setDeactivating(false);
+    }
+  }, [deactivateTarget, isFireChief, refresh]);
 
   const filterCounts = useMemo(() => {
     const counts = { Todos: personas.length };
@@ -109,15 +158,16 @@ export default function PersonasScreen() {
         <Text style={styles.pageTitle}>
           {isAdmin ? 'Todo el Personal' : isFireChief ? 'Personal' : 'Personal Médico'}
         </Text>
-        {/* El backend no expone todavía un alta de personal desde esta pantalla; el
-            botón informa la situación en lugar de ser un no-op silencioso. */}
-        <Pressable
-          style={styles.addButton}
-          onPress={() => setNotice('El alta de personal aún no está disponible en el servidor.')}
-          {...a11yButton('Agregar personal')}
-        >
-          <Text style={styles.addButtonText}>+ Agregar Personal</Text>
-        </Pressable>
+        {canManage && (
+          <Pressable
+            style={styles.addButton}
+            onPress={() => setCreateVisible(true)}
+            disabled={!institutionId}
+            {...a11yButton('Agregar personal', { disabled: !institutionId })}
+          >
+            <Text style={styles.addButtonText}>+ Agregar Personal</Text>
+          </Pressable>
+        )}
       </View>
 
       {!!notice && (
@@ -218,6 +268,9 @@ export default function PersonasScreen() {
                       cardH={cardH}
                       styles={styles}
                       theme={theme}
+                      canManage={canManage}
+                      onEdit={() => setEditTarget(person)}
+                      onDeactivate={() => setDeactivateTarget(person)}
                     />
                   ))}
                   {rowItems.length < COLS &&
@@ -250,16 +303,75 @@ export default function PersonasScreen() {
           </View>
         )}
       </View>
+
+      <CreatePersonModal
+        visible={createVisible}
+        isFireChief={isFireChief}
+        institutionId={institutionId}
+        onClose={() => setCreateVisible(false)}
+        onCreated={(personName) => {
+          setCreateVisible(false);
+          setNotice(`${personName} fue agregado correctamente.`);
+          refresh();
+        }}
+      />
+
+      <EditPersonModal
+        visible={!!editTarget}
+        person={editTarget}
+        isFireChief={isFireChief}
+        onClose={() => setEditTarget(null)}
+        onSaved={() => {
+          setEditTarget(null);
+          setNotice('Cambios guardados correctamente.');
+          refresh();
+        }}
+      />
+
+      <ConfirmDialog
+        visible={!!deactivateTarget}
+        title="Dar de baja"
+        message={deactivateTarget ? `¿Seguro que quieres dar de baja a ${deactivateTarget.name}? Podrás seguir consultando su historial, pero dejará de aparecer como personal activo.` : ''}
+        confirmLabel={deactivating ? 'Procesando…' : 'Sí, dar de baja'}
+        cancelLabel="Cancelar"
+        destructive
+        onCancel={() => setDeactivateTarget(null)}
+        onConfirm={handleDeactivate}
+      />
     </SafeAreaView>
   );
 }
 
-function PersonCard({ person, cardW, cardH, styles, theme }) {
-  const spoken = [person.name, person.role, person.email, person.phone]
+function PersonCard({ person, cardW, cardH, styles, theme, canManage, onEdit, onDeactivate }) {
+  const inactive = person.isActive === false || person.trainingStatus === 'Withdrawn';
+  const spoken = [person.name, person.role, person.email, person.phone, inactive ? 'Dado de baja' : null]
     .filter(Boolean).join(', ');
 
   return (
-    <View style={[styles.card, { width: cardW, height: cardH }]} {...a11yGroup(spoken)}>
+    <View style={[styles.card, { width: cardW, height: cardH }, inactive && styles.cardInactive]} {...a11yGroup(spoken)}>
+      {canManage && (
+        <View style={styles.cardActions} {...a11yDecorative}>
+          <TouchableOpacity
+            style={styles.cardActionBtn}
+            onPress={onEdit}
+            hitSlop={ICON_HIT_SLOP}
+            {...a11yButton(`Editar ${person.name}`)}
+          >
+            <Ionicons name="create-outline" size={15} color={theme.iconMuted} />
+          </TouchableOpacity>
+          {!inactive && (
+            <TouchableOpacity
+              style={styles.cardActionBtn}
+              onPress={onDeactivate}
+              hitSlop={ICON_HIT_SLOP}
+              {...a11yButton(`Dar de baja a ${person.name}`)}
+            >
+              <Ionicons name="person-remove-outline" size={15} color={theme.status.danger.fg} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       <View style={styles.personRow}>
         <View style={styles.avatarPlaceholder} {...a11yDecorative}>
           {person.photoSource ? (
@@ -276,6 +388,11 @@ function PersonCard({ person, cardW, cardH, styles, theme }) {
           <View style={styles.rolePill}>
             <Text style={styles.rolePillText}>{person.role}</Text>
           </View>
+          {inactive && (
+            <View style={styles.inactivePill}>
+              <Text style={styles.inactivePillText}>Dado de baja</Text>
+            </View>
+          )}
           <View style={styles.contactLine}>
             <Ionicons name="mail-outline" size={13} color={theme.iconMuted} {...a11yDecorative} />
             <Text style={styles.contactText} numberOfLines={1}>{person.email}</Text>
@@ -318,6 +435,373 @@ function PersonCard({ person, cardW, cardH, styles, theme }) {
     </View>
   );
 }
+
+function ModalField({ label, value, onChangeText, styles, ...rest }) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TextInput
+        style={styles.fieldInput}
+        value={value}
+        onChangeText={onChangeText}
+        placeholderTextColor="#8A8F98"
+        accessibilityLabel={label}
+        {...rest}
+      />
+    </View>
+  );
+}
+
+function ChipRow({ label, options, value, onChange, styles }) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <View style={styles.chipRow}>
+        {options.map((opt) => {
+          const active = value === opt;
+          return (
+            <TouchableOpacity
+              key={opt}
+              style={[styles.chip, active && styles.chipActive]}
+              onPress={() => onChange(opt)}
+              {...a11yButton(opt, { selected: active })}
+              accessibilityRole="radio"
+            >
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>{opt}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const EMPTY_CREATE = {
+  firstName: '', lastName: '', email: '', phone: '',
+  applicantCode: '', birthDate: '', sex: '', bloodType: '',
+  emergencyContactName: '', emergencyContactPhone: '',
+  profession: '', specialty: '', licenseNumber: '',
+};
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function CreatePersonModal({ visible, isFireChief, institutionId, onClose, onCreated }) {
+  const theme = useTheme();
+  const styles = useMemo(() => modalStyles(theme), [theme]);
+  const [form, setForm] = useState(EMPTY_CREATE);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const set = (field) => (v) => setForm((f) => ({ ...f, [field]: v }));
+
+  const handleClose = useCallback(() => {
+    if (submitting) return;
+    setForm(EMPTY_CREATE);
+    setError('');
+    onClose();
+  }, [submitting, onClose]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
+      setError('Nombres, apellidos y correo son obligatorios.');
+      return;
+    }
+    if (!EMAIL_RE.test(form.email.trim())) {
+      setError('Ingresa un correo electrónico válido.');
+      return;
+    }
+    if (isFireChief) {
+      if (!form.applicantCode.trim() || !form.birthDate.trim() || !form.sex) {
+        setError('Código de aspirante, fecha de nacimiento y sexo son obligatorios.');
+        return;
+      }
+      if (!DATE_RE.test(form.birthDate.trim())) {
+        setError('La fecha de nacimiento debe tener el formato AAAA-MM-DD.');
+        return;
+      }
+    } else if (!form.profession) {
+      setError('Selecciona una profesión.');
+      return;
+    }
+
+    setSubmitting(true);
+    setError('');
+    try {
+      const newUser = await userService.create({
+        institutionId,
+        email: form.email.trim(),
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        phone: form.phone.trim() || null,
+      });
+
+      if (isFireChief) {
+        await traineeService.create({
+          userId: newUser.userId,
+          applicantCode: form.applicantCode.trim(),
+          birthDate: form.birthDate.trim(),
+          sex: form.sex,
+          bloodType: form.bloodType.trim() || null,
+          emergencyContactName: form.emergencyContactName.trim() || null,
+          emergencyContactPhone: form.emergencyContactPhone.trim() || null,
+        });
+        await userService.updateRoles(newUser.userId, [ROLES.FIREFIGHTER_TRAINEE]);
+      } else {
+        await healthPersonnelService.create({
+          userId: newUser.userId,
+          profession: form.profession,
+          specialty: form.specialty.trim() || null,
+          licenseNumber: form.licenseNumber.trim() || null,
+          canApproveDischarges: false,
+        });
+        await userService.updateRoles(newUser.userId, [ROLES.MEDICAL]);
+      }
+
+      const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim();
+      setForm(EMPTY_CREATE);
+      onCreated(fullName);
+    } catch (e) {
+      setError(e?.response?.data?.message ?? 'No se pudo crear el registro. Intenta de nuevo.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [form, isFireChief, institutionId, onCreated]);
+
+  return (
+    <Modal transparent animationType="fade" visible={visible} onRequestClose={handleClose} statusBarTranslucent>
+      <TouchableWithoutFeedback onPress={handleClose} accessible={false}>
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback accessible={false}>
+            <View style={styles.card} {...a11yModal('Agregar personal')}>
+              <Text style={styles.title} accessibilityRole="header">
+                {isFireChief ? 'Agregar Bombero Aspirante' : 'Agregar Personal Médico'}
+              </Text>
+
+              <ScrollView style={styles.formScrollArea} contentContainerStyle={styles.formScroll}>
+                <View style={styles.row}>
+                  <ModalField label="Nombres" value={form.firstName} onChangeText={set('firstName')} styles={styles} />
+                  <ModalField label="Apellidos" value={form.lastName} onChangeText={set('lastName')} styles={styles} />
+                </View>
+                <ModalField label="Correo" value={form.email} onChangeText={set('email')} keyboardType="email-address" autoCapitalize="none" styles={styles} />
+                <ModalField label="Teléfono (opcional)" value={form.phone} onChangeText={set('phone')} keyboardType="phone-pad" styles={styles} />
+
+                {isFireChief ? (
+                  <>
+                    <ModalField label="Código de aspirante" value={form.applicantCode} onChangeText={set('applicantCode')} styles={styles} />
+                    <ModalField label="Fecha de nacimiento (AAAA-MM-DD)" value={form.birthDate} onChangeText={set('birthDate')} placeholder="1998-05-20" styles={styles} />
+                    <ChipRow label="Sexo" options={SEX_OPTIONS} value={form.sex} onChange={set('sex')} styles={styles} />
+                    <ModalField label="Tipo de sangre (opcional)" value={form.bloodType} onChangeText={set('bloodType')} placeholder="O+" styles={styles} />
+                    <ModalField label="Contacto de emergencia (opcional)" value={form.emergencyContactName} onChangeText={set('emergencyContactName')} styles={styles} />
+                    <ModalField label="Teléfono de emergencia (opcional)" value={form.emergencyContactPhone} onChangeText={set('emergencyContactPhone')} keyboardType="phone-pad" styles={styles} />
+                  </>
+                ) : (
+                  <>
+                    <ChipRow label="Profesión" options={PROFESSION_OPTIONS} value={form.profession} onChange={set('profession')} styles={styles} />
+                    <ModalField label="Especialidad (opcional)" value={form.specialty} onChangeText={set('specialty')} styles={styles} />
+                    <ModalField label="Número de licencia (opcional)" value={form.licenseNumber} onChangeText={set('licenseNumber')} styles={styles} />
+                  </>
+                )}
+              </ScrollView>
+
+              {!!error && <Text style={styles.errorText} accessibilityRole="alert">{error}</Text>}
+
+              <View style={styles.actions}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={handleClose} disabled={submitting} {...a11yButton('Cancelar', { disabled: submitting })}>
+                  <Text style={styles.cancelBtnText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
+                  onPress={handleSubmit}
+                  disabled={submitting}
+                  {...a11yButton('Crear', { disabled: submitting, busy: submitting })}
+                >
+                  {submitting ? <ActivityIndicator size="small" color={theme.onPrimarySolid} /> : <Text style={styles.submitBtnText}>Crear</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
+}
+
+function EditPersonModal({ visible, person, isFireChief, onClose, onSaved }) {
+  const theme = useTheme();
+  const styles = useMemo(() => modalStyles(theme), [theme]);
+  const [bloodType, setBloodType] = useState('');
+  const [emergencyContactName, setEmergencyContactName] = useState('');
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
+  const [profession, setProfession] = useState('');
+  const [specialty, setSpecialty] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!person) return;
+    setBloodType(person.bloodType ?? '');
+    setEmergencyContactName('');
+    setEmergencyContactPhone('');
+    setProfession(person.role ?? '');
+    setSpecialty(person.specialty ?? '');
+    setLicenseNumber(person.licenseNumber ?? '');
+    setError('');
+  }, [person]);
+
+  const handleClose = useCallback(() => {
+    if (submitting) return;
+    onClose();
+  }, [submitting, onClose]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!isFireChief && !profession) {
+      setError('Selecciona una profesión.');
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      if (isFireChief) {
+        await traineeService.update(person.id, {
+          bloodType: bloodType.trim() || null,
+          emergencyContactName: emergencyContactName.trim() || null,
+          emergencyContactPhone: emergencyContactPhone.trim() || null,
+        });
+      } else {
+        await healthPersonnelService.update(person.id, {
+          profession,
+          specialty: specialty.trim() || null,
+          licenseNumber: licenseNumber.trim() || null,
+          canApproveDischarges: person.canApproveDischarges ?? false,
+        });
+      }
+      onSaved();
+    } catch (e) {
+      setError(e?.response?.data?.message ?? 'No se pudo guardar. Intenta de nuevo.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [isFireChief, person, bloodType, emergencyContactName, emergencyContactPhone, profession, specialty, licenseNumber, onSaved]);
+
+  if (!person) return null;
+
+  return (
+    <Modal transparent animationType="fade" visible={visible} onRequestClose={handleClose} statusBarTranslucent>
+      <TouchableWithoutFeedback onPress={handleClose} accessible={false}>
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback accessible={false}>
+            <View style={styles.card} {...a11yModal(`Editar ${person.name}`)}>
+              <Text style={styles.title} accessibilityRole="header">Editar {person.name}</Text>
+
+              {isFireChief ? (
+                <>
+                  <ModalField label="Tipo de sangre" value={bloodType} onChangeText={setBloodType} placeholder="O+" styles={styles} />
+                  <ModalField label="Contacto de emergencia" value={emergencyContactName} onChangeText={setEmergencyContactName} styles={styles} />
+                  <ModalField label="Teléfono de emergencia" value={emergencyContactPhone} onChangeText={setEmergencyContactPhone} keyboardType="phone-pad" styles={styles} />
+                </>
+              ) : (
+                <>
+                  <ChipRow label="Profesión" options={PROFESSION_OPTIONS} value={profession} onChange={setProfession} styles={styles} />
+                  <ModalField label="Especialidad" value={specialty} onChangeText={setSpecialty} styles={styles} />
+                  <ModalField label="Número de licencia" value={licenseNumber} onChangeText={setLicenseNumber} styles={styles} />
+                </>
+              )}
+
+              {!!error && <Text style={styles.errorText} accessibilityRole="alert">{error}</Text>}
+
+              <View style={styles.actions}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={handleClose} disabled={submitting} {...a11yButton('Cancelar', { disabled: submitting })}>
+                  <Text style={styles.cancelBtnText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
+                  onPress={handleSubmit}
+                  disabled={submitting}
+                  {...a11yButton('Guardar', { disabled: submitting, busy: submitting })}
+                >
+                  {submitting ? <ActivityIndicator size="small" color={theme.onPrimarySolid} /> : <Text style={styles.submitBtnText}>Guardar</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
+}
+
+const modalStyles = (t) =>
+  StyleSheet.create({
+    overlay: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+      backgroundColor: t.overlay,
+    },
+    card: {
+      borderRadius: 16,
+      padding: 20,
+      width: '100%',
+      maxWidth: 440,
+      gap: 12,
+      backgroundColor: t.card,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    title: { fontSize: 16, fontWeight: '700', color: t.textPrimary, marginBottom: 2 },
+    formScrollArea: { maxHeight: 420 },
+    formScroll: { gap: 10, paddingBottom: 2 },
+    row: { flexDirection: 'row', gap: 10 },
+    field: { flex: 1, gap: 5 },
+    fieldLabel: { fontSize: 12, color: t.textSecondary },
+    fieldInput: {
+      borderWidth: 1.5,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 9,
+      fontSize: 13,
+      backgroundColor: t.cardAlt,
+      borderColor: t.borderStrong,
+      color: t.textPrimary,
+    },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: {
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 8,
+      borderWidth: 1.5,
+      backgroundColor: t.card,
+      borderColor: t.border,
+    },
+    chipActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
+    chipText: { fontSize: 12, color: t.textPrimary },
+    chipTextActive: { color: t.onPrimarySolid, fontWeight: '700' },
+    errorText: { fontSize: 12, color: t.status.danger.fg },
+    actions: { flexDirection: 'row', gap: 10, marginTop: 2 },
+    cancelBtn: {
+      flex: 1,
+      minHeight: 42,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: t.borderStrong,
+    },
+    cancelBtnText: { fontSize: 13, fontWeight: '600', color: t.textSecondary },
+    submitBtn: {
+      flex: 1,
+      minHeight: 42,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRadius: 10,
+      backgroundColor: t.primarySolid,
+    },
+    submitBtnDisabled: { opacity: 0.7 },
+    submitBtnText: { fontSize: 13, fontWeight: '700', color: t.onPrimarySolid },
+  });
 
 const makeStyles = (t) => StyleSheet.create({
   screen: {
@@ -476,6 +960,40 @@ const makeStyles = (t) => StyleSheet.create({
     borderColor: t.border,
     padding: 14,
     overflow: 'hidden',
+  },
+  cardInactive: {
+    opacity: 0.6,
+  },
+  cardActions: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    flexDirection: 'row',
+    gap: 2,
+    zIndex: 1,
+  },
+  cardActionBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: t.cardAlt,
+  },
+  inactivePill: {
+    alignSelf: 'flex-start',
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: t.status.danger.bg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    marginBottom: 4,
+  },
+  inactivePillText: {
+    color: t.status.danger.fg,
+    fontSize: 8,
+    fontWeight: '700',
   },
   personRow: {
     flexDirection: 'row',

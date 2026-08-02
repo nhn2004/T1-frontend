@@ -1,19 +1,20 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, useWindowDimensions,
+  StyleSheet, useWindowDimensions, Modal, TouchableWithoutFeedback, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ROLE_LABELS, ROLES } from '../../constants';
-import { a11yButton, a11yDecorative } from '../../constants/a11y';
+import { a11yButton, a11yDecorative, a11yModal } from '../../constants/a11y';
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
 import useSettingsStore from '../../store/settingsStore';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import Toast from '../../components/Toast';
+import { authService, userService } from '../../services';
 
 import SettingsCard from './components/SettingsCard';
 import ToggleRow from './components/ToggleRow';
@@ -45,10 +46,17 @@ export default function SettingsScreen() {
   const { t: tAll } = useTranslation();
   const t = tAll.settings;
 
-  const [name, setName] = useState(user?.name ?? '');
+  const [firstName, setFirstName] = useState(user?.firstName ?? '');
+  const [lastName, setLastName] = useState(user?.lastName ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
+  // El login no devuelve el teléfono (authService.login no lo mapea), así que se
+  // hidrata aparte desde el backend para no perderlo al guardar — sin esto, guardar
+  // nombre/correo mandaría `phone: undefined` y borraría el teléfono ya guardado.
+  const [phone, setPhone] = useState(user?.phone ?? null);
+  const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null); // { message, tone }
   const [logoutVisible, setLogoutVisible] = useState(false);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
 
   useEffect(() => {
     if (!toast) return;
@@ -56,17 +64,34 @@ export default function SettingsScreen() {
     return () => clearTimeout(timer);
   }, [toast]);
 
+  useEffect(() => {
+    if (!user?.userId) return undefined;
+    let cancelled = false;
+    userService.getById(user.userId)
+      .then((full) => {
+        if (cancelled) return;
+        setFirstName(full.firstName ?? '');
+        setLastName(full.lastName ?? '');
+        setEmail(full.email ?? '');
+        setPhone(full.phone ?? null);
+      })
+      .catch(() => {}); // silencioso: si falla, se sigue con los valores de authStore
+    return () => { cancelled = true; };
+  }, [user?.userId]);
+
   const isTrainee = role === ROLES.FIREFIGHTER_TRAINEE;
 
-  // El botón "Guardar Cambios" solo tiene sentido para Nombre/Correo: son los únicos
-  // campos en estado local de este formulario — todo lo demás (toggles, idioma, modo
-  // oscuro) ya se aplica al instante contra el store. Se deshabilita si no hay ediciones
-  // pendientes, para que sea evidente qué hace y cuándo hace algo.
+  // El botón "Guardar Cambios" solo tiene sentido para Nombres/Apellidos/Correo: son
+  // los únicos campos en estado local de este formulario — todo lo demás (toggles,
+  // idioma, modo oscuro) ya se aplica al instante contra el store. Se deshabilita si
+  // no hay ediciones pendientes, para que sea evidente qué hace y cuándo hace algo.
   const hasProfileChanges =
-    name.trim() !== (user?.name ?? '') || email.trim() !== (user?.email ?? '');
+    firstName.trim() !== (user?.firstName ?? '') ||
+    lastName.trim() !== (user?.lastName ?? '') ||
+    email.trim() !== (user?.email ?? '');
 
-  const handleSave = useCallback(() => {
-    if (!name.trim() || !email.trim()) {
+  const handleSave = useCallback(async () => {
+    if (!firstName.trim() || !lastName.trim() || !email.trim()) {
       setToast({ message: t.incompleteMessage, tone: 'error' });
       return;
     }
@@ -74,14 +99,32 @@ export default function SettingsScreen() {
       setToast({ message: t.invalidEmailMessage, tone: 'error' });
       return;
     }
-    // Se actualiza SOLO el perfil. Antes esto llamaba a `login({ user, role, token })`,
-    // pero `setAuth` espera `roles` (array) y al no recibirlo dejaba el rol global en
-    // null: el navigator no encontraba dashboard y la app quedaba en pantalla blanca
-    // sin posibilidad de cerrar sesión. `updateUser` preserva rol, token y sesión.
-    updateUser({ name: name.trim(), email: email.trim() });
-    // TODO: persistir en el backend con api.put('/users/me', { name, email })
-    setToast({ message: t.savedToast, tone: 'success' });
-  }, [name, email, updateUser, t]);
+
+    setSaving(true);
+    try {
+      const updated = await userService.update(user.userId, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone,
+        email: email.trim(),
+      });
+      // `updateUser` (setUser en authStore) preserva rol, token y sesión — a diferencia
+      // de `login`/`setAuth`, que espera `roles` y dejaría el rol global en null si no
+      // se le pasa, rompiendo el navigator (pantalla blanca sin dashboard).
+      updateUser({
+        firstName: updated.firstName,
+        lastName: updated.lastName,
+        name: updated.name,
+        email: updated.email,
+      });
+      setToast({ message: t.savedToast, tone: 'success' });
+    } catch (e) {
+      const message = e?.response?.data?.message ?? t.saveError;
+      setToast({ message, tone: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  }, [firstName, lastName, email, phone, user, updateUser, t]);
 
   const handleSyncNow = useCallback(() => {
     markSynced();
@@ -105,7 +148,10 @@ export default function SettingsScreen() {
         {toast && <Toast message={toast.message} tone={toast.tone} />}
 
         <SettingsCard icon="person-outline" title={t.profile}>
-          <FormField label={t.fullName} value={name} onChangeText={setName} />
+          <View style={[styles.row, isCompact && styles.rowCompact]}>
+            <FormField label={t.firstNameLabel} value={firstName} onChangeText={setFirstName} />
+            <FormField label={t.lastNameLabel} value={lastName} onChangeText={setLastName} />
+          </View>
 
           <View style={[styles.row, isCompact && styles.rowCompact]}>
             {isTrainee ? (
@@ -141,17 +187,22 @@ export default function SettingsScreen() {
             ]}
             onPress={handleSave}
             activeOpacity={hasProfileChanges ? 0.85 : 1}
-            disabled={!hasProfileChanges}
+            disabled={!hasProfileChanges || saving}
             {...a11yButton(hasProfileChanges ? t.saveChanges : t.noChanges, {
-              disabled: !hasProfileChanges,
+              disabled: !hasProfileChanges || saving,
+              busy: saving,
             })}
           >
-            <Ionicons
-              name="save-outline"
-              size={16}
-              color={hasProfileChanges ? theme.onPrimarySolid : theme.textDisabled}
-              {...a11yDecorative}
-            />
+            {saving ? (
+              <ActivityIndicator size="small" color={theme.onPrimarySolid} />
+            ) : (
+              <Ionicons
+                name="save-outline"
+                size={16}
+                color={hasProfileChanges ? theme.onPrimarySolid : theme.textDisabled}
+                {...a11yDecorative}
+              />
+            )}
             <Text
               style={[
                 styles.saveBtnText,
@@ -280,7 +331,7 @@ export default function SettingsScreen() {
         <SettingsCard icon="shield-checkmark-outline" title={t.security}>
           <TouchableOpacity
             style={[styles.outlineBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
-            onPress={() => handleComingSoon(t.changePassword)}
+            onPress={() => setPasswordModalVisible(true)}
             activeOpacity={0.8}
             {...a11yButton(t.changePassword)}
           >
@@ -321,9 +372,178 @@ export default function SettingsScreen() {
           logout();
         }}
       />
+
+      <ChangePasswordModal
+        visible={passwordModalVisible}
+        t={t}
+        theme={theme}
+        onClose={() => setPasswordModalVisible(false)}
+        onSuccess={() => setToast({ message: t.changePasswordSuccess, tone: 'success' })}
+      />
     </SafeAreaView>
   );
 }
+
+function ChangePasswordModal({ visible, t, theme, onClose, onSuccess }) {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const styles = modalStyles(theme);
+
+  const reset = useCallback(() => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setError('');
+  }, []);
+
+  const handleClose = useCallback(() => {
+    if (submitting) return;
+    reset();
+    onClose();
+  }, [submitting, reset, onClose]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setError(t.changePasswordIncomplete);
+      return;
+    }
+    if (newPassword.length < 8) {
+      setError(t.changePasswordTooShort);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError(t.changePasswordMismatch);
+      return;
+    }
+
+    setError('');
+    setSubmitting(true);
+    try {
+      await authService.changePassword(currentPassword, newPassword, confirmPassword);
+      reset();
+      onClose();
+      onSuccess();
+    } catch (e) {
+      setError(e?.response?.data?.message ?? t.changePasswordError);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [currentPassword, newPassword, confirmPassword, t, reset, onClose, onSuccess]);
+
+  return (
+    <Modal transparent animationType="fade" visible={visible} onRequestClose={handleClose} statusBarTranslucent>
+      <TouchableWithoutFeedback onPress={handleClose} accessible={false}>
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback accessible={false}>
+            <View style={styles.card} {...a11yModal(t.changePasswordTitle)}>
+              <Text style={styles.title} accessibilityRole="header">{t.changePasswordTitle}</Text>
+
+              <FormField
+                label={t.currentPasswordLabel}
+                value={currentPassword}
+                onChangeText={(v) => { setCurrentPassword(v); setError(''); }}
+                secureTextEntry
+                textContentType="password"
+                autoComplete="current-password"
+              />
+              <FormField
+                label={t.newPasswordLabel}
+                value={newPassword}
+                onChangeText={(v) => { setNewPassword(v); setError(''); }}
+                secureTextEntry
+                textContentType="newPassword"
+                autoComplete="new-password"
+              />
+              <FormField
+                label={t.confirmNewPasswordLabel}
+                value={confirmPassword}
+                onChangeText={(v) => { setConfirmPassword(v); setError(''); }}
+                secureTextEntry
+                textContentType="newPassword"
+                autoComplete="new-password"
+              />
+
+              {!!error && (
+                <Text style={styles.errorText} accessibilityRole="alert">{error}</Text>
+              )}
+
+              <View style={styles.actions}>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={handleClose}
+                  activeOpacity={0.8}
+                  disabled={submitting}
+                  {...a11yButton(t.cancel, { disabled: submitting })}
+                >
+                  <Text style={styles.cancelBtnText}>{t.cancel}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
+                  onPress={handleSubmit}
+                  activeOpacity={0.85}
+                  disabled={submitting}
+                  {...a11yButton(t.changePasswordSubmit, { disabled: submitting, busy: submitting })}
+                >
+                  {submitting
+                    ? <ActivityIndicator size="small" color={theme.onPrimarySolid} />
+                    : <Text style={styles.submitBtnText}>{t.changePasswordSubmit}</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
+}
+
+const modalStyles = (t) =>
+  StyleSheet.create({
+    overlay: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+      backgroundColor: t.overlay,
+    },
+    card: {
+      borderRadius: 16,
+      padding: 20,
+      width: '100%',
+      maxWidth: 380,
+      gap: 12,
+      backgroundColor: t.card,
+      borderWidth: 1,
+      borderColor: t.border,
+    },
+    title: { fontSize: 17, fontWeight: '700', color: t.textPrimary, marginBottom: 4 },
+    errorText: { fontSize: 13, color: t.status.danger.fg },
+    actions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+    cancelBtn: {
+      flex: 1,
+      minHeight: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: t.borderStrong,
+    },
+    cancelBtnText: { fontSize: 14, fontWeight: '600', color: t.textSecondary },
+    submitBtn: {
+      flex: 1,
+      minHeight: 44,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderRadius: 10,
+      backgroundColor: t.primarySolid,
+    },
+    submitBtnDisabled: { opacity: 0.7 },
+    submitBtnText: { fontSize: 14, fontWeight: '700', color: t.onPrimarySolid },
+  });
 
 const styles = StyleSheet.create({
   root: {

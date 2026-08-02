@@ -33,6 +33,7 @@ export const PERMISSIONS = {
   viewPeople:           [ROLES.MEDICAL, ROLES.CAPACITATOR, ROLES.FIRE_CHIEF, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
   manageFirefighters:   [ROLES.FIRE_CHIEF, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
   manageCapacitators:   [ROLES.FIRE_CHIEF, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
+  manageHealthPersonnel: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
 
   // Progreso personal del aspirante
   viewOwnProgress:      [ROLES.FIREFIGHTER_TRAINEE],
@@ -50,12 +51,14 @@ export const ROUTE_PERMISSIONS = {
   [ROUTES.PROGRESS]:           null,
   [ROUTES.SETTINGS]:           null,
   [ROUTES.RESULTS_TRAINEE]:    null,
+  [ROUTES.PROFILE]:            null,
   [ROUTES.PEOPLE]:             'viewPeople',
   [ROUTES.PEOPLE_SESSIONS]:    'viewPeople',
   [ROUTES.VALIDATION_QUEUE]:   'validateInvitations',
   [ROUTES.SESSION_CREATE]:     'createSession',
   [ROUTES.RESULTS_INDIVIDUAL]: 'readMedicalRecord',
   [ROUTES.EVALUATION]:         'readMedicalRecord',
+  [ROUTES.MEDICAL_HISTORY]:    'readMedicalRecord',
 };
 
 /** Normaliza a array: acepta un rol suelto o la lista completa de roles del usuario. */

@@ -1,21 +1,18 @@
 import api from './api';
 
 // ⚠️ Límite del backend (verificado contra BomberosAPI, tabla VitalSignsMeasurement y
-// VitalSignsMeasurementDto): la API SOLO persiste estos cinco valores por medición:
+// VitalSignsMeasurementDto): esta API en particular SOLO persiste estos cinco valores:
 //   heartRate, systolicPressure, diastolicPressure, temperatureC, spo2
 //
-// NO existe endpoint ni columna para: nivel de CO, frecuencia respiratoria, síntomas
-// (la tabla SymptomReport existe pero no tiene controlador), peso ni bioimpedancia.
-// Esos campos se capturan en la UI pero NO se guardan en el servidor. `submit` los
-// devuelve en `unsupported` para que la pantalla pueda avisar al usuario en vez de
-// mostrar un "guardado con éxito" que sería falso.
+// Síntomas, peso, grasa corporal e hidratación SÍ tienen soporte en el backend, pero a
+// través de otros endpoints (symptomReportService, bioimpedanceService) — la pantalla
+// que llama a `submit` debe enviarlos por separado con esos servicios, ver
+// EvaluacionBomberoScreen.js / ResultadosIndividualesScreen.js.
+//
+// Nivel de CO y frecuencia respiratoria siguen sin columna en ningún lado.
 export const UNSUPPORTED_FIELDS = Object.freeze({
   nivelCO: 'Nivel de CO',
   frecuenciaRespiratoria: 'Frecuencia respiratoria',
-  sintomas: 'Síntomas',
-  peso: 'Peso',
-  grasaCorporal: 'Grasa corporal',
-  hidratacion: 'Hidratación',
 });
 
 /** Convierte a número solo si hay un valor real; conserva el 0 como dato válido. */
@@ -30,6 +27,10 @@ function toHistoryEntry(raw) {
   const dia = num(raw.diastolicPressure);
   return {
     id:        raw.vitalSignsMeasurementId,
+    // Se expone para que el caller pueda cruzar esta medición con síntomas
+    // (symptomReportService) y peso (bioimpedanceService, tablas separadas del
+    // backend) — ambos se guardan contra el mismo sessionParticipantId.
+    sessionParticipantId: raw.sessionParticipantId,
     sessionId: raw.trainingSessionId,
     title:     raw.sessionTitle || 'Sesión',
     // Fecha cruda ISO: las pantallas la formatean con su propio locale.
@@ -40,12 +41,12 @@ function toHistoryEntry(raw) {
       nivelOxigeno:       num(raw.spo2),
       presionArterial:    sys !== null && dia !== null ? `${Math.round(sys)}/${Math.round(dia)}` : null,
       temperatura:        num(raw.temperatureC),
-      // El backend no expone peso; se deja explícito como no disponible en vez de 0,
-      // que la UI interpretaría como "sin cambios".
+      // El caller (ProgressHistoryScreen) lo rellena desde bioimpedanceService —
+      // esta función solo conoce signos vitales, no bioimpedancia.
       peso:               null,
     },
-    // Sin endpoint de síntomas todavía: `null` significa "no disponible", distinto de
-    // `[]` que significaría "el bombero no reportó ninguno".
+    // El caller lo rellena desde symptomReportService — `null` aquí solo significa
+    // "todavía no cruzado", no "el bombero no reportó nada" (eso sería `[]`).
     sintomas:  null,
     severidad: null,
   };

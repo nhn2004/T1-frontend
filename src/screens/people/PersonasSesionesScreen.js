@@ -45,8 +45,9 @@ export default function PersonasSesionesScreen({ navigation, route }) {
   const styles = React.useMemo(() => makeStyles(theme), [theme]);
   // Solo los roles con acceso a la ficha médica pueden abrir la evaluación; para el
   // resto el botón se oculta en vez de intentar navegar a una pantalla no montada.
-  const { canAccessRoute } = useAuth();
+  const { canAccessRoute, can } = useAuth();
   const canEvaluate = canAccessRoute(ROUTES.EVALUATION);
+  const canViewMedicalHistory = can('readMedicalRecord');
 
   const [people,         setPeople]         = React.useState([]);
   const [loading,        setLoading]        = React.useState(true);
@@ -247,6 +248,7 @@ export default function PersonasSesionesScreen({ navigation, route }) {
                         theme={theme}
                         numQuemas={numQuemas}
                         canEvaluate={canEvaluate}
+                        canViewMedicalHistory={canViewMedicalHistory}
                       />
                     ))}
                     {rowCards.length < COLS &&
@@ -294,7 +296,7 @@ export default function PersonasSesionesScreen({ navigation, route }) {
 
 const FALLBACK_PHOTO = require('../../assets/people/bombero.png');
 
-function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuemas, canEvaluate }) {
+function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuemas, canEvaluate, canViewMedicalHistory }) {
   const statusStyle = STATUS_STYLES[person.status] ?? STATUS_STYLES.PENDIENTE;
   const tone = theme.status[statusStyle.tone];
 
@@ -396,6 +398,19 @@ function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuema
 
       <View style={styles.actions}>
         {renderButton()}
+        {canViewMedicalHistory && (
+          <Pressable
+            style={[styles.cardBtn, styles.cardBtnOutline]}
+            onPress={() => navigation.navigate(ROUTES.MEDICAL_HISTORY, {
+              traineeId: person.traineeId,
+              traineeName: person.name,
+            })}
+            {...a11yButton(`Historial médico de ${person.name}`)}
+          >
+            <Ionicons name="medkit-outline" size={13} color={theme.primaryText} {...a11yDecorative} />
+            <Text style={styles.cardBtnOutlineText}>Historial</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -574,8 +589,9 @@ const makeStyles = (t) => StyleSheet.create({
   infoLine: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
   infoText: { color: t.textSecondary, fontSize: 11 },
 
-  actions: { marginTop: 8 },
+  actions: { marginTop: 8, flexDirection: 'row', gap: 6 },
   cardBtn: {
+    flex: 1,
     height: 28, borderRadius: 7,
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 5,

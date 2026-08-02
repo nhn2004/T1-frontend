@@ -53,6 +53,11 @@ const MENU = [
     icon: { lib: 'Ionicons', name: 'checkmark-done-outline' },
   },
   {
+    key: 'profile',
+    route: ROUTES.PROFILE,
+    icon: { lib: 'Ionicons', name: 'person-circle-outline' },
+  },
+  {
     key: 'settings',
     route: ROUTES.SETTINGS,
     icon: { lib: 'Ionicons', name: 'settings' },

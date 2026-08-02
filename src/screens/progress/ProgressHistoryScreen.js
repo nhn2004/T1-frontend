@@ -11,6 +11,8 @@ import { getStatus } from '../resultados/utils/vitalThresholds';
 import { useAuth } from '../../hooks';
 import { vitalSignsService } from '../../services/vitalSignsService';
 import { traineeService } from '../../services/traineeService';
+import { symptomReportService } from '../../services/symptomReportService';
+import { bioimpedanceService } from '../../services/bioimpedanceService';
 
 import InteractiveLineChart from './components/InteractiveLineChart';
 import SymptomFrequencyChart from './components/SymptomFrequencyChart';
@@ -41,10 +43,40 @@ export default function ProgressHistoryScreen({ navigation }) {
   useEffect(() => {
     if (!user?.userId) return;
     traineeService.getAll()
-      .then(trainees => {
+      .then(async (trainees) => {
         const me = trainees.find(t => t.userId === user.userId);
-        if (!me) return;
-        return vitalSignsService.getHistoryForTrainee(me.id);
+        if (!me) return null;
+
+        const [vitalsEntries, symptomReports, bioimpedanceEntries] = await Promise.all([
+          vitalSignsService.getHistoryForTrainee(me.id),
+          symptomReportService.getByTrainee(me.id).catch(() => []),
+          bioimpedanceService.getByTrainee(me.id).catch(() => []),
+        ]);
+
+        // Síntomas y peso viven en tablas separadas (SymptomReport / BioimpedanceMeasurement),
+        // ambas ligadas al mismo sessionParticipantId que la medición de vitales — se cruzan
+        // aquí en vez de en vitalSignsService, que solo conoce signos vitales.
+        const symptomsByParticipant = {};
+        symptomReports.forEach((r) => {
+          const list = (r.symptoms ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+          if (!symptomsByParticipant[r.sessionParticipantId]) symptomsByParticipant[r.sessionParticipantId] = [];
+          symptomsByParticipant[r.sessionParticipantId].push(...list);
+        });
+
+        const weightByParticipant = {};
+        bioimpedanceEntries.forEach((b) => {
+          if (b.weightKg != null) weightByParticipant[b.sessionParticipantId] = b.weightKg;
+        });
+
+        return vitalsEntries.map((entry) => ({
+          ...entry,
+          // `[]` aquí sí significa "no reportó síntomas" — la petición se hizo y no hubo error.
+          sintomas: [...new Set(symptomsByParticipant[entry.sessionParticipantId] ?? [])],
+          vitals: {
+            ...entry.vitals,
+            peso: weightByParticipant[entry.sessionParticipantId] ?? null,
+          },
+        }));
       })
       .then(entries => { if (entries) setHistory(entries); })
       .catch(() => {})

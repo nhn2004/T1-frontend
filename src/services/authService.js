@@ -22,4 +22,8 @@ export const authService = {
     const { data: wrapper } = await api.get('/auth/me');
     return wrapper.data;
   },
+
+  async changePassword(currentPassword, newPassword, confirmPassword) {
+    await api.post('/auth/change-password', { currentPassword, newPassword, confirmPassword });
+  },
 };

@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   ImageBackground,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,7 +18,7 @@ import { a11yButton, a11yDecorative, a11yGroup, MIN_TOUCH_SIZE } from '../../con
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import Toast from '../../components/Toast';
-import { sessionService } from '../../services';
+import { reportsService, sessionService } from '../../services';
 import { traineeService } from '../../services/traineeService';
 
 const HERO_IMAGE = require('../../assets/fondocarro.jpg');
@@ -48,6 +50,10 @@ export default function ResearcherDashboard() {
   const [selectedTypes, setSelectedTypes] = useState({
     medica: true, fisica: false, psicologica: false, tecnica: false,
   });
+
+  const [generating,   setGenerating]   = useState(false);
+  const [reportResult, setReportResult] = useState(null);
+  const [exporting,    setExporting]    = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -94,11 +100,51 @@ export default function ResearcherDashboard() {
     setSelectedTypes((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  const notAvailable = useCallback((feature) => {
-    setToast({
-      message: `${feature} requiere un endpoint de exportación que aún no existe en el backend.`,
-      tone: 'warning',
-    });
+  const handleGenerateReport = useCallback(async () => {
+    setGenerating(true);
+    try {
+      const summary = await reportsService.getSummary();
+      setReportResult(summary);
+    } catch (e) {
+      setToast({ message: e?.response?.data?.message ?? 'No se pudo generar el reporte.', tone: 'error' });
+    } finally {
+      setGenerating(false);
+    }
+  }, []);
+
+  const handleExportDataset = useCallback(async () => {
+    setExporting(true);
+    try {
+      const rows = await reportsService.getAnonymizedExport();
+      if (rows.length === 0) {
+        setToast({ message: 'No hay mediciones para exportar todavía.', tone: 'warning' });
+        return;
+      }
+
+      if (Platform.OS === 'web') {
+        // Descarga real de archivo — solo disponible en web (APIs de Blob/URL del
+        // navegador). En nativo se informa el conteo real sin fingir una descarga.
+        const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `export-anonimizado-${Date.now()}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        setToast({ message: `${rows.length} registros exportados.`, tone: 'success' });
+      } else {
+        setToast({
+          message: `${rows.length} registros obtenidos del servidor. La descarga de archivo aún solo está disponible en la versión web.`,
+          tone: 'info',
+        });
+      }
+    } catch (e) {
+      setToast({ message: e?.response?.data?.message ?? 'No se pudo exportar el dataset.', tone: 'error' });
+    } finally {
+      setExporting(false);
+    }
   }, []);
 
   return (
@@ -237,20 +283,52 @@ export default function ResearcherDashboard() {
               </View>
             </View>
 
+            {/* El servidor todavía calcula el resumen sobre TODOS los datos: tipo de
+                reporte/grupo/tipo de evaluación son selectores listos para cuando el
+                backend soporte filtrar por ellos, pero hoy no acotan el resultado. */}
+            <Text style={styles.filterDisclosure}>
+              El resumen generado cubre todos los datos disponibles; los filtros de
+              arriba aún no acotan el resultado en el servidor.
+            </Text>
+
             <TouchableOpacity
-              style={styles.generateButton}
-              onPress={() => notAvailable('La generación de reportes')}
+              style={[styles.generateButton, generating && styles.generateButtonDisabled]}
+              onPress={handleGenerateReport}
               activeOpacity={0.85}
-              {...a11yButton('Generar reporte')}
+              disabled={generating}
+              {...a11yButton('Generar reporte', { disabled: generating, busy: generating })}
             >
-              <Ionicons
-                name="sparkles-outline"
-                size={17}
-                color={theme.onPrimarySolid}
-                {...a11yDecorative}
-              />
-              <Text style={styles.generateButtonText}>Generar Reporte</Text>
+              {generating
+                ? <ActivityIndicator size="small" color={theme.onPrimarySolid} />
+                : <Ionicons name="sparkles-outline" size={17} color={theme.onPrimarySolid} {...a11yDecorative} />}
+              <Text style={styles.generateButtonText}>
+                {generating ? 'Generando…' : 'Generar Reporte'}
+              </Text>
             </TouchableOpacity>
+
+            {!!reportResult && (
+              <View style={styles.reportResultBox} {...a11yGroup('Resumen generado')}>
+                <Text style={styles.reportResultTitle}>Resumen generado</Text>
+                <Text style={styles.reportResultLine}>
+                  Sesiones registradas: {reportResult.totalSessions} · Participantes: {reportResult.totalParticipants}
+                </Text>
+                <Text style={styles.reportResultLine}>
+                  Bomberos en muestra: {reportResult.totalTrainees} · Mediciones de vitales: {reportResult.totalVitalSignsMeasurements}
+                </Text>
+                {reportResult.avgHeartRate != null && (
+                  <Text style={styles.reportResultLine}>FC promedio: {reportResult.avgHeartRate} bpm</Text>
+                )}
+                {reportResult.avgSpo2 != null && (
+                  <Text style={styles.reportResultLine}>SpO₂ promedio: {reportResult.avgSpo2}%</Text>
+                )}
+                {reportResult.avgTemperatureC != null && (
+                  <Text style={styles.reportResultLine}>Temperatura promedio: {reportResult.avgTemperatureC}°C</Text>
+                )}
+                <Text style={styles.reportResultHint}>
+                  Generado el {new Date(reportResult.generatedAt).toLocaleString('es-ES')}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* ── Datasets ── */}
@@ -259,22 +337,32 @@ export default function ResearcherDashboard() {
               Datasets Anonimizados
             </Text>
 
-            {/* El backend no expone endpoints de exportación anonimizada todavía.
-                Antes se listaban tres datasets ficticios cuyo botón "Exportar" solo
-                mostraba un mensaje de éxito, sin generar ningún archivo. */}
-            <View style={styles.datasetEmpty}>
-              <Ionicons
-                name="cloud-offline-outline"
-                size={30}
-                color={theme.iconMuted}
-                {...a11yDecorative}
-              />
-              <Text style={styles.datasetEmptyTitle}>Exportación no disponible</Text>
-              <Text style={styles.datasetEmptyText}>
-                La API de exportación anonimizada aún no está implementada. Los filtros de
-                arriba quedan listos para usarse en cuanto el servidor exponga el endpoint.
+            <Text style={styles.datasetDescription}>
+              Exporta todas las mediciones de signos vitales identificadas solo por
+              código de aspirante — sin nombre, correo ni otro dato personal.
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.exportButton, exporting && styles.exportButtonDisabled]}
+              onPress={handleExportDataset}
+              activeOpacity={0.85}
+              disabled={exporting}
+              {...a11yButton('Exportar dataset anonimizado', { disabled: exporting, busy: exporting })}
+            >
+              {exporting
+                ? <ActivityIndicator size="small" color={theme.primaryText} />
+                : <Ionicons name="download-outline" size={17} color={theme.primaryText} {...a11yDecorative} />}
+              <Text style={styles.exportButtonText}>
+                {exporting ? 'Exportando…' : 'Exportar Signos Vitales (JSON)'}
               </Text>
-            </View>
+            </TouchableOpacity>
+
+            {Platform.OS !== 'web' && (
+              <Text style={styles.datasetEmptyText}>
+                La descarga del archivo solo está disponible en la versión web por ahora;
+                en esta plataforma se muestra el conteo de registros obtenidos.
+              </Text>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -365,8 +453,25 @@ const makeStyles = (t, isCompact) =>
       backgroundColor: t.primarySolid, borderRadius: 8, minHeight: MIN_TOUCH_SIZE + 4,
     },
     generateButtonText: { color: t.onPrimarySolid, fontSize: 15, fontWeight: '800' },
+    generateButtonDisabled: { opacity: 0.75 },
 
-    datasetEmpty: { alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 30, flex: 1 },
-    datasetEmptyTitle: { color: t.textPrimary, fontSize: 15, fontWeight: '800' },
-    datasetEmptyText: { color: t.textSecondary, fontSize: 13, lineHeight: 19, textAlign: 'center' },
+    filterDisclosure: { color: t.textMuted, fontSize: 11, lineHeight: 15, fontStyle: 'italic' },
+
+    reportResultBox: {
+      gap: 4, padding: 14, borderRadius: 8,
+      backgroundColor: t.status.info.bg, borderWidth: 1, borderColor: t.status.info.border,
+    },
+    reportResultTitle: { color: t.status.info.fg, fontSize: 13, fontWeight: '900', marginBottom: 2 },
+    reportResultLine: { color: t.status.info.fg, fontSize: 12.5 },
+    reportResultHint: { color: t.status.info.fg, fontSize: 11, marginTop: 4, opacity: 0.85 },
+
+    datasetDescription: { color: t.textSecondary, fontSize: 13, lineHeight: 19 },
+    exportButton: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+      borderRadius: 8, minHeight: MIN_TOUCH_SIZE, borderWidth: 1.5, borderColor: t.primarySolid,
+      backgroundColor: t.card,
+    },
+    exportButtonDisabled: { opacity: 0.75 },
+    exportButtonText: { color: t.primaryText, fontSize: 14, fontWeight: '700' },
+    datasetEmptyText: { color: t.textSecondary, fontSize: 12, lineHeight: 17, textAlign: 'center', marginTop: 4 },
   });
