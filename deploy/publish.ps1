@@ -42,6 +42,23 @@ try {
 
     $distPath = Join-Path $repoRoot 'dist'
 
+    # Zustand empaqueta su middleware `devtools` en el mismo archivo que `persist` (el
+    # único que usamos) — ese código trae `import.meta.env`, sintaxis pensada para
+    # bundlers tipo Vite. Metro (el bundler de Expo) no la transforma, así que queda
+    # literal en el bundle exportado; el navegador la rechaza como error de sintaxis al
+    # cargar el <script> normal (no como módulo ES), dejando la página en blanco. Ese
+    # código de devtools nunca se ejecuta en esta app (no llamamos a `devtools()`), así
+    # que reemplazar el token por un objeto vacío es seguro — solo evita el crash de
+    # sintaxis, no cambia ningún comportamiento real.
+    Write-Host "Parcheando 'import.meta' en el bundle exportado (bug de Zustand + Metro)..." -ForegroundColor Cyan
+    $jsDir = Join-Path $distPath '_expo\static\js'
+    if (Test-Path $jsDir) {
+        Get-ChildItem -Path $jsDir -Filter '*.js' -Recurse | ForEach-Object {
+            (Get-Content $_.FullName -Raw) -replace 'import\.meta', 'self' |
+                Set-Content -NoNewline -Encoding utf8 $_.FullName
+        }
+    }
+
     if ($SitePath) {
         Write-Host "Copiando dist\ -> $SitePath" -ForegroundColor Cyan
         New-Item -ItemType Directory -Force -Path $SitePath | Out-Null
