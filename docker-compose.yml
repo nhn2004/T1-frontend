@@ -63,6 +63,13 @@ services:
         condition: service_healthy
     environment:
       ConnectionStrings__DefaultConnection: "Server=db;Database=bd_bomberos;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False"
+      # `dotnet ef` levanta el host completo (Program.cs) para resolver el DbContext,
+      # y AddJwtAuthentication exige esta variable para arrancar — sin ella falla antes
+      # de siquiera intentar tocar la base de datos.
+      JwtSettings__SecretKey: ${JWT_SECRET_KEY}
+      JwtSettings__Issuer: BomberosAPI
+      JwtSettings__Audience: BomberosClient
+      JwtSettings__ExpirationMinutes: "60"
     entrypoint: ["bash", "-c"]
     command:
       - >
