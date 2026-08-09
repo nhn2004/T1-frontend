@@ -17,6 +17,7 @@ ios/build/
 # Environment
 .env
 .env.*.local
+.env.docker
 local.properties
 
 # Logs

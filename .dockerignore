@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+dist/
+.git/
+.github/
+.claude/
+android/
+ios/
+*.md
+.env
+.env.production

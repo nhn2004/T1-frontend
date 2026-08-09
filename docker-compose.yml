@@ -1,0 +1,89 @@
+# Stack de emergencia para presentar en el servidor Hetzner (Linux).
+# NO es el despliegue definitivo — ese sigue siendo la máquina Windows + IIS de
+# DEPLOY.md. Este compose junta: SQL Server, la API (.NET) y el frontend web (nginx).
+#
+# Uso (ver DEPLOY-DOCKER.md para el paso a paso completo):
+#   cp .env.docker.example .env.docker
+#   # editar .env.docker: SERVER_IP, MSSQL_SA_PASSWORD, JWT_SECRET_KEY
+#   docker compose --env-file .env.docker up -d --build db backend frontend
+#   docker compose --env-file .env.docker --profile tools run --rm migrate
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_PID: Express
+    volumes:
+      - mssql_data:/var/opt/mssql
+    restart: unless-stopped
+    healthcheck:
+      # No depende de la ruta exacta de sqlcmd/mssql-tools (cambió entre versiones de
+      # la imagen) — solo confirma que el puerto de SQL Server ya acepta conexiones.
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/1433' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  backend:
+    build:
+      context: ../ProyectBomberos_Backend
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Server=db;Database=bd_bomberos;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False"
+      JwtSettings__SecretKey: ${JWT_SECRET_KEY}
+      JwtSettings__Issuer: BomberosAPI
+      JwtSettings__Audience: BomberosClient
+      JwtSettings__ExpirationMinutes: "60"
+      # Sin dominio en esta ruta de emergencia: se permite el origin de la IP directa
+      # (frontend servido en el puerto 80 de la misma máquina) y localhost para poder
+      # probar desde el propio servidor.
+      Cors__AllowedOrigins__0: "http://${SERVER_IP}"
+      Cors__AllowedOrigins__1: "http://localhost"
+    ports:
+      - "5054:8080"
+    restart: unless-stopped
+
+  # Aplica las migraciones de EF Core contra el contenedor `db`. No corre con
+  # `docker compose up` — se invoca a mano una sola vez (o cuando haya migraciones
+  # nuevas): docker compose --env-file .env.docker run --rm migrate
+  migrate:
+    build:
+      context: ../ProyectBomberos_Backend
+      dockerfile: Dockerfile
+      target: build
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__DefaultConnection: "Server=db;Database=bd_bomberos;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True;Encrypt=False"
+    entrypoint: ["bash", "-c"]
+    command:
+      - >
+        dotnet tool install --global dotnet-ef --version 10.* &&
+        export PATH="$$PATH:/root/.dotnet/tools" &&
+        dotnet ef database update
+        --project src/BomberosAPI.Infrastructure
+        --startup-project src/BomberosAPI.API
+    profiles: ["tools"]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        EXPO_PUBLIC_API_URL: "http://${SERVER_IP}:5054/api"
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+volumes:
+  mssql_data:
