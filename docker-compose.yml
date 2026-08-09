@@ -42,10 +42,11 @@ services:
       JwtSettings__Audience: BomberosClient
       JwtSettings__ExpirationMinutes: "60"
       # Sin dominio en esta ruta de emergencia: se permite el origin de la IP directa
-      # (frontend servido en el puerto 80 de la misma máquina) y localhost para poder
-      # probar desde el propio servidor.
-      Cors__AllowedOrigins__0: "http://${SERVER_IP}"
-      Cors__AllowedOrigins__1: "http://localhost"
+      # en el puerto real donde queda publicado el frontend (8081, no 80 — ver
+      # docker-compose.yml del servicio "frontend") y localhost para poder probar
+      # desde el propio servidor.
+      Cors__AllowedOrigins__0: "http://${SERVER_IP}:8081"
+      Cors__AllowedOrigins__1: "http://localhost:8081"
     ports:
       - "5054:8080"
     restart: unless-stopped
