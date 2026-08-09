@@ -82,9 +82,9 @@ services:
     depends_on:
       - backend
     ports:
-      # 80 en el host puede estar ocupado por otro sitio que ya corre en el
-      # servidor — se publica en 8080 en su lugar para no pelear por ese puerto.
-      - "8080:80"
+      # 80/8080/8000 ya están ocupados por otros servicios en este servidor
+      # (nginx del otro sitio + otros contenedores) — se publica en 8081.
+      - "8081:80"
     restart: unless-stopped
 
 volumes:
