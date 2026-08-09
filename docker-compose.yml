@@ -18,6 +18,11 @@ services:
     volumes:
       - mssql_data:/var/opt/mssql
     restart: unless-stopped
+    ports:
+      # Solo loopback del propio servidor — NUNCA 0.0.0.0 aquí, es una base de datos
+      # médica. Para conectarse desde afuera (ej. DBeaver) se usa un túnel SSH que
+      # reenvía este puerto, no exposición directa a internet.
+      - "127.0.0.1:1433:1433"
     healthcheck:
       # No depende de la ruta exacta de sqlcmd/mssql-tools (cambió entre versiones de
       # la imagen) — solo confirma que el puerto de SQL Server ya acepta conexiones.
