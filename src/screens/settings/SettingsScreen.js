@@ -13,6 +13,8 @@ import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
 import useSettingsStore from '../../store/settingsStore';
+import useOfflineQueueStore from '../../store/offlineQueueStore';
+import { processQueue, describeQueueItem } from '../../services/offlineSync';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import Toast from '../../components/Toast';
 import { authService, userService } from '../../services';
@@ -22,8 +24,11 @@ import ToggleRow from './components/ToggleRow';
 import FormField from './components/FormField';
 
 function formatTime(date) {
-  const h = String(date.getHours()).padStart(2, '0');
-  const m = String(date.getMinutes()).padStart(2, '0');
+  // `offlineQueueStore` persiste `lastSyncedAt` como string ISO (AsyncStorage solo
+  // guarda JSON), así que puede llegar como Date o como string según de dónde venga.
+  const d = date instanceof Date ? date : new Date(date);
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
   return `${h}:${m}`;
 }
 
@@ -36,13 +41,17 @@ export default function SettingsScreen() {
   const darkMode = useSettingsStore((s) => s.darkMode);
   const pushNotifications = useSettingsStore((s) => s.pushNotifications);
   const soundAlerts = useSettingsStore((s) => s.soundAlerts);
-  const autoSync = useSettingsStore((s) => s.autoSync);
   const autoBackup = useSettingsStore((s) => s.autoBackup);
   const language = useSettingsStore((s) => s.language);
-  const lastSyncedAt = useSettingsStore((s) => s.lastSyncedAt);
   const toggle = useSettingsStore((s) => s.toggle);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
-  const markSynced = useSettingsStore((s) => s.markSynced);
+
+  const pendingItems = useOfflineQueueStore((s) => s.pending);
+  const pendingCount = pendingItems.length;
+  const syncing = useOfflineQueueStore((s) => s.syncing);
+  const lastSyncedAt = useOfflineQueueStore((s) => s.lastSyncedAt);
+  const autoSync = useOfflineQueueStore((s) => s.autoSync);
+  const setAutoSync = useOfflineQueueStore((s) => s.setAutoSync);
 
   const { t: tAll } = useTranslation();
   const t = tAll.settings;
@@ -127,10 +136,22 @@ export default function SettingsScreen() {
     }
   }, [firstName, lastName, email, phone, user, updateUser, t]);
 
-  const handleSyncNow = useCallback(() => {
-    markSynced();
-    setToast({ message: t.syncToast, tone: 'success' });
-  }, [markSynced, t]);
+  const handleSyncNow = useCallback(async () => {
+    if (pendingCount === 0) {
+      setToast({ message: t.syncNothingPending, tone: 'info' });
+      return;
+    }
+    const { synced, failed, stillOffline, sessionExpired } = await processQueue();
+    if (sessionExpired) {
+      setToast({ message: t.syncSessionExpired, tone: 'warning' });
+    } else if (stillOffline) {
+      setToast({ message: t.syncStillOffline, tone: 'warning' });
+    } else if (failed.length > 0) {
+      setToast({ message: t.syncPartial(synced, failed.length), tone: 'warning' });
+    } else {
+      setToast({ message: t.syncAllOk(synced), tone: 'success' });
+    }
+  }, [pendingCount, t]);
 
   const handleComingSoon = useCallback((feature) => {
     setToast({ message: t.comingSoonToast(feature), tone: 'error' });
@@ -241,30 +262,62 @@ export default function SettingsScreen() {
                 label={t.autoSyncTitle}
                 description={t.autoSyncDesc}
                 value={autoSync}
-                onValueChange={() => toggle('autoSync')}
-               
+                onValueChange={() => setAutoSync(!autoSync)}
               />
               <ToggleRow
                 label={t.backupTitle}
                 description={t.backupDesc}
                 value={autoBackup}
                 onValueChange={() => toggle('autoBackup')}
-               
               />
 
+              <Text style={[styles.syncHint, { color: pendingCount > 0 ? theme.status.warning.fg : theme.textMuted }]}>
+                {t.pendingChanges(pendingCount)}
+              </Text>
+
+              {pendingCount > 0 && (
+                <View style={styles.pendingList}>
+                  {pendingItems.slice(0, 4).map((item) => (
+                    <Text
+                      key={item.id}
+                      style={[styles.pendingItemText, { color: theme.textMuted }]}
+                      numberOfLines={1}
+                    >
+                      • {describeQueueItem(item)}
+                    </Text>
+                  ))}
+                  {pendingCount > 4 && (
+                    <Text style={[styles.pendingItemText, { color: theme.textMuted }]}>
+                      {t.pendingItemsMore(pendingCount - 4)}
+                    </Text>
+                  )}
+                </View>
+              )}
+
               <TouchableOpacity
-                style={[styles.secondaryBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+                style={[
+                  styles.secondaryBtn,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                  syncing && styles.secondaryBtnDisabled,
+                ]}
                 onPress={handleSyncNow}
                 activeOpacity={0.8}
-                {...a11yButton(t.syncNow)}
+                disabled={syncing}
+                {...a11yButton(syncing ? t.syncing : t.syncNow, { disabled: syncing, busy: syncing })}
               >
-                <Ionicons
-                  name="cloud-upload-outline"
-                  size={16}
-                  color={theme.textPrimary}
-                  {...a11yDecorative}
-                />
-                <Text style={[styles.secondaryBtnText, { color: theme.textPrimary }]}>{t.syncNow}</Text>
+                {syncing ? (
+                  <ActivityIndicator size="small" color={theme.textPrimary} />
+                ) : (
+                  <Ionicons
+                    name="cloud-upload-outline"
+                    size={16}
+                    color={theme.textPrimary}
+                    {...a11yDecorative}
+                  />
+                )}
+                <Text style={[styles.secondaryBtnText, { color: theme.textPrimary }]}>
+                  {syncing ? t.syncing : t.syncNow}
+                </Text>
               </TouchableOpacity>
 
               {lastSyncedAt && (
@@ -615,6 +668,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 9,
   },
+  secondaryBtnDisabled: { opacity: 0.7 },
   secondaryBtnText: {
     fontSize: 13,
     fontWeight: '600',
@@ -622,6 +676,12 @@ const styles = StyleSheet.create({
   syncHint: {
     fontSize: 11,
     textAlign: 'center',
+  },
+  pendingList: {
+    gap: 2,
+  },
+  pendingItemText: {
+    fontSize: 11,
   },
 
   langRow: {

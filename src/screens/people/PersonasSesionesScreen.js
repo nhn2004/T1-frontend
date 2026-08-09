@@ -18,6 +18,7 @@ import { ROUTES } from '../../constants/routes';
 import { a11yButton, a11yDecorative, a11yGroup } from '../../constants/a11y';
 import useTheme from '../../hooks/useTheme';
 import { useAuth } from '../../hooks';
+import { useAuditOnMount } from '../../hooks/useAuditTrail';
 
 const STATUS_STYLES = {
   COMPLETADO: { label: 'Completado', icon: 'checkmark',    tone: 'success' },
@@ -48,6 +49,12 @@ export default function PersonasSesionesScreen({ navigation, route }) {
   const { canAccessRoute, can } = useAuth();
   const canEvaluate = canAccessRoute(ROUTES.EVALUATION);
   const canViewMedicalHistory = can('readMedicalRecord');
+
+  // Esta pantalla incluye la pestaña de resultados (ResultadosGeneralesView), que
+  // muestra signos vitales agregados de todos los participantes de la sesión — es
+  // dato médico y, por regla del proyecto, requiere quedar en el registro de
+  // auditoría igual que MedicalHistoryScreen/EvaluacionBomberoScreen.
+  useAuditOnMount('MEDICAL_RECORD', sessionId, 'READ');
 
   const [people,         setPeople]         = React.useState([]);
   const [loading,        setLoading]        = React.useState(true);

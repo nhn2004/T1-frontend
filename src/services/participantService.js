@@ -2,8 +2,12 @@ import api from './api';
 
 const STATUS_ORDER = { 'EN CURSO': 0, PENDIENTE: 1, COMPLETADO: 2, CANCELADO: 3 };
 
-function deriveStatus(participant) {
-  if (participant.participationStatus === 'Absent') return 'CANCELADO';
+// El backend nunca manda 'Absent' — su enum ParticipationStatus es Invited/Confirmed/
+// CheckedIn/Completed/NoShow/Withdrawn (ver BomberosAPI.Domain.Enums.ParticipationStatus).
+// Comparar contra 'Absent' hacía esta rama inalcanzable: un participante NoShow nunca
+// se mostraba como CANCELADO, sino como PENDIENTE.
+export function deriveStatus(participant) {
+  if (participant.participationStatus === 'NoShow') return 'CANCELADO';
   if (participant.checkinAt)                        return 'EN CURSO';
   return 'PENDIENTE';
 }

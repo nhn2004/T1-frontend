@@ -59,7 +59,7 @@ export default function WeekScheduleCard({ items = [], compact, onViewDetails })
                 </View>
 
                 <View
-                  style={[styles.bar, { backgroundColor: item.barColor ?? theme.primary }]}
+                  style={[styles.bar, { backgroundColor: item.tone ? theme.status[item.tone]?.solid ?? theme.primary : theme.primary }]}
                   {...a11yDecorative}
                 />
 

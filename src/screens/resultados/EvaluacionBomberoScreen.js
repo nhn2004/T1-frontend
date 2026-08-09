@@ -203,6 +203,19 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
       }
       return true;
     } catch (error) {
+      // `!error.response` significa que la petición nunca llegó a tener respuesta (sin
+      // red) — api.js ya la encoló en offlineQueueStore para reenviarla en cuanto
+      // vuelva la señal (ver useOfflineSync). Antes esto se trataba igual que un
+      // rechazo real del servidor y el asistente se quedaba trabado en Pre-sesión para
+      // siempre, aunque el dato SÍ se hubiera capturado. Se avanza igual, con un aviso
+      // de que quedó pendiente de sincronizar, en vez de bloquear al médico.
+      if (!error.response) {
+        setSaveNotice({
+          tone: 'warning',
+          message: `${etiqueta} guardada localmente (sin conexión). Se enviará automáticamente cuando vuelva la señal.`,
+        });
+        return true;
+      }
       const detail = error?.response?.data?.message ?? error?.message ?? 'Error desconocido.';
       setSaveNotice({ tone: 'error', message: `No se pudo guardar ${etiqueta.toLowerCase()}: ${detail}` });
       return false;

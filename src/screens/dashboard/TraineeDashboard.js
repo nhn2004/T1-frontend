@@ -8,6 +8,7 @@ import { a11yDecorative } from '../../constants/a11y';
 import useAuthStore from '../../store/authStore';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
+import { useAuditOnMount } from '../../hooks/useAuditTrail';
 import Toast from '../../components/Toast';
 
 import WelcomeBanner          from './components/WelcomeBanner';
@@ -33,6 +34,11 @@ export default function TraineeDashboard({ navigation }) {
   const isCompact = width < 900;
 
   const styles = useMemo(() => makeStyles(theme), [theme]);
+
+  // Este dashboard muestra el propio historial de signos vitales del aspirante — es
+  // dato médico y, por regla del proyecto, requiere quedar en el registro de
+  // auditoría, aunque sea el propio dueño del dato quien lo consulta.
+  useAuditOnMount('MEDICAL_RECORD', user?.userId, 'READ');
 
   const [invitation,       setInvitation]       = useState(null);
   const [weekSchedule,     setWeekSchedule]     = useState([]);
@@ -85,7 +91,7 @@ export default function TraineeDashboard({ navigation }) {
               time:     s.time,
               location: locationName(s) ?? '—',
               status:   s.status === 'ACTIVE' ? 'CONFIRMED' : 'PENDING',
-              barColor: tone ? theme.status[tone].solid : theme.status.neutral.solid,
+              tone:     tone ?? 'neutral',
             };
           });
         if (alive) setWeekSchedule(upcoming);
@@ -140,7 +146,11 @@ export default function TraineeDashboard({ navigation }) {
     })();
 
     return () => { alive = false; };
-  }, [user?.email, user?.userId, theme]);
+    // `theme` ya no es una dependencia real: antes se usaba acá solo para resolver
+    // `barColor`, y cada toggle de modo oscuro volvía a disparar las 3+ llamadas de red
+    // de este efecto. `tone` (clave semántica) viaja en el estado en vez del color ya
+    // resuelto, y WeekScheduleCard lo resuelve con su propio `useTheme()` en cada render.
+  }, [user?.email, user?.userId]);
 
   /**
    * Acepta la invitación. La agenda solo se actualiza si el servidor confirmó: antes
@@ -164,7 +174,7 @@ export default function TraineeDashboard({ navigation }) {
             time:     current.time,
             location: current.location,
             status:   'CONFIRMED',
-            barColor: theme.status.success.solid,
+            tone:     'success',
           },
           ...prev,
         ]);
@@ -179,7 +189,7 @@ export default function TraineeDashboard({ navigation }) {
     } finally {
       setBusy(false);
     }
-  }, [theme]);
+  }, []);
 
   const handleDetails = useCallback((id) => {
     navigation?.navigate(ROUTES.SESSION_DETAIL, { id });

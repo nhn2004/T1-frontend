@@ -9,6 +9,7 @@ import { a11yDecorative, a11yTab } from '../../constants/a11y';
 import useTranslation from '../../hooks/useTranslation';
 import { getStatus } from '../resultados/utils/vitalThresholds';
 import { useAuth } from '../../hooks';
+import { useAuditOnMount } from '../../hooks/useAuditTrail';
 import { vitalSignsService } from '../../services/vitalSignsService';
 import { traineeService } from '../../services/traineeService';
 import { symptomReportService } from '../../services/symptomReportService';
@@ -33,6 +34,10 @@ export default function ProgressHistoryScreen({ navigation }) {
   const { width } = useWindowDimensions();
   const isCompact = width < 900;
   const { user } = useAuth();
+
+  // Historial de vitales/síntomas/bioimpedancia propio — dato médico, requiere
+  // auditoría igual que el resto de pantallas que muestran signos vitales.
+  useAuditOnMount('MEDICAL_RECORD', user?.userId, 'READ');
 
   const [history, setHistory] = useState([]);
   // Marcadores de investigación (lactato/Stroop/bioimpedancia) de sesiones marcadas

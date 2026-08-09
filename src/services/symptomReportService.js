@@ -27,19 +27,25 @@ export const symptomReportService = {
    * `null`) si la lista de síntomas viene vacía — no tiene sentido crear un reporte
    * vacío en el servidor.
    */
-  async submit(participantId, reportedByUserId, { symptoms, severity = null, requiresAlert = false } = {}) {
+  async submit(participantId, reportedByUserId, { symptoms, severity = null, requiresAlert = null } = {}) {
     const list = Array.isArray(symptoms) ? symptoms.filter(Boolean) : [];
     if (list.length === 0) return null;
 
     if (!participantId) throw new Error('Falta el participante de la sesión.');
     if (!reportedByUserId) throw new Error('Falta el usuario que reporta.');
 
+    // Antes `requiresAlert` llegaba siempre en `false` sin importar qué se reportara —
+    // ninguna pantalla lo pasaba explícitamente, así que el pipeline de alertas
+    // críticas del backend nunca se disparaba. Por defecto (si el caller no decide lo
+    // contrario) un síntoma marcado como Severo sí requiere alerta.
+    const alert = requiresAlert ?? severity === 'Severo';
+
     const { data: wrapper } = await api.post('/symptom-reports', {
       sessionParticipantId: participantId,
       reportedByUserId,
       severity: severity ? (SEVERITY_TO_API[severity] ?? null) : null,
       symptoms: list.join(', '),
-      requiresAlert,
+      requiresAlert: alert,
     });
     return toRecord(wrapper.data);
   },

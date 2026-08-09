@@ -77,6 +77,16 @@ export default function LoginScreen({ navigation }) {
       const status  = error.response?.status;
       const message = error.response?.data?.message;
 
+      // Sin esto, un fallo de red (IP vieja, firewall, servidor caído) solo mostraba
+      // un mensaje genérico en pantalla — no había forma de ver la causa real
+      // (timeout, DNS, conexión rechazada) sin abrir la consola de Metro.
+      console.warn('[Login] request failed', {
+        code: error.code,
+        message: error.message,
+        url: error.config ? `${error.config.baseURL ?? ''}${error.config.url ?? ''}` : undefined,
+        status,
+      });
+
       if (status === 401)      setErrorMsg(t.errors.credentials);
       else if (status === 422) setErrorMsg(message ?? t.errors.locked);
       else if (status === 400) setErrorMsg(message ?? t.errors.badRequest);
@@ -213,32 +223,38 @@ export default function LoginScreen({ navigation }) {
               <Text style={styles.loginBtnText}>{loading ? t.submitting : t.submit}</Text>
             </TouchableOpacity>
 
-            {/* ── Acceso rápido de prueba ── */}
-            <View style={styles.demoSection}>
-              <View style={styles.demoDividerRow}>
-                <View style={styles.demoDivider} {...a11yDecorative} />
-                <Text style={styles.demoLabel}>{t.demoTitle}</Text>
-                <View style={styles.demoDivider} {...a11yDecorative} />
+            {/* ── Acceso rápido de prueba ──
+                Solo en desarrollo: estas credenciales (y la contraseña compartida
+                Smab2026!) no deben quedar visibles ni utilizables en el build de
+                producción — ver DEPLOY.md del backend, que ya trata esa contraseña
+                como no apta para producción. */}
+            {__DEV__ && (
+              <View style={styles.demoSection}>
+                <View style={styles.demoDividerRow}>
+                  <View style={styles.demoDivider} {...a11yDecorative} />
+                  <Text style={styles.demoLabel}>{t.demoTitle}</Text>
+                  <View style={styles.demoDivider} {...a11yDecorative} />
+                </View>
+                <View style={styles.demoChips}>
+                  {DEMO_USERS.map((u) => {
+                    const label = ROLE_LABELS[u.role] ?? u.role;
+                    return (
+                      <TouchableOpacity
+                        key={u.email}
+                        style={styles.demoChip}
+                        onPress={() => fillDemo(u)}
+                        activeOpacity={0.75}
+                        disabled={loading}
+                        {...a11yButton(label, { hint: t.demoHint, disabled: loading })}
+                      >
+                        <Ionicons name={u.icon} size={15} color={theme.primaryText} {...a11yDecorative} />
+                        <Text style={styles.demoChipText} numberOfLines={1}>{label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
-              <View style={styles.demoChips}>
-                {DEMO_USERS.map((u) => {
-                  const label = ROLE_LABELS[u.role] ?? u.role;
-                  return (
-                    <TouchableOpacity
-                      key={u.email}
-                      style={styles.demoChip}
-                      onPress={() => fillDemo(u)}
-                      activeOpacity={0.75}
-                      disabled={loading}
-                      {...a11yButton(label, { hint: t.demoHint, disabled: loading })}
-                    >
-                      <Ionicons name={u.icon} size={15} color={theme.primaryText} {...a11yDecorative} />
-                      <Text style={styles.demoChipText} numberOfLines={1}>{label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

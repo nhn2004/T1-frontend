@@ -59,7 +59,14 @@ function toHistoryEntry(raw) {
  * (estado desconocido) en vez de tratarlas como alerta crítica.
  */
 function toMetrics(measurements) {
-  const latest = measurements?.[measurements.length - 1];
+  // Defensa además del ORDER BY del backend (ver VitalSignsMeasurementRepository): si
+  // por lo que sea llega sin ordenar, tomar el último elemento a ciegas podía mostrar
+  // una lectura vieja como si fuera la actual. Se ordena por `takenAt` acá también en
+  // vez de confiar únicamente en el orden que trae la respuesta.
+  const sorted = Array.isArray(measurements)
+    ? [...measurements].sort((a, b) => new Date(a.takenAt) - new Date(b.takenAt))
+    : [];
+  const latest = sorted[sorted.length - 1];
   if (!latest) return null;
 
   const metric = (icon, statusKey, value, unit, max) => {
