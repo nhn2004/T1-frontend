@@ -208,8 +208,8 @@ export default function CompleteRegistrationScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView style={styles.scrollFlex} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView style={styles.relativeFlex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView style={styles.scrollAbsolute} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.iconCircle} {...a11yDecorative}>
             <Ionicons name={type === 'activate' ? 'key-outline' : 'person-add-outline'} size={32} color={theme.primaryText} />
           </View>
@@ -463,17 +463,20 @@ export default function CompleteRegistrationScreen({ navigation, route }) {
 
 const makeStyles = (t) =>
   StyleSheet.create({
-    root:   { flex: 1, backgroundColor: t.card, minHeight: 0 },
-    flex:   { flex: 1, minHeight: 0 },
-    // `flex:1` no basta en web: por default un hijo flex no se encoge por debajo del
-    // alto de su propio contenido (min-height:auto), así que con un formulario más
-    // alto que la pantalla el navegador lo dejaba desbordar en vez de activar el
-    // scroll interno — como el documento en sí no hace scroll (así está configurado
-    // el resto de la app), ese contenido quedaba inalcanzable. `minHeight: 0` es lo
-    // que le permite ceder ese espacio. `overflow: 'scroll'` se agrega explícito
-    // porque, aun ya acotado en alto, react-native-web seguía generando ese div con
-    // overflow-y:hidden en vez de scroll/auto — confirmado inspeccionando el DOM real.
-    scrollFlex: { flex: 1, minHeight: 0, overflow: 'scroll' },
+    root:   { flex: 1, backgroundColor: t.card },
+    // El cálculo de tamaño por flexbox en la web resultó poco confiable acá — probado
+    // en el DOM real: aun con flex:1 + minHeight:0 + overflow:scroll, la caja terminaba
+    // creciendo para caber TODO el contenido en vez de quedarse acotada a la pantalla
+    // (altura == scrollHeight, nada que desplazar). `position:'absolute'` con los
+    // cuatro bordes en 0 no depende de ese cálculo: toma el tamaño exacto de su
+    // contenedor posicionado (`relativeFlex`, con position:'relative'), así que queda
+    // acotado de verdad y el scroll interno sí se activa.
+    relativeFlex: { flex: 1, position: 'relative' },
+    scrollAbsolute: {
+      position: 'absolute',
+      top: 0, left: 0, right: 0, bottom: 0,
+      overflow: 'scroll',
+    },
     scroll: { flexGrow: 1, padding: 24, gap: 16, maxWidth: 560, width: '100%', alignSelf: 'center' },
     centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12, maxWidth: 480, alignSelf: 'center' },
 

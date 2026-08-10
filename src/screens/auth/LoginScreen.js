@@ -99,11 +99,11 @@ export default function LoginScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={styles.relativeFlex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          style={styles.scrollFlex}
+          style={styles.scrollAbsolute}
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           bounces={false}
@@ -265,14 +265,19 @@ export default function LoginScreen({ navigation }) {
 
 const makeStyles = (t, isWide) =>
   StyleSheet.create({
-    root: { flex: 1, backgroundColor: t.background, minHeight: 0 },
-    flex: { flex: 1, minHeight: 0 },
-    // `minHeight: 0` — sin esto, en web un hijo flex no se encoge por debajo del alto
-    // de su propio contenido, así que en una pantalla baja (o con el teclado abierto)
-    // el formulario quedaba desbordado en vez de scrolleable. `overflow: 'scroll'`
-    // explícito porque react-native-web seguía generando el div con overflow-y:hidden
-    // en vez de scroll/auto aun ya acotado en alto — confirmado en el DOM real.
-    scrollFlex: { flex: 1, minHeight: 0, overflow: 'scroll' },
+    root: { flex: 1, backgroundColor: t.background },
+    // El cálculo de tamaño por flexbox en la web resultó poco confiable — probado en
+    // el DOM real: con flex:1 + minHeight:0 + overflow:scroll, la caja igual terminaba
+    // creciendo para caber todo el contenido en vez de quedarse acotada a la pantalla.
+    // `position:'absolute'` con los cuatro bordes en 0 no depende de ese cálculo: toma
+    // el tamaño exacto de su contenedor posicionado (`relativeFlex`), así que queda
+    // acotado de verdad y el scroll interno sí se activa.
+    relativeFlex: { flex: 1, position: 'relative' },
+    scrollAbsolute: {
+      position: 'absolute',
+      top: 0, left: 0, right: 0, bottom: 0,
+      overflow: 'scroll',
+    },
     scroll: {
       flexGrow: 1,
       flexDirection: isWide ? 'row' : 'column',
