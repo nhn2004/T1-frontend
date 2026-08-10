@@ -14,7 +14,9 @@ import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
 import useSettingsStore from '../../store/settingsStore';
 import useOfflineQueueStore from '../../store/offlineQueueStore';
+import useAppRefreshStore from '../../store/appRefreshStore';
 import { processQueue, describeQueueItem } from '../../services/offlineSync';
+import { ensureNotificationPermission } from '../../services/notifications';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import Toast from '../../components/Toast';
 import { authService, userService } from '../../services';
@@ -45,6 +47,21 @@ export default function SettingsScreen() {
   const language = useSettingsStore((s) => s.language);
   const toggle = useSettingsStore((s) => s.toggle);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
+
+  // A diferencia del resto de los toggles (que solo cambian un valor local), este
+  // pide de verdad el permiso del sistema operativo — si el usuario lo rechaza, el
+  // switch vuelve a apagarse en vez de quedar prendido mintiendo sobre el estado real.
+  const handleTogglePush = useCallback(async () => {
+    const turningOn = !pushNotifications;
+    toggle('pushNotifications');
+    if (turningOn) {
+      const granted = await ensureNotificationPermission();
+      if (!granted) {
+        toggle('pushNotifications');
+        setToast({ message: 'No se concedió el permiso de notificaciones del sistema.', tone: 'error' });
+      }
+    }
+  }, [pushNotifications, toggle]);
 
   const pendingItems = useOfflineQueueStore((s) => s.pending);
   const pendingCount = pendingItems.length;
@@ -162,9 +179,19 @@ export default function SettingsScreen() {
     }
   }, [pendingCount, t]);
 
-  const handleComingSoon = useCallback((feature) => {
-    setToast({ message: t.comingSoonToast(feature), tone: 'error' });
-  }, [t]);
+  const bumpRefreshKey = useAppRefreshStore((s) => s.bumpRefreshKey);
+
+  // "Actualizar datos": primero sincroniza lo pendiente (igual que Sincronizar ahora),
+  // y luego fuerza que toda la app vuelva a pedir sus datos desde cero — no hay una
+  // capa de caché compartida entre pantallas, así que remontar el árbol de navegación
+  // es la forma más simple y confiable de garantizar que todo quede al día. Como
+  // efecto colateral honesto: al remontar el navegador, la pila de navegación vuelve a
+  // su pantalla inicial (se pierde el "dónde estabas"), igual que si reabrieras la app.
+  const handleRefreshAll = useCallback(async () => {
+    if (pendingCount > 0) await processQueue();
+    bumpRefreshKey();
+    setToast({ message: 'Datos actualizados.', tone: 'success' });
+  }, [pendingCount, bumpRefreshKey]);
 
   const theme = useTheme();
 
@@ -252,7 +279,7 @@ export default function SettingsScreen() {
                 label={t.pushTitle}
                 description={t.pushDesc}
                 value={pushNotifications}
-                onValueChange={() => toggle('pushNotifications')}
+                onValueChange={handleTogglePush}
                
               />
               <ToggleRow
@@ -329,6 +356,16 @@ export default function SettingsScreen() {
                 </Text>
               </TouchableOpacity>
 
+              <TouchableOpacity
+                style={[styles.secondaryBtn, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 8 }]}
+                onPress={handleRefreshAll}
+                activeOpacity={0.8}
+                {...a11yButton('Actualizar datos')}
+              >
+                <Ionicons name="refresh-outline" size={16} color={theme.textPrimary} {...a11yDecorative} />
+                <Text style={[styles.secondaryBtnText, { color: theme.textPrimary }]}>Actualizar datos</Text>
+              </TouchableOpacity>
+
               {lastSyncedAt && (
                 <Text style={[styles.syncHint, { color: theme.textMuted }]}>
                   {t.lastSync}: {formatTime(lastSyncedAt)}
@@ -399,15 +436,6 @@ export default function SettingsScreen() {
             {...a11yButton(t.changePassword)}
           >
             <Text style={[styles.outlineBtnText, { color: theme.textPrimary }]}>{t.changePassword}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.outlineBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
-            onPress={() => handleComingSoon(t.twoFactor)}
-            activeOpacity={0.8}
-            {...a11yButton(t.twoFactor)}
-          >
-            <Text style={[styles.outlineBtnText, { color: theme.textPrimary }]}>{t.twoFactor}</Text>
           </TouchableOpacity>
         </SettingsCard>
 

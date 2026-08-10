@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation';
 import useTheme from './src/hooks/useTheme';
 import useOfflineSync from './src/hooks/useOfflineSync';
+import useAppRefreshStore from './src/store/appRefreshStore';
 
 // Envoltorio interno: va por debajo de SafeAreaProvider para poder leer el tema y
 // pintar el fondo de la zona segura. Sin esto, en modo oscuro queda una franja blanca
@@ -16,10 +17,15 @@ function ThemedApp() {
   // tenga que abrir Ajustes — ver src/hooks/useOfflineSync.js.
   useOfflineSync();
 
+  // El botón "Actualizar datos" (Ajustes) incrementa `refreshKey` — cambiar la `key`
+  // del navegador fuerza a React a desmontar y volver a montar todas las pantallas
+  // activas, así cada una vuelve a pedir sus datos desde cero.
+  const refreshKey = useAppRefreshStore((s) => s.refreshKey);
+
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <StatusBar style={theme.statusBarStyle} backgroundColor={theme.background} />
-      <RootNavigator />
+      <RootNavigator key={refreshKey} />
     </View>
   );
 }

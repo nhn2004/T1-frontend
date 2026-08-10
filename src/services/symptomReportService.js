@@ -1,4 +1,5 @@
 import api from './api';
+import { notifyLocal } from './notifications';
 
 // El backend valida Severity contra el enum SymptomSeverity (Mild/Moderate/Severe, en
 // inglés); la UI usa las etiquetas en español. Un valor no reconocido se envía como
@@ -47,6 +48,14 @@ export const symptomReportService = {
       symptoms: list.join(', '),
       requiresAlert: alert,
     });
+
+    // El backend ya crea el CriticalAlert cuando requiresAlert=true (ver
+    // SymptomReportService.cs) — esto es el aviso local inmediato en el dispositivo
+    // de quien reporta, respetando "Alertas sonoras" para el sonido del sistema.
+    if (alert) {
+      notifyLocal('⚠ Síntoma severo reportado', 'Se generó una alerta crítica para este participante.');
+    }
+
     return toRecord(wrapper.data);
   },
 

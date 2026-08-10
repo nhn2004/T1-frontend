@@ -1,5 +1,6 @@
 import api from './api';
 import useOfflineQueueStore from '../store/offlineQueueStore';
+import { notifyLocal } from './notifications';
 
 // Etiqueta legible por prefijo de URL, para mostrar la cola en Ajustes sin que el
 // usuario tenga que leer rutas de API. `find` respeta el orden: los prefijos más
@@ -106,6 +107,16 @@ export async function processQueue() {
     );
   } finally {
     useOfflineQueueStore.getState().setSyncing(false);
+  }
+
+  // Esto es justo el caso de uso que motivó el toggle de "Notificaciones push":
+  // avisar cuando la sincronización terminó SOLA en segundo plano (el usuario no
+  // necesariamente tiene la app abierta cuando vuelve la señal).
+  if (synced > 0 || failed.length > 0) {
+    const parts = [];
+    if (synced > 0) parts.push(`${synced} sincronizado${synced === 1 ? '' : 's'}`);
+    if (failed.length > 0) parts.push(`${failed.length} rechazado${failed.length === 1 ? '' : 's'} por el servidor`);
+    notifyLocal('Sincronización completa', parts.join(', ') + '.');
   }
 
   return { synced, failed, stillOffline, sessionExpired };
