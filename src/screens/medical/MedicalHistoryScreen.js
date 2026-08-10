@@ -13,6 +13,7 @@ import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
 import Toast from '../../components/Toast';
 import { healthPersonnelService, medicalHistoryService } from '../../services';
+import { safeGoBack } from '../../utils/safeGoBack';
 
 const EMPTY_FORM = {
   allergies: '', preexistingConditions: '', currentMedication: '', generalObservations: '',
@@ -127,7 +128,7 @@ export default function MedicalHistoryScreen({ navigation, route }) {
           </View>
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => navigation?.goBack()}
+            onPress={() => safeGoBack(navigation)}
             activeOpacity={0.8}
             {...a11yButton(t.back)}
           >

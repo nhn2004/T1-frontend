@@ -11,6 +11,7 @@ import { useAuditOnMount } from '../../hooks/useAuditTrail';
 import useTheme from '../../hooks/useTheme';
 import Toast from '../../components/Toast';
 import { a11yButton, a11yDecorative } from '../../constants/a11y';
+import { safeGoBack } from '../../utils/safeGoBack';
 
 // Ancho máximo del panel del cuerpo; ya no es un ancho fijo, solo un tope para
 // que el diagrama no se agigante en pantallas grandes.
@@ -65,7 +66,7 @@ export default function ResultadosBomberoScreen({ route, navigation }) {
         </View>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => safeGoBack(navigation)}
           {...a11yButton('Volver')}
         >
           <Ionicons name="arrow-back" size={16} color={theme.textPrimary} {...a11yDecorative} />

@@ -11,6 +11,7 @@ import useTheme from '../../hooks/useTheme';
 import { useAuditOnMount } from '../../hooks/useAuditTrail';
 import useAuthStore from '../../store/authStore';
 import Toast from '../../components/Toast';
+import { safeGoBack } from '../../utils/safeGoBack';
 
 import ValidationCard from './components/ValidationCard';
 import ConfirmApprovalModal from './components/ConfirmApprovalModal';
@@ -156,7 +157,7 @@ export default function ValidationQueueScreen({ navigation }) {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => navigation.goBack()}
+            onPress={() => safeGoBack(navigation)}
             activeOpacity={0.8}
             {...a11yButton('Volver')}
           >

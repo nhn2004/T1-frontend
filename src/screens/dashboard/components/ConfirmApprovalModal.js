@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, ActivityIndicator,
   StyleSheet, TouchableWithoutFeedback, TextInput,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
@@ -81,26 +81,31 @@ export default function ConfirmApprovalModal({ visible, item, onApprove, onRejec
 
               <View style={styles.divider} {...a11yDecorative} />
 
-              <Text style={styles.sectionLabel}>PERSONAL MÉDICO</Text>
-              <View style={styles.infoRow}>
-                <Ionicons name="person-circle-outline" size={16} color={theme.icon} {...a11yDecorative} />
-                <Text style={styles.infoText} numberOfLines={2}>{item.doctorName}</Text>
-              </View>
-              <View style={styles.infoRow}>
-                <Ionicons name="medical-outline" size={16} color={theme.icon} {...a11yDecorative} />
-                <Text style={styles.infoText} numberOfLines={2}>{item.specialty}</Text>
-              </View>
-
-              <View style={styles.spacer} />
-
-              <Text style={styles.sectionLabel}>JEFE A CARGO</Text>
-              <View style={styles.infoRow}>
-                <Ionicons name="shield-outline" size={16} color={theme.icon} {...a11yDecorative} />
-                <View style={styles.infoBlock}>
-                  <Text style={styles.infoText}>{item.requestedBy?.name}</Text>
-                  <Text style={styles.infoSubtext}>{item.requestedBy?.role}</Text>
+              {/* En pantallas bajas (poco alto disponible) el contenido de esta sección
+                  podía superar el `maxHeight: '90%'` de la tarjeta sin forma de
+                  desplazarse, dejando los botones de Aprobar/Rechazar inalcanzables. */}
+              <ScrollView style={styles.scrollBody} showsVerticalScrollIndicator={false}>
+                <Text style={styles.sectionLabel}>PERSONAL MÉDICO</Text>
+                <View style={styles.infoRow}>
+                  <Ionicons name="person-circle-outline" size={16} color={theme.icon} {...a11yDecorative} />
+                  <Text style={styles.infoText} numberOfLines={2}>{item.doctorName}</Text>
                 </View>
-              </View>
+                <View style={styles.infoRow}>
+                  <Ionicons name="medical-outline" size={16} color={theme.icon} {...a11yDecorative} />
+                  <Text style={styles.infoText} numberOfLines={2}>{item.specialty}</Text>
+                </View>
+
+                <View style={styles.spacer} />
+
+                <Text style={styles.sectionLabel}>JEFE A CARGO</Text>
+                <View style={styles.infoRow}>
+                  <Ionicons name="shield-outline" size={16} color={theme.icon} {...a11yDecorative} />
+                  <View style={styles.infoBlock}>
+                    <Text style={styles.infoText}>{item.requestedBy?.name}</Text>
+                    <Text style={styles.infoSubtext}>{item.requestedBy?.role}</Text>
+                  </View>
+                </View>
+              </ScrollView>
 
               <View style={styles.divider} {...a11yDecorative} />
 
@@ -238,6 +243,9 @@ const makeStyles = (t) =>
       alignItems: 'center', justifyContent: 'center',
     },
     title: { flex: 1, fontSize: 17, fontWeight: '700', color: t.textPrimary },
+    // flexShrink permite que este bloque ceda espacio al resto de la tarjeta (header,
+    // botones) y se vuelva desplazable en vez de forzar overflow fuera de la tarjeta.
+    scrollBody: { flexShrink: 1 },
     divider: { height: 1, backgroundColor: t.divider, marginVertical: 14 },
     spacer: { height: 10 },
     sectionLabel: {
