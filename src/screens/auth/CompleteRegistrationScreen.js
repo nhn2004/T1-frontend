@@ -43,8 +43,8 @@ export default function CompleteRegistrationScreen({ navigation, route }) {
   const [showPwd,     setShowPwd]     = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // Aspirante a bombero
-  const [applicantCode, setApplicantCode] = useState('');
+  // Aspirante a bombero — el código de aspirante lo genera el backend solo, no tiene
+  // sentido pedirle a la persona que se invente un identificador interno.
   const [birthDate,     setBirthDate]     = useState('');
   const [sex,           setSex]           = useState('');
   const [bloodType,     setBloodType]     = useState('');
@@ -108,8 +108,8 @@ export default function CompleteRegistrationScreen({ navigation, route }) {
     if (!firstName.trim() || !lastName.trim()) { setErrorMsg('Nombre y apellido son obligatorios.'); return; }
 
     if (roleCode === ROLES.FIREFIGHTER_TRAINEE) {
-      if (!applicantCode.trim() || !DATE_RE.test(birthDate.trim()) || !sex) {
-        setErrorMsg('Código de aspirante, fecha de nacimiento (AAAA-MM-DD) y sexo son obligatorios.');
+      if (!DATE_RE.test(birthDate.trim()) || !sex) {
+        setErrorMsg('Fecha de nacimiento (AAAA-MM-DD) y sexo son obligatorios.');
         return;
       }
     } else if (roleCode === ROLES.MEDICAL) {
@@ -124,7 +124,6 @@ export default function CompleteRegistrationScreen({ navigation, route }) {
         lastName: lastName.trim(),
         phone: phone.trim() || null,
         password,
-        applicantCode: applicantCode.trim() || null,
         birthDate: birthDate.trim() || null,
         sex: sex || null,
         bloodType: bloodType.trim() || null,
@@ -141,7 +140,7 @@ export default function CompleteRegistrationScreen({ navigation, route }) {
       setSubmitting(false);
     }
   }, [type, token, password, confirm, firstName, lastName, phone, roleCode,
-      applicantCode, birthDate, sex, bloodType, emergencyContactName, emergencyContactPhone,
+      birthDate, sex, bloodType, emergencyContactName, emergencyContactPhone,
       profession, specialty, licenseNumber]);
 
   const ErrorBanner = useCallback(
@@ -210,7 +209,7 @@ export default function CompleteRegistrationScreen({ navigation, route }) {
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView style={styles.scrollFlex} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.iconCircle} {...a11yDecorative}>
             <Ionicons name={type === 'activate' ? 'key-outline' : 'person-add-outline'} size={32} color={theme.primaryText} />
           </View>
@@ -270,19 +269,6 @@ export default function CompleteRegistrationScreen({ navigation, route }) {
 
               {roleCode === ROLES.FIREFIGHTER_TRAINEE && (
                 <>
-                  <View style={styles.fieldBlock}>
-                    <Text style={styles.label} nativeID="crApplicant">Código de aspirante</Text>
-                    <View style={styles.inputRow}>
-                      <TextInput
-                        style={styles.input}
-                        value={applicantCode}
-                        onChangeText={setApplicantCode}
-                        placeholderTextColor={theme.textPlaceholder}
-                        accessibilityLabel="Código de aspirante"
-                        accessibilityLabelledBy="crApplicant"
-                      />
-                    </View>
-                  </View>
                   <View style={styles.fieldBlock}>
                     <Text style={styles.label} nativeID="crBirth">Fecha de nacimiento (AAAA-MM-DD)</Text>
                     <View style={styles.inputRow}>
@@ -479,6 +465,11 @@ const makeStyles = (t) =>
   StyleSheet.create({
     root:   { flex: 1, backgroundColor: t.card },
     flex:   { flex: 1 },
+    // Sin `flex:1` aquí, en web el ScrollView tomaba la altura de su contenido en vez
+    // de limitarse a la pantalla — como el documento en sí no hace scroll (así está
+    // configurado el resto de la app), el formulario largo (aspirante) quedaba con
+    // contenido inalcanzable en vez de desplazable.
+    scrollFlex: { flex: 1 },
     scroll: { flexGrow: 1, padding: 24, gap: 16, maxWidth: 560, width: '100%', alignSelf: 'center' },
     centerFill: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 12, maxWidth: 480, alignSelf: 'center' },
 

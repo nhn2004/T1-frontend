@@ -503,7 +503,9 @@ function ChipRow({ label, options, value, onChange, styles }) {
 
 const EMPTY_CREATE = {
   firstName: '', lastName: '', email: '', phone: '',
-  applicantCode: '', birthDate: '', sex: '', bloodType: '',
+  // Sin applicantCode: el backend genera uno único solo
+  // (TraineeFirefighterService.CreateAsync) — pedírselo al admin no aportaba nada.
+  birthDate: '', sex: '', bloodType: '',
   emergencyContactName: '', emergencyContactPhone: '',
   profession: '', specialty: '', licenseNumber: '',
 };
@@ -584,8 +586,8 @@ function CreatePersonModal({ visible, isFireChief, institutionId, onClose, onCre
       return;
     }
     if (isFireChief) {
-      if (!form.applicantCode.trim() || !form.birthDate.trim() || !form.sex) {
-        setError('Código de aspirante, fecha de nacimiento y sexo son obligatorios.');
+      if (!form.birthDate.trim() || !form.sex) {
+        setError('Fecha de nacimiento y sexo son obligatorios.');
         return;
       }
       if (!DATE_RE.test(form.birthDate.trim())) {
@@ -611,7 +613,6 @@ function CreatePersonModal({ visible, isFireChief, institutionId, onClose, onCre
       if (isFireChief) {
         await traineeService.create({
           userId: newUser.userId,
-          applicantCode: form.applicantCode.trim(),
           birthDate: form.birthDate.trim(),
           sex: form.sex,
           bloodType: form.bloodType.trim() || null,
@@ -699,7 +700,6 @@ function CreatePersonModal({ visible, isFireChief, institutionId, onClose, onCre
 
                   {isFireChief ? (
                     <>
-                      <ModalField label="Código de aspirante" value={form.applicantCode} onChangeText={set('applicantCode')} styles={styles} />
                       <ModalField
                         label="Fecha de nacimiento (AAAA-MM-DD)"
                         value={form.birthDate}

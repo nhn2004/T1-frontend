@@ -106,7 +106,7 @@ export default function ForgotPasswordScreen({ navigation, route }) {
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        <ScrollView style={styles.scrollFlex} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => safeGoBack(navigation, ROUTES.LOGIN)}
@@ -322,6 +322,11 @@ const makeStyles = (t) =>
   StyleSheet.create({
     root:   { flex: 1, backgroundColor: t.card },
     flex:   { flex: 1 },
+    // Sin `flex:1` aquí, en web el ScrollView toma la altura de su contenido en vez de
+    // limitarse a la pantalla — el documento en sí no hace scroll (así está
+    // configurado el resto de la app), así que el contenido que sobra queda
+    // inalcanzable en vez de desplazable.
+    scrollFlex: { flex: 1 },
     scroll: { flexGrow: 1, padding: 24, gap: 16, maxWidth: 560, width: '100%', alignSelf: 'center' },
 
     backBtn: {
