@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -14,6 +15,7 @@ import useTheme from '../../hooks/useTheme';
 import { useAuditOnMount } from '../../hooks/useAuditTrail';
 import { a11yButton, a11yDecorative } from '../../constants/a11y';
 import Toast from '../../components/Toast';
+import { safeGoBack } from '../../utils/safeGoBack';
 
 // ── Etapas ────────────────────────────────────────────────────────────────────
 const S = {
@@ -54,9 +56,13 @@ const EMPTY_INVESTIGACION = {
 /** Entrega las cuatro hojas de estilo del módulo ya resueltas contra el tema. */
 function useSheets() {
   const t = useTheme();
+  const { width } = useWindowDimensions();
+  // Mismo umbral que Sidebar/CrearSesionScreen: por debajo, las dos columnas de cada
+  // panel (izquierda/derecha) se apilan en vez de forzar cada una a la mitad del ancho.
+  const isWide = width >= 860;
   return useMemo(
-    () => ({ st: makeSt(t), tl: makeTl(t), p: makeP(t), vi: makeVi(t), t }),
-    [t],
+    () => ({ st: makeSt(t), tl: makeTl(t), p: makeP(t, isWide), vi: makeVi(t), t, isWide }),
+    [t, isWide],
   );
 }
 
@@ -111,6 +117,32 @@ function verificarAptitud(form) {
 function vitalsComplete(form) {
   return !!(form.temperatura && form.presionSistolica && form.presionDiastolica
          && form.frecuenciaCardiaca && form.nivelOxigeno && form.nivelCO);
+}
+
+// Límites reales que acepta el backend (CreateVitalSignsMeasurementValidator.cs) — no
+// confundir con el rango clínico "normal" del semáforo, que es solo informativo. Un
+// valor fuera de este rango hace que el backend rechace el guardado; se bloquea antes
+// de enviarlo para no hacerle perder el registro al usuario en un viaje de ida y vuelta.
+const BACKEND_VITAL_RANGE = {
+  frecuenciaCardiaca: [20, 250],
+  presionSistolica:   [50, 250],
+  presionDiastolica:  [30, 150],
+  temperatura:        [30, 45],
+  nivelOxigeno:       [50, 100],
+};
+
+function vitalOutOfBackendRange(field, rawVal) {
+  const range = BACKEND_VITAL_RANGE[field];
+  if (!range || rawVal === '' || rawVal === undefined || rawVal === null) return false;
+  const val = parseFloat(rawVal);
+  if (isNaN(val)) return false;
+  return val < range[0] || val > range[1];
+}
+
+/** Completa Y dentro de los límites que el backend acepta — usado para bloquear "Evaluar"/"Guardar". */
+function vitalsValid(form) {
+  if (!vitalsComplete(form)) return false;
+  return !Object.keys(BACKEND_VITAL_RANGE).some((field) => vitalOutOfBackendRange(field, form[field]));
 }
 
 // ── Pantalla principal ────────────────────────────────────────────────────────
@@ -295,7 +327,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
 
   // Evaluar aptitud — siempre disponible; valida campos vacíos primero
   async function handleEvaluarPre() {
-    if (!vitalsComplete(preData) || !preData.rol) {
+    if (!vitalsValid(preData) || !preData.rol) {
       setShowPreErrors(true);
       return;
     }
@@ -332,7 +364,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
    */
   async function handleGuardarPostQuema() {
     const current = quemasData[currentQuema - 1];
-    if (!vitalsComplete(current)) {
+    if (!vitalsValid(current)) {
       setShowPostErrors(true);
       return;
     }
@@ -354,7 +386,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
    * Antes el panel de cierre solo hacía `setStage(S.LISTO)` sin persistir nada.
    */
   async function handleFinalizarEvaluacion() {
-    if (!vitalsComplete(cierreData)) {
+    if (!vitalsValid(cierreData)) {
       setShowCierreErrors(true);
       return;
     }
@@ -407,7 +439,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
             <Text style={st.bomberSub}>Evaluación · {numQuemas} quema{numQuemas > 1 ? 's' : ''}</Text>
           </View>
         </View>
-        <TouchableOpacity style={st.volverBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={st.volverBtn} onPress={() => safeGoBack(navigation)}>
           <Ionicons name="arrow-back" size={15} color={t.textPrimary} />
           <Text style={st.volverText}>Volver</Text>
         </TouchableOpacity>
@@ -461,7 +493,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
             <NoAptoPanel
               data={preData}
               razones={aptitud?.razones ?? []}
-              onTerminar={() => navigation.goBack()}
+              onTerminar={() => safeGoBack(navigation)}
               onReintentar={() => setStage(S.PRE_SESION)}
             />
           )}
@@ -511,7 +543,7 @@ export default function EvaluacionBomberoScreen({ navigation, route }) {
           )}
 
           {stage === S.LISTO && (
-            <ListoPanel isNoApto={isNoApto} onVolver={() => navigation.goBack()} />
+            <ListoPanel isNoApto={isNoApto} onVolver={() => safeGoBack(navigation)} />
           )}
 
         </View>
@@ -992,6 +1024,7 @@ function VitalesForm({ data, onChange, showErrors }) {
         field="temperatura" label="Temperatura (°C)"
         value={data.temperatura} onChangeText={v => onChange('temperatura', v)}
         showError={showErrors && !data.temperatura}
+        outOfRange={vitalOutOfBackendRange('temperatura', data.temperatura)}
       />
       <View style={vi.bpWrap}>
         <Text style={vi.bpLabel}>Presión Arterial (mmHg)</Text>
@@ -1000,6 +1033,7 @@ function VitalesForm({ data, onChange, showErrors }) {
             field="presionSistolica" label="" isCompact
             value={data.presionSistolica} onChangeText={v => onChange('presionSistolica', v)}
             showError={showErrors && !data.presionSistolica}
+            outOfRange={vitalOutOfBackendRange('presionSistolica', data.presionSistolica)}
             placeholder="Sis."
           />
           <Text style={vi.bpSlash}>/</Text>
@@ -1007,22 +1041,29 @@ function VitalesForm({ data, onChange, showErrors }) {
             field="presionDiastolica" label="" isCompact
             value={data.presionDiastolica} onChangeText={v => onChange('presionDiastolica', v)}
             showError={showErrors && !data.presionDiastolica}
+            outOfRange={vitalOutOfBackendRange('presionDiastolica', data.presionDiastolica)}
             placeholder="Dias."
           />
         </View>
         {showErrors && (!data.presionSistolica || !data.presionDiastolica) && (
           <Text style={vi.errorText}>Campo obligatorio</Text>
         )}
+        {(vitalOutOfBackendRange('presionSistolica', data.presionSistolica)
+          || vitalOutOfBackendRange('presionDiastolica', data.presionDiastolica)) && (
+          <Text style={vi.errorText}>Valor fuera de rango válido</Text>
+        )}
       </View>
       <SemaforoInput
         field="frecuenciaCardiaca" label="Frec. Cardíaca (lpm)"
         value={data.frecuenciaCardiaca} onChangeText={v => onChange('frecuenciaCardiaca', v)}
         showError={showErrors && !data.frecuenciaCardiaca}
+        outOfRange={vitalOutOfBackendRange('frecuenciaCardiaca', data.frecuenciaCardiaca)}
       />
       <SemaforoInput
         field="nivelOxigeno" label="SpO₂ (%)"
         value={data.nivelOxigeno} onChangeText={v => onChange('nivelOxigeno', v)}
         showError={showErrors && !data.nivelOxigeno}
+        outOfRange={vitalOutOfBackendRange('nivelOxigeno', data.nivelOxigeno)}
       />
       <SemaforoInput
         field="nivelCO" label="Nivel CO (ppm)"
@@ -1033,13 +1074,14 @@ function VitalesForm({ data, onChange, showErrors }) {
   );
 }
 
-function SemaforoInput({ field, label, value, onChangeText, showError, placeholder, isCompact }) {
+function SemaforoInput({ field, label, value, onChangeText, showError, outOfRange, placeholder, isCompact }) {
   const { vi, t } = useSheets();
   const color = getSemaforoColor(field, value);
-  const borderColor = showError ? t.status.danger.border
+  const hasError = showError || outOfRange;
+  const borderColor = hasError ? t.status.danger.border
     : color ? semaforoTones(t).border[color]
     : t.border;
-  const bgColor = showError ? t.status.danger.bg
+  const bgColor = hasError ? t.status.danger.bg
     : color ? semaforoTones(t).bg[color]
     : t.cardAlt;
   return (
@@ -1047,18 +1089,19 @@ function SemaforoInput({ field, label, value, onChangeText, showError, placehold
       {!!label && (
         <View style={vi.labelRow}>
           <Text style={vi.label}>{label}</Text>
-          {color && !showError && <SemaforoIndicator color={color} />}
+          {color && !hasError && <SemaforoIndicator color={color} />}
         </View>
       )}
       <TextInput
-        style={[vi.input, { borderColor, borderWidth: (color || showError) ? 1.5 : 1, backgroundColor: bgColor }]}
+        style={[vi.input, { borderColor, borderWidth: (color || hasError) ? 1.5 : 1, backgroundColor: bgColor }]}
         value={value}
         onChangeText={onChangeText}
         keyboardType="number-pad"
         placeholder={placeholder || (showError ? 'Obligatorio' : '—')}
-        placeholderTextColor={showError ? t.status.danger.fg : t.textPlaceholder}
+        placeholderTextColor={hasError ? t.status.danger.fg : t.textPlaceholder}
       />
       {showError && !isCompact && <Text style={vi.errorText}>Campo obligatorio</Text>}
+      {!showError && outOfRange && !isCompact && <Text style={vi.errorText}>Valor fuera de rango válido</Text>}
     </View>
   );
 }
@@ -1181,16 +1224,16 @@ const makeTl = (t) =>
   labelDone:  { color: t.status.success.fg },
   });
 
-const makeP = (t) =>
+const makeP = (t, isWide) =>
   StyleSheet.create({
   unsupportedNote: {
     fontSize: 12, color: t.status.warning.fg, backgroundColor: t.status.warning.bg,
     borderRadius: 8, padding: 10, marginTop: 8, lineHeight: 17,
   },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 22 },
-  twoCol:   { flex: 1, flexDirection: 'row', gap: 22 },
-  leftCol:  { flex: 0.9, gap: 10 },
-  rightCol: { flex: 1.1, gap: 10 },
+  twoCol:   isWide ? { flex: 1, flexDirection: 'row', gap: 22 } : { flex: 1, gap: 22 },
+  leftCol:  isWide ? { flex: 0.9, gap: 10 } : { gap: 10 },
+  rightCol: isWide ? { flex: 1.1, gap: 10 } : { gap: 10 },
 
   panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   panelTitle:  { fontSize: 16, fontWeight: '800', color: t.textPrimary },

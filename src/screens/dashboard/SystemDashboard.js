@@ -65,6 +65,20 @@ function getUserCode(user, index) {
   return `#${role}-${String(index + 1).padStart(3, '0')}`;
 }
 
+/**
+ * En compacto, la tabla de usuarios pasa a ancho fijo (ver `codeColumn`/etc. en
+ * makeStyles) y necesita desplazamiento horizontal para no aplastar las columnas.
+ * En ancho normal no hace falta: se renderiza tal cual, sin envoltorio de scroll.
+ */
+function TableScrollWrap({ isCompact, contentStyle, children }) {
+  if (!isCompact) return children;
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={contentStyle}>
+      <View style={{ width: contentStyle?.minWidth }}>{children}</View>
+    </ScrollView>
+  );
+}
+
 export default function SystemDashboard({ navigation }) {
   const { user, canAccessRoute } = useAuth();
   const theme = useTheme();
@@ -417,6 +431,7 @@ export default function SystemDashboard({ navigation }) {
               </View>
             </View>
 
+            <TableScrollWrap isCompact={isCompact} contentStyle={styles.tableScrollContent}>
             <View style={styles.tableHeader}>
               <Text style={[styles.tableHeadText, styles.codeColumn]}>CÓDIGO</Text>
               <Text style={[styles.tableHeadText, styles.roleColumn]}>ROL</Text>
@@ -475,6 +490,7 @@ export default function SystemDashboard({ navigation }) {
                 );
               })
             )}
+            </TableScrollWrap>
           </View>
 
           {/* ── Registro de auditoría ── */}
@@ -811,10 +827,14 @@ const makeStyles = (t, isCompact) =>
       minHeight: 58, flexDirection: 'row', alignItems: 'center',
       borderBottomWidth: 1, borderBottomColor: t.divider,
     },
-    codeColumn:   { flex: 1.15 },
-    roleColumn:   { flex: 1.2 },
-    statusColumn: { flex: 1.15 },
-    actionColumn: { flex: 1.25 },
+    // En compacto las columnas dejan de repartirse por flex (se aplastaban hasta ser
+    // ilegibles) y pasan a ancho fijo dentro de una tabla que se desplaza en horizontal
+    // — ver TableScrollWrap más abajo en el JSX.
+    codeColumn:   isCompact ? { width: 90 }  : { flex: 1.15 },
+    roleColumn:   isCompact ? { width: 120 } : { flex: 1.2 },
+    statusColumn: isCompact ? { width: 100 } : { flex: 1.15 },
+    actionColumn: isCompact ? { width: 170 } : { flex: 1.25 },
+    tableScrollContent: { minWidth: isCompact ? 480 : undefined },
     codeText: { color: t.textPrimary, fontSize: 13, fontWeight: '900' },
     roleBadge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
     roleBadgeText: { fontSize: 11, fontWeight: '900' },

@@ -19,6 +19,7 @@ import { a11yButton, a11yDecorative, a11yGroup } from '../../constants/a11y';
 import useTheme from '../../hooks/useTheme';
 import { useAuth } from '../../hooks';
 import { useAuditOnMount } from '../../hooks/useAuditTrail';
+import { safeGoBack } from '../../utils/safeGoBack';
 
 const STATUS_STYLES = {
   COMPLETADO: { label: 'Completado', icon: 'checkmark',    tone: 'success' },
@@ -30,10 +31,20 @@ const STATUS_STYLES = {
 // El orden de prioridad (EN CURSO → PENDIENTE → COMPLETADO → CANCELADO) lo aplica
 // `participantService.getBySession`, que ya devuelve la lista ordenada.
 
-// Grid carousel
-const COLS = 4;
+// Grid carousel — columnas según el ancho real medido (onLayout), no fijas: con 4
+// columnas fijas las tarjetas quedaban ilegibles en un teléfono.
 const ROWS = 2;
-const PER_PAGE = COLS * ROWS;
+function getCols(w) {
+  if (w < 380) return 1;
+  if (w < 620) return 2;
+  if (w < 900) return 3;
+  return 4;
+}
+
+// Los botones de acción de cada tarjeta miden 28px de alto (el espacio de la tarjeta
+// no da para el mínimo de 44px). Solo se agranda el área táctil vertical: si se
+// agrandara también en horizontal, dos botones contiguos (gap de 6px) se solaparían.
+const CARD_BTN_HIT_SLOP = { top: 8, bottom: 8, left: 0, right: 0 };
 
 
 export default function PersonasSesionesScreen({ navigation, route }) {
@@ -102,6 +113,9 @@ export default function PersonasSesionesScreen({ navigation, route }) {
 
   // ── Carousel ───────────────────────────────────────────────────────────────
 
+  const COLS = box.w > 0 ? getCols(box.w) : 4;
+  const PER_PAGE = COLS * ROWS;
+
   const totalPages = Math.max(1, Math.ceil(filteredPeople.length / PER_PAGE));
   const currentPage = Math.min(page, totalPages - 1);
   const hasPrev = currentPage > 0;
@@ -168,7 +182,7 @@ export default function PersonasSesionesScreen({ navigation, route }) {
           </Pressable>
         </View>
 
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => safeGoBack(navigation)} activeOpacity={0.8}>
           <Ionicons name="arrow-back" size={16} color={theme.textPrimary} />
           <Text style={styles.backBtnText}>Volver</Text>
         </TouchableOpacity>
@@ -325,6 +339,7 @@ function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuema
         return (
           <Pressable
             style={[styles.cardBtn, styles.cardBtnSolid]}
+            hitSlop={CARD_BTN_HIT_SLOP}
             onPress={() => navigation.navigate(ROUTES.EVALUATION, {
               bomberoId: person.id,
               bomberoName: person.name,
@@ -345,6 +360,7 @@ function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuema
         return (
           <Pressable
             style={[styles.cardBtn, styles.cardBtnOutline]}
+            hitSlop={CARD_BTN_HIT_SLOP}
             onPress={() => navigation.navigate(ROUTES.RESULTS_TRAINEE, {
               bomberoId: person.id,
               bomberoName: person.name,
@@ -408,6 +424,7 @@ function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuema
         {canViewMedicalHistory && (
           <Pressable
             style={[styles.cardBtn, styles.cardBtnOutline]}
+            hitSlop={CARD_BTN_HIT_SLOP}
             onPress={() => navigation.navigate(ROUTES.MEDICAL_HISTORY, {
               traineeId: person.traineeId,
               traineeName: person.name,

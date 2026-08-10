@@ -210,11 +210,16 @@ const makeStyles = (t) =>
   },
   topCardsRow: {
     flexDirection: 'row',
+    // Con las 4 tarjetas en flex:1 fijo, en un teléfono cada una quedaba a ~1/4 del
+    // ancho — casi ilegible. flexWrap deja que se acomoden 2x2 (o 1 por fila en
+    // pantallas muy angostas) según lo que realmente entre.
+    flexWrap: 'wrap',
     gap: 16,
     marginBottom: 32,
   },
   topCard: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: 150,
     borderRadius: 16,
     padding: 16,
     minHeight: 110,

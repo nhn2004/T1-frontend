@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, Modal, Pressable, ActivityIndicator,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,8 +14,21 @@ import useTheme from '../../hooks/useTheme';
 import { healthPersonnelService } from '../../services/healthPersonnelService';
 import { trainingLocationService } from '../../services/trainingLocationService';
 import api from '../../services/api';
+import { safeGoBack } from '../../utils/safeGoBack';
 
-const COLS = 3;
+// Umbral compartido con el resto de la app (ej. LoginScreen, Sidebar) para decidir
+// cuándo hay espacio para columnas lado a lado en vez de apilar en una sola.
+const WIDE_BREAKPOINT = 860;
+
+function getPersonCols(width) {
+  if (width < 500) return 1;
+  if (width < 760) return 2;
+  return 3;
+}
+
+// Mismo patrón que AddEmailModal/LoginScreen — sin este chequeo aquí, un correo mal
+// escrito en las filas de bomberos pasaba directo a `/invitations` y solo fallaba ahí.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const PUNTOS_QUEMA = [
   { key: 'coept',      label: 'Casa COEPT' },
@@ -191,6 +204,18 @@ export default function CrearSesionScreen({ navigation }) {
       setShowErrors(true);
       return;
     }
+    if (capacidad.trim() !== '' && parseInt(capacidad, 10) <= 0) {
+      setShowErrors(true);
+      setFormError('La capacidad planeada debe ser mayor a 0.');
+      return;
+    }
+    const start = parseDatetime(fecha, hora);
+    if (start && start.getTime() < Date.now()) {
+      setShowErrors(true);
+      setFormError('La fecha de la sesión no puede ser en el pasado.');
+      return;
+    }
+    setFormError('');
     setShowErrors(false);
     setStep(2);
   }
@@ -219,6 +244,11 @@ export default function CrearSesionScreen({ navigation }) {
     const selectedLocation = locations.find((l) => l.id === locationId);
     if (!selectedLocation) {
       setFormError('Selecciona una ubicación de entrenamiento en el paso 1.');
+      return;
+    }
+    const invalidBomberoEmails = bomberoEmails.map((e) => e.trim()).filter(Boolean).filter((e) => !EMAIL_RE.test(e));
+    if (invalidBomberoEmails.length > 0) {
+      setFormError(`Correo(s) de bombero inválido(s): ${invalidBomberoEmails.join(', ')}`);
       return;
     }
 
@@ -308,7 +338,7 @@ export default function CrearSesionScreen({ navigation }) {
         </View>
         <TouchableOpacity
           style={s.volverBtn}
-          onPress={() => navigation.goBack()}
+          onPress={() => safeGoBack(navigation)}
           activeOpacity={0.8}
           {...a11yButton('Volver')}
         >
@@ -398,7 +428,7 @@ export default function CrearSesionScreen({ navigation }) {
       />
       <SuccessModal
         data={successData}
-        onClose={() => navigation.goBack()}
+        onClose={() => safeGoBack(navigation)}
       />
 
     </SafeAreaView>
@@ -417,17 +447,30 @@ function Step1({
   showErrors, onSiguiente,
 }) {
   const { s, t } = useSheets();
-  const errNombre   = showErrors && !nombre.trim();
-  const errFecha    = showErrors && !fecha.trim();
-  const errPunto    = showErrors && !puntoQuema;
-  const errLocation = showErrors && !locationId;
+  const { width } = useWindowDimensions();
+  const isWide = width >= WIDE_BREAKPOINT;
+  const personCols = getPersonCols(width);
+  const errNombre    = showErrors && !nombre.trim();
+  const errFecha     = showErrors && !fecha.trim();
+  const errPunto     = showErrors && !puntoQuema;
+  const errLocation  = showErrors && !locationId;
+  const errCapacidad = showErrors && capacidad.trim() !== '' && parseInt(capacidad, 10) <= 0;
+
+  // En pantallas angostas las dos tarjetas se apilan en vez de ir lado a lado — sin
+  // esto la fila fuerza ambas a compartir la mitad del ancho, ilegibles en un teléfono.
+  // Al apilar, la fila necesita poder desplazarse: dos tarjetas completas casi nunca
+  // caben juntas en el alto disponible.
+  const RowContainer = isWide ? View : ScrollView;
+  const rowContainerProps = isWide
+    ? { style: [s.row, { flexDirection: 'row' }] }
+    : { style: s.row, contentContainerStyle: { gap: 12 }, showsVerticalScrollIndicator: false };
 
   return (
     <View style={s.body}>
-      <View style={s.row}>
+      <RowContainer {...rowContainerProps}>
 
         {/* ── Izquierda: Info + Punto de quema + N Quemas ── */}
-        <View style={[s.card, { flex: 0.9 }]}>
+        <View style={[s.card, isWide && { flex: 0.9 }]}>
           <ScrollView
             style={s.leftCardScroll}
             contentContainerStyle={s.leftCardScrollContent}
@@ -467,13 +510,14 @@ function Step1({
             <View style={s.infoField}>
               <Text style={s.fieldLabel}>Capacidad Planeada</Text>
               <TextInput
-                style={s.input}
+                style={[s.input, errCapacidad && s.inputError]}
                 value={capacidad}
-                onChangeText={setCapacidad}
+                onChangeText={(v) => setCapacidad(v.replace(/\D/g, ''))}
                 placeholder="Ej: 10"
                 placeholderTextColor={t.textPlaceholder}
                 keyboardType="numeric"
               />
+              {errCapacidad && <Text style={s.errorMsg}>Debe ser mayor a 0</Text>}
             </View>
           </View>
 
@@ -558,7 +602,7 @@ function Step1({
         </View>
 
         {/* ── Derecha: Médicos a Cargo ── */}
-        <View style={[s.card, { flex: 1.1 }]}>
+        <View style={[s.card, isWide && { flex: 1.1 }]}>
           <View style={s.cardHeaderRow}>
             <SectionHeader icon="medkit-outline" title="Médicos a Cargo" />
             <TouchableOpacity style={s.addBtn} onPress={onAddMedico} activeOpacity={0.8}>
@@ -589,13 +633,13 @@ function Step1({
 
           {loadingMedicos
             ? <ActivityIndicator size="small" color={t.primaryText} style={{ marginVertical: 8 }} />
-            : <PersonGrid people={filteredMedicos} selected={selectedMedicos} onToggle={toggleMedico} cols={COLS} />
+            : <PersonGrid people={filteredMedicos} selected={selectedMedicos} onToggle={toggleMedico} cols={personCols} />
           }
           {selectedMedicos.length > 0 && (
             <SelectedTags people={selectedMedicos} onRemove={doc => toggleMedico(doc)} />
           )}
         </View>
-      </View>
+      </RowContainer>
 
       <View style={s.footer}>
         <TouchableOpacity style={s.sigBtn} onPress={onSiguiente} activeOpacity={0.85}>
@@ -617,7 +661,14 @@ function Step2({
   onVolver, onCrear, saving,
 }) {
   const { s, t } = useSheets();
+  const { width } = useWindowDimensions();
+  const isWide = width >= WIDE_BREAKPOINT;
+  const personCols = getPersonCols(width);
   const puntoLabel = PUNTOS_QUEMA.find(p => p.key === puntoQuema)?.label ?? '—';
+  const RowContainer = isWide ? View : ScrollView;
+  const rowContainerProps = isWide
+    ? { style: [s.row, { flex: 1, flexDirection: 'row' }] }
+    : { style: s.row, contentContainerStyle: { gap: 12 }, showsVerticalScrollIndicator: false };
 
   return (
     <View style={s.body}>
@@ -641,8 +692,8 @@ function Step2({
         </View>
       </View>
 
-      {/* ── Abajo: dos columnas ── */}
-      <View style={[s.row, { flex: 1 }]}>
+      {/* ── Abajo: dos columnas (apiladas en pantallas angostas) ── */}
+      <RowContainer {...rowContainerProps}>
 
         {/* Capacitadores */}
         <View style={[s.card, { flex: 1 }]}>
@@ -662,7 +713,7 @@ function Step2({
           </View>
           {loadingCaps
             ? <ActivityIndicator size="small" color={t.primaryText} style={{ marginVertical: 8 }} />
-            : <PersonGrid people={filteredCaps} selected={selectedCaps} onToggle={toggleCap} cols={COLS} />
+            : <PersonGrid people={filteredCaps} selected={selectedCaps} onToggle={toggleCap} cols={personCols} />
           }
           {selectedCaps.length > 0 && (
             <SelectedTags people={selectedCaps} onRemove={cap => toggleCap(cap)} />
@@ -715,7 +766,7 @@ function Step2({
           </ScrollView>
         </View>
 
-      </View>
+      </RowContainer>
 
       <View style={s.footer}>
         <TouchableOpacity style={s.cancelBtn} onPress={onVolver} activeOpacity={0.8}>

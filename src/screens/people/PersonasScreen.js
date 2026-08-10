@@ -28,9 +28,15 @@ import { usePersonas } from './hooks/usePersonas';
 const SEX_OPTIONS = ['M', 'F', 'Otro'];
 const PROFESSION_OPTIONS = ['Médico', 'Enfermero', 'Nutricionista'];
 
-const COLS = 3;
+// Columnas de la grilla según el ancho real disponible (medido por onLayout, no el
+// ancho de la ventana) — con 3 columnas fijas las tarjetas quedaban ilegibles en un
+// teléfono. ROWS se mantiene fijo; PER_PAGE se recalcula junto con COLS.
 const ROWS = 2;
-const PER_PAGE = COLS * ROWS;
+function getCols(w) {
+  if (w < 380) return 1;
+  if (w < 620) return 2;
+  return 3;
+}
 
 export default function PersonasScreen() {
   const { user, roles, can } = useAuth();
@@ -116,6 +122,9 @@ export default function PersonasScreen() {
       return matchesFilter && matchesQuery;
     });
   }, [query, selectedFilter, personas]);
+
+  const COLS = box.w > 0 ? getCols(box.w) : 3;
+  const PER_PAGE = COLS * ROWS;
 
   const totalPages = Math.max(1, Math.ceil(filteredPersonas.length / PER_PAGE));
   const curPage    = Math.min(page, totalPages - 1);
