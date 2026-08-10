@@ -107,19 +107,19 @@ export default function MedicalDashboard({ navigation }) {
   }, []);
 
   const handleApprovePress = useCallback(
-    (id) => runInvitationAction(id, invitationService.accept, 'Invitación aprobada.'),
+    (id) => runInvitationAction(id, invitationService.staffAccept, 'Invitación aprobada.'),
     [runInvitationAction],
   );
 
   const handleConfirmApproval = useCallback(
-    (id) => runInvitationAction(id, invitationService.accept, 'Invitación aprobada.'),
+    (id) => runInvitationAction(id, invitationService.staffAccept, 'Invitación aprobada.'),
     [runInvitationAction],
   );
 
   const handleRejectWithReason = useCallback(
     (id, reason) => runInvitationAction(
       id,
-      invitationService.reject,
+      invitationService.staffReject,
       `Invitación rechazada. Motivo registrado: "${reason}"`,
     ),
     [runInvitationAction],

@@ -48,22 +48,24 @@ export default function FilterTabs({
         );
       })}
 
-      <TouchableOpacity
-        style={styles.searchIconBtn}
-        onPress={onSearchToggle}
-        activeOpacity={0.7}
-        {...a11yButton(searchExpanded ? 'Cerrar búsqueda' : 'Buscar capacitación', {
-          expanded: searchExpanded,
-        })}
-      >
-        <Ionicons
-          name={searchExpanded ? 'close' : 'search'}
-          size={18}
-          color={theme.textPrimary}
-        />
-      </TouchableOpacity>
+      {onSearchToggle && (
+        <TouchableOpacity
+          style={styles.searchIconBtn}
+          onPress={onSearchToggle}
+          activeOpacity={0.7}
+          {...a11yButton(searchExpanded ? 'Cerrar búsqueda' : 'Buscar capacitación', {
+            expanded: searchExpanded,
+          })}
+        >
+          <Ionicons
+            name={searchExpanded ? 'close' : 'search'}
+            size={18}
+            color={theme.textPrimary}
+          />
+        </TouchableOpacity>
+      )}
 
-      {searchExpanded && (
+      {onSearchToggle && searchExpanded && (
         <TextInput
           style={styles.searchInput}
           value={query}
