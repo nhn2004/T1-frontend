@@ -60,7 +60,6 @@ export const ROUTE_PERMISSIONS = {
   [ROUTES.PEOPLE_SESSIONS]:    'viewPeople',
   [ROUTES.VALIDATION_QUEUE]:   'validateInvitations',
   [ROUTES.SESSION_CREATE]:     'createSession',
-  [ROUTES.RESULTS_INDIVIDUAL]: 'readMedicalRecord',
   [ROUTES.EVALUATION]:         'readMedicalRecord',
   [ROUTES.MEDICAL_HISTORY]:    'readMedicalRecord',
   [ROUTES.INSTITUTIONS]:       'manageInstitutions',

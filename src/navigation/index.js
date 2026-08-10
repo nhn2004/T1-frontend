@@ -30,7 +30,6 @@ import SessionsScreen from '../screens/sessions/SessionsScreen';
 import SessionDetailScreen from '../screens/sessions/SessionDetailScreen';
 import CrearSesionScreen from '../screens/sessions/CrearSesionScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
-import ResultadosIndividualesScreen from '../screens/resultados/ResultadosIndividualesScreen';
 import EvaluacionBomberoScreen from '../screens/resultados/EvaluacionBomberoScreen';
 import ResultadosBomberoScreen from '../screens/resultados/ResultadosBomberoScreen';
 import TrainingScheduleScreen from '../screens/schedule/TrainingScheduleScreen';
@@ -124,9 +123,6 @@ function RoleNavigator({ roles, primaryRole }) {
       <Stack.Screen name={ROUTES.SETTINGS}        component={withMainLayout(SettingsScreen)} />
       <Stack.Screen name={ROUTES.PROFILE}         component={withMainLayout(ProfileScreen)} />
 
-      {allows(ROUTES.RESULTS_INDIVIDUAL) && (
-        <Stack.Screen name={ROUTES.RESULTS_INDIVIDUAL} component={ResultadosIndividualesScreen} />
-      )}
       {allows(ROUTES.EVALUATION) && (
         <Stack.Screen name={ROUTES.EVALUATION} component={EvaluacionBomberoScreen} />
       )}

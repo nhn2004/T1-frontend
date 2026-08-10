@@ -19,7 +19,6 @@ export const ROUTES = {
   PEOPLE: 'Personas',
   PEOPLE_SESSIONS: 'PersonasSesiones',
   VALIDATION_QUEUE: 'ValidationQueue',
-  RESULTS_INDIVIDUAL: 'ResultadosIndividuales',
   EVALUATION: 'EvaluacionBombero',
   RESULTS_TRAINEE: 'ResultadosBombero',
   SETTINGS: 'Configuration',

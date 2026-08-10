@@ -8,7 +8,7 @@ import api from './api';
 // Síntomas, peso, grasa corporal e hidratación SÍ tienen soporte en el backend, pero a
 // través de otros endpoints (symptomReportService, bioimpedanceService) — la pantalla
 // que llama a `submit` debe enviarlos por separado con esos servicios, ver
-// EvaluacionBomberoScreen.js / ResultadosIndividualesScreen.js.
+// EvaluacionBomberoScreen.js.
 //
 // Nivel de CO y frecuencia respiratoria siguen sin columna en ningún lado.
 export const UNSUPPORTED_FIELDS = Object.freeze({
