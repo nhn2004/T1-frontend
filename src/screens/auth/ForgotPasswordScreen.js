@@ -320,13 +320,15 @@ export default function ForgotPasswordScreen({ navigation, route }) {
 
 const makeStyles = (t) =>
   StyleSheet.create({
-    root:   { flex: 1, backgroundColor: t.card },
-    flex:   { flex: 1 },
-    // Sin `flex:1` aquí, en web el ScrollView toma la altura de su contenido en vez de
-    // limitarse a la pantalla — el documento en sí no hace scroll (así está
-    // configurado el resto de la app), así que el contenido que sobra queda
-    // inalcanzable en vez de desplazable.
-    scrollFlex: { flex: 1 },
+    root:   { flex: 1, backgroundColor: t.card, minHeight: 0 },
+    flex:   { flex: 1, minHeight: 0 },
+    // `flex:1` no basta en web: por default un hijo flex no se encoge por debajo del
+    // alto de su propio contenido (min-height:auto), así que con contenido más alto
+    // que la pantalla el navegador lo dejaba desbordar en vez de activar el scroll
+    // interno — el documento en sí no hace scroll (así está configurado el resto de
+    // la app), así que quedaba inalcanzable. `minHeight: 0` es lo que le permite ceder
+    // ese espacio y dejar que el ScrollView haga overflow-y:auto.
+    scrollFlex: { flex: 1, minHeight: 0 },
     scroll: { flexGrow: 1, padding: 24, gap: 16, maxWidth: 560, width: '100%', alignSelf: 'center' },
 
     backBtn: {

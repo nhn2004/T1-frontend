@@ -103,6 +103,7 @@ export default function LoginScreen({ navigation }) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
+          style={styles.scrollFlex}
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           bounces={false}
@@ -264,8 +265,12 @@ export default function LoginScreen({ navigation }) {
 
 const makeStyles = (t, isWide) =>
   StyleSheet.create({
-    root: { flex: 1, backgroundColor: t.background },
-    flex: { flex: 1 },
+    root: { flex: 1, backgroundColor: t.background, minHeight: 0 },
+    flex: { flex: 1, minHeight: 0 },
+    // `minHeight: 0` — sin esto, en web un hijo flex no se encoge por debajo del alto
+    // de su propio contenido, así que en una pantalla baja (o con el teclado abierto)
+    // el formulario quedaba desbordado en vez de scrolleable.
+    scrollFlex: { flex: 1, minHeight: 0 },
     scroll: {
       flexGrow: 1,
       flexDirection: isWide ? 'row' : 'column',
