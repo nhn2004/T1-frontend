@@ -80,15 +80,18 @@ export default function ValidationQueueScreen({ navigation }) {
     }
   }, []);
 
+  // Esta pantalla revisa invitaciones de OTRAS personas (el staff de validación no es
+  // el destinatario), así que usa staffAccept/staffReject en vez de accept/reject — el
+  // backend exige que accept/reject los use el propio destinatario.
   const handleApprove = useCallback(
-    (id) => runAction(id, invitationService.accept, 'Invitación aprobada.'),
+    (id) => runAction(id, invitationService.staffAccept, 'Invitación aprobada.'),
     [runAction],
   );
 
   const handleRejectWithReason = useCallback(
     (id, reason) => runAction(
       id,
-      invitationService.reject,
+      invitationService.staffReject,
       `Invitación rechazada. Motivo registrado: "${reason}"`,
     ),
     [runAction],

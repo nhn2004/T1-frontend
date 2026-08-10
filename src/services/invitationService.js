@@ -141,12 +141,29 @@ export const invitationService = {
     return wrapper.data;
   },
 
+  /** El propio destinatario acepta su invitación. */
   async accept(id) {
     await api.post(`/invitations/${id}/accept`);
   },
 
+  /** El propio destinatario rechaza su invitación. */
   async reject(id) {
     await api.post(`/invitations/${id}/reject`);
+  },
+
+  /**
+   * Aprueba una invitación en nombre de su destinatario — uso exclusivo de la Cola de
+   * Validaciones (personal MEDICAL/ADMIN/SYSTEM_ADMIN). `accept()` no sirve aquí: el
+   * backend exige que quien acepta sea el propio destinatario, y el staff que valida
+   * casi nunca lo es.
+   */
+  async staffAccept(id) {
+    await api.post(`/invitations/${id}/staff-accept`);
+  },
+
+  /** Ver staffAccept — mismo caso para rechazar desde la Cola de Validaciones. */
+  async staffReject(id) {
+    await api.post(`/invitations/${id}/staff-reject`);
   },
 
   /** Cancela una invitación pendiente antes de que el destinatario responda (la revoca quien la envió). */
