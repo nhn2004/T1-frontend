@@ -17,6 +17,7 @@ import useOfflineQueueStore from '../../store/offlineQueueStore';
 import useAppRefreshStore from '../../store/appRefreshStore';
 import { processQueue, describeQueueItem } from '../../services/offlineSync';
 import { ensureNotificationPermission } from '../../services/notifications';
+import { createAndShareBackup } from '../../services/backup';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import Toast from '../../components/Toast';
 import { authService, userService } from '../../services';
@@ -179,6 +180,18 @@ export default function SettingsScreen() {
     }
   }, [pendingCount, t]);
 
+  const [backingUp, setBackingUp] = useState(false);
+  const handleBackupNow = useCallback(async () => {
+    setBackingUp(true);
+    try {
+      await createAndShareBackup();
+    } catch {
+      setToast({ message: 'No se pudo crear el respaldo.', tone: 'error' });
+    } finally {
+      setBackingUp(false);
+    }
+  }, []);
+
   const bumpRefreshKey = useAppRefreshStore((s) => s.bumpRefreshKey);
 
   // "Actualizar datos": primero sincroniza lo pendiente (igual que Sincronizar ahora),
@@ -306,6 +319,19 @@ export default function SettingsScreen() {
                 value={autoBackup}
                 onValueChange={() => toggle('autoBackup')}
               />
+
+              <TouchableOpacity
+                style={[styles.secondaryBtn, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 8 }]}
+                onPress={handleBackupNow}
+                activeOpacity={0.8}
+                disabled={backingUp}
+                {...a11yButton('Respaldo ahora', { disabled: backingUp, busy: backingUp })}
+              >
+                {backingUp
+                  ? <ActivityIndicator size="small" color={theme.textPrimary} />
+                  : <Ionicons name="download-outline" size={16} color={theme.textPrimary} {...a11yDecorative} />}
+                <Text style={[styles.secondaryBtnText, { color: theme.textPrimary }]}>Respaldo ahora</Text>
+              </TouchableOpacity>
 
               <Text style={[styles.syncHint, { color: pendingCount > 0 ? theme.status.warning.fg : theme.textMuted }]}>
                 {t.pendingChanges(pendingCount)}

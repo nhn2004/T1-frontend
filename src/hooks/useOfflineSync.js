@@ -2,7 +2,9 @@ import { useEffect, useRef } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import useOfflineQueueStore from '../store/offlineQueueStore';
 import useAuthStore from '../store/authStore';
+import useSettingsStore from '../store/settingsStore';
 import { processQueue } from '../services/offlineSync';
+import { writeBackupSnapshot } from '../services/backup';
 
 /**
  * Se monta una sola vez en la raíz de la app (ver App.js). Escucha los cambios de
@@ -49,5 +51,20 @@ export default function useOfflineSync() {
       alive = false;
       unsubscribe();
     };
+  }, []);
+
+  // "Respaldo automático" (Ajustes): cada vez que cambia la cola offline pendiente —
+  // se agregó un cambio nuevo, o se sincronizó/descartó uno — se escribe en silencio
+  // un snapshot en el sandbox de la app (sin abrir la hoja de compartir; eso queda
+  // para el botón manual "Respaldo ahora"). Suscripción externa al store en vez de
+  // ponerlo dentro de offlineQueueStore.js para no crear un import circular
+  // (backup.js ya necesita leer offlineQueueStore para armar el snapshot).
+  useEffect(() => {
+    const unsubscribe = useOfflineQueueStore.subscribe((state, prevState) => {
+      if (state.pending === prevState.pending) return;
+      if (!useSettingsStore.getState().autoBackup) return;
+      writeBackupSnapshot().catch(() => {});
+    });
+    return unsubscribe;
   }, []);
 }
