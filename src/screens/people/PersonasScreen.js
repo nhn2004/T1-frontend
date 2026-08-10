@@ -812,7 +812,11 @@ const modalStyles = (t) =>
     formScrollArea: { maxHeight: 420 },
     formScroll: { gap: 10, paddingBottom: 2 },
     row: { flexDirection: 'row', gap: 10 },
-    field: { flex: 1, gap: 5 },
+    // Sin `flex:1` aquí: estos campos se apilan en columna (uno debajo de otro), no
+    // van lado a lado. Con `flex:1` cada campo competía por crecer verticalmente para
+    // llenar el modal (que se autoajusta a su contenido), lo que hacía que se
+    // superpusieran entre sí en vez de apilarse normalmente.
+    field: { gap: 5 },
     fieldLabel: { fontSize: 12, color: t.textSecondary },
     fieldInput: {
       borderWidth: 1.5,
