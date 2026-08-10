@@ -22,7 +22,7 @@ import { a11yButton, a11yDecorative, a11yGroup, a11yModal, a11yTab, ICON_HIT_SLO
 import useTheme from '../../hooks/useTheme';
 import Toast from '../../components/Toast';
 import ConfirmDialog from '../../components/ConfirmDialog';
-import { healthPersonnelService, traineeService, userService } from '../../services';
+import { healthPersonnelService, invitationService, traineeService, userService } from '../../services';
 import { usePersonas } from './hooks/usePersonas';
 
 const SEX_OPTIONS = ['M', 'F', 'Otro'];
@@ -330,9 +330,13 @@ export default function PersonasScreen() {
         isFireChief={isFireChief}
         institutionId={institutionId}
         onClose={() => setCreateVisible(false)}
-        onCreated={(personName) => {
+        onCreated={(personNameOrEmail, opts) => {
           setCreateVisible(false);
-          showNotice(`${personName} fue agregado correctamente.`, 'success');
+          if (opts?.invited) {
+            showNotice(`Invitación enviada a ${personNameOrEmail}.`, 'success');
+            return;
+          }
+          showNotice(`${personNameOrEmail} fue agregado correctamente.`, 'success');
           refresh();
         }}
       />
@@ -525,6 +529,11 @@ function CreatePersonModal({ visible, isFireChief, institutionId, onClose, onCre
   const [form, setForm] = useState(EMPTY_CREATE);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  // 'direct'  → se conocen todos los datos, la cuenta queda lista al instante.
+  // 'invite'  → solo se sabe el correo; se manda un enlace real y la persona
+  //             completa su propio registro (útil cuando no tienes a mano su fecha
+  //             de nacimiento, profesión, etc. de entrada).
+  const [mode, setMode] = useState('direct');
 
   const set = (field) => (v) => setForm((f) => ({ ...f, [field]: v }));
 
@@ -532,8 +541,38 @@ function CreatePersonModal({ visible, isFireChief, institutionId, onClose, onCre
     if (submitting) return;
     setForm(EMPTY_CREATE);
     setError('');
+    setMode('direct');
     onClose();
   }, [submitting, onClose]);
+
+  const handleInvite = useCallback(async () => {
+    const email = form.email.trim();
+    if (!email) { setError('Ingresa un correo electrónico.'); return; }
+    if (!EMAIL_RE.test(email)) { setError('Ingresa un correo electrónico válido.'); return; }
+
+    setSubmitting(true);
+    setError('');
+    try {
+      const expiresAt = new Date(Date.now() + 7 * 86_400_000).toISOString();
+      await invitationService.create({
+        targetEmail: email,
+        targetRoleCode: isFireChief ? ROLES.FIREFIGHTER_TRAINEE : ROLES.MEDICAL,
+        expiresAt,
+      });
+      setForm(EMPTY_CREATE);
+      setMode('direct');
+      onCreated(email, { invited: true });
+    } catch (e) {
+      if (!e.response) {
+        setError('Sin conexión: no se pudo enviar la invitación. Intenta de nuevo cuando vuelva la señal.');
+        setSubmitting(false);
+        return;
+      }
+      setError(e?.response?.data?.message ?? 'No se pudo enviar la invitación.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [form.email, isFireChief, onCreated]);
 
   const handleSubmit = useCallback(async () => {
     if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim()) {
@@ -623,39 +662,67 @@ function CreatePersonModal({ visible, isFireChief, institutionId, onClose, onCre
                 {isFireChief ? 'Agregar Bombero Aspirante' : 'Agregar Personal Médico'}
               </Text>
 
-              <ScrollView style={styles.formScrollArea} contentContainerStyle={styles.formScroll}>
-                <View style={styles.row}>
-                  <ModalField label="Nombres" value={form.firstName} onChangeText={set('firstName')} styles={styles} />
-                  <ModalField label="Apellidos" value={form.lastName} onChangeText={set('lastName')} styles={styles} />
-                </View>
-                <ModalField label="Correo" value={form.email} onChangeText={set('email')} keyboardType="email-address" autoCapitalize="none" styles={styles} />
-                <ModalField label="Teléfono (opcional)" value={form.phone} onChangeText={set('phone')} keyboardType="phone-pad" styles={styles} />
+              <View style={styles.modeRow}>
+                <TouchableOpacity
+                  style={[styles.modeChip, mode === 'direct' && styles.modeChipActive]}
+                  onPress={() => { setMode('direct'); setError(''); }}
+                  {...a11yButton('Crear directamente', { selected: mode === 'direct' })}
+                >
+                  <Text style={[styles.modeChipText, mode === 'direct' && styles.modeChipTextActive]}>Crear directamente</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.modeChip, mode === 'invite' && styles.modeChipActive]}
+                  onPress={() => { setMode('invite'); setError(''); }}
+                  {...a11yButton('Invitar por correo', { selected: mode === 'invite' })}
+                >
+                  <Text style={[styles.modeChipText, mode === 'invite' && styles.modeChipTextActive]}>Invitar por correo</Text>
+                </TouchableOpacity>
+              </View>
 
-                {isFireChief ? (
-                  <>
-                    <ModalField label="Código de aspirante" value={form.applicantCode} onChangeText={set('applicantCode')} styles={styles} />
-                    <ModalField
-                      label="Fecha de nacimiento (AAAA-MM-DD)"
-                      value={form.birthDate}
-                      onChangeText={(v) => setForm((f) => ({ ...f, birthDate: formatBirthDateInput(v) }))}
-                      placeholder="1998-05-20"
-                      keyboardType="numeric"
-                      maxLength={10}
-                      styles={styles}
-                    />
-                    <ChipRow label="Sexo" options={SEX_OPTIONS} value={form.sex} onChange={set('sex')} styles={styles} />
-                    <ModalField label="Tipo de sangre (opcional)" value={form.bloodType} onChangeText={set('bloodType')} placeholder="O+" styles={styles} />
-                    <ModalField label="Contacto de emergencia (opcional)" value={form.emergencyContactName} onChangeText={set('emergencyContactName')} styles={styles} />
-                    <ModalField label="Teléfono de emergencia (opcional)" value={form.emergencyContactPhone} onChangeText={set('emergencyContactPhone')} keyboardType="phone-pad" styles={styles} />
-                  </>
-                ) : (
-                  <>
-                    <ChipRow label="Profesión" options={PROFESSION_OPTIONS} value={form.profession} onChange={set('profession')} styles={styles} />
-                    <ModalField label="Especialidad (opcional)" value={form.specialty} onChangeText={set('specialty')} styles={styles} />
-                    <ModalField label="Número de licencia (opcional)" value={form.licenseNumber} onChangeText={set('licenseNumber')} styles={styles} />
-                  </>
-                )}
-              </ScrollView>
+              {mode === 'invite' ? (
+                <>
+                  <Text style={styles.inviteHint}>
+                    Se manda un correo real con un enlace para que complete su propio registro
+                    (nombre, {isFireChief ? 'datos del aspirante' : 'profesión'} y contraseña). La cuenta
+                    se crea recién cuando lo acepte.
+                  </Text>
+                  <ModalField label="Correo" value={form.email} onChangeText={set('email')} keyboardType="email-address" autoCapitalize="none" styles={styles} />
+                </>
+              ) : (
+                <ScrollView style={styles.formScrollArea} contentContainerStyle={styles.formScroll}>
+                  <View style={styles.row}>
+                    <ModalField label="Nombres" value={form.firstName} onChangeText={set('firstName')} styles={styles} />
+                    <ModalField label="Apellidos" value={form.lastName} onChangeText={set('lastName')} styles={styles} />
+                  </View>
+                  <ModalField label="Correo" value={form.email} onChangeText={set('email')} keyboardType="email-address" autoCapitalize="none" styles={styles} />
+                  <ModalField label="Teléfono (opcional)" value={form.phone} onChangeText={set('phone')} keyboardType="phone-pad" styles={styles} />
+
+                  {isFireChief ? (
+                    <>
+                      <ModalField label="Código de aspirante" value={form.applicantCode} onChangeText={set('applicantCode')} styles={styles} />
+                      <ModalField
+                        label="Fecha de nacimiento (AAAA-MM-DD)"
+                        value={form.birthDate}
+                        onChangeText={(v) => setForm((f) => ({ ...f, birthDate: formatBirthDateInput(v) }))}
+                        placeholder="1998-05-20"
+                        keyboardType="numeric"
+                        maxLength={10}
+                        styles={styles}
+                      />
+                      <ChipRow label="Sexo" options={SEX_OPTIONS} value={form.sex} onChange={set('sex')} styles={styles} />
+                      <ModalField label="Tipo de sangre (opcional)" value={form.bloodType} onChangeText={set('bloodType')} placeholder="O+" styles={styles} />
+                      <ModalField label="Contacto de emergencia (opcional)" value={form.emergencyContactName} onChangeText={set('emergencyContactName')} styles={styles} />
+                      <ModalField label="Teléfono de emergencia (opcional)" value={form.emergencyContactPhone} onChangeText={set('emergencyContactPhone')} keyboardType="phone-pad" styles={styles} />
+                    </>
+                  ) : (
+                    <>
+                      <ChipRow label="Profesión" options={PROFESSION_OPTIONS} value={form.profession} onChange={set('profession')} styles={styles} />
+                      <ModalField label="Especialidad (opcional)" value={form.specialty} onChangeText={set('specialty')} styles={styles} />
+                      <ModalField label="Número de licencia (opcional)" value={form.licenseNumber} onChangeText={set('licenseNumber')} styles={styles} />
+                    </>
+                  )}
+                </ScrollView>
+              )}
 
               {!!error && <Text style={styles.errorText} accessibilityRole="alert">{error}</Text>}
 
@@ -665,11 +732,13 @@ function CreatePersonModal({ visible, isFireChief, institutionId, onClose, onCre
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
-                  onPress={handleSubmit}
+                  onPress={mode === 'invite' ? handleInvite : handleSubmit}
                   disabled={submitting}
-                  {...a11yButton('Crear', { disabled: submitting, busy: submitting })}
+                  {...a11yButton(mode === 'invite' ? 'Enviar invitación' : 'Crear', { disabled: submitting, busy: submitting })}
                 >
-                  {submitting ? <ActivityIndicator size="small" color={theme.onPrimarySolid} /> : <Text style={styles.submitBtnText}>Crear</Text>}
+                  {submitting
+                    ? <ActivityIndicator size="small" color={theme.onPrimarySolid} />
+                    : <Text style={styles.submitBtnText}>{mode === 'invite' ? 'Enviar invitación' : 'Crear'}</Text>}
                 </TouchableOpacity>
               </View>
             </View>
@@ -813,6 +882,15 @@ const modalStyles = (t) =>
       borderColor: t.border,
     },
     title: { fontSize: 16, fontWeight: '700', color: t.textPrimary, marginBottom: 2 },
+    modeRow: { flexDirection: 'row', gap: 8 },
+    modeChip: {
+      flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 8,
+      borderWidth: 1.5, borderColor: t.border, backgroundColor: t.cardAlt,
+    },
+    modeChipActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
+    modeChipText: { fontSize: 12, fontWeight: '700', color: t.textPrimary },
+    modeChipTextActive: { color: t.onPrimarySolid },
+    inviteHint: { fontSize: 12, color: t.textSecondary, lineHeight: 17 },
     formScrollArea: { maxHeight: 420 },
     formScroll: { gap: 10, paddingBottom: 2 },
     row: { flexDirection: 'row', gap: 10 },

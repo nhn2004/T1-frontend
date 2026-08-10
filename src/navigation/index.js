@@ -13,6 +13,7 @@ import MainLayout from '../components/MainLayout';
 // Auth
 import LoginScreen from '../screens/auth/LoginScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
+import CompleteRegistrationScreen from '../screens/auth/CompleteRegistrationScreen';
 
 // Dashboards por rol
 import SystemDashboard from '../screens/dashboard/SystemDashboard';
@@ -62,9 +63,24 @@ function AuthStack() {
     >
       <Stack.Screen name={ROUTES.LOGIN} component={LoginScreen} />
       <Stack.Screen name={ROUTES.FORGOT_PASSWORD} component={ForgotPasswordScreen} />
+      <Stack.Screen name={ROUTES.COMPLETE_REGISTRATION} component={CompleteRegistrationScreen} />
     </Stack.Navigator>
   );
 }
+
+// Solo el stack de autenticación necesita rutas por URL: son las únicas pantallas a las
+// que alguien puede llegar SIN sesión iniciada (ej. el enlace de un correo de
+// invitación). El resto de la app sigue navegándose solo desde dentro, como siempre.
+const linking = {
+  prefixes: [],
+  config: {
+    screens: {
+      [ROUTES.LOGIN]: '',
+      [ROUTES.FORGOT_PASSWORD]: 'restablecer-contrasena',
+      [ROUTES.COMPLETE_REGISTRATION]: 'completar-registro',
+    },
+  },
+};
 
 // Envuelve una pantalla con el layout de sidebar + contenido.
 // Se memoriza por componente para no recrear el wrapper en cada render, lo que
@@ -177,7 +193,7 @@ export default function RootNavigator() {
   }, [theme]);
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer theme={navTheme} linking={linking}>
       {isAuthenticated
         ? <RoleNavigator roles={effectiveRoles} primaryRole={role} />
         : <AuthStack />}

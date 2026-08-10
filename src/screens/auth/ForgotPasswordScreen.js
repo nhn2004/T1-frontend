@@ -19,13 +19,17 @@ const MIN_PASSWORD_LENGTH = 8;
 // detectaba tras el viaje de ida y vuelta al servidor.
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export default function ForgotPasswordScreen({ navigation }) {
+export default function ForgotPasswordScreen({ navigation, route }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
-  const [step,        setStep]        = useState(STEPS.EMAIL);
+  // El correo real de reseteo (ver AuthService.RequestPasswordResetAsync en el
+  // backend) enlaza aquí con ?token=... — si llega, se salta directo al paso de
+  // nueva contraseña en vez de pedirle el correo de nuevo.
+  const linkToken = route?.params?.token ?? '';
+  const [step,        setStep]        = useState(linkToken ? STEPS.RESET : STEPS.EMAIL);
   const [email,       setEmail]       = useState('');
-  const [token,       setToken]       = useState('');
+  const [token,       setToken]       = useState(linkToken);
   const [tokenAutofilled, setTokenAutofilled] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirm,     setConfirm]     = useState('');

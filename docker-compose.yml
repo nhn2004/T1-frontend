@@ -52,6 +52,15 @@ services:
       # desde el propio servidor.
       Cors__AllowedOrigins__0: "http://${SERVER_IP}:8081"
       Cors__AllowedOrigins__1: "http://localhost:8081"
+      # Correo real (invitaciones, activación de cuenta, reseteo de contraseña) vía
+      # Resend — no requiere dominio propio, resend.dev funciona para desarrollo/demo.
+      # Conseguir la API key en https://resend.com (plan gratuito).
+      Resend__ApiKey: ${RESEND_API_KEY}
+      Resend__FromEmail: ${RESEND_FROM_EMAIL:-onboarding@resend.dev}
+      Resend__FromName: "FireHealth App"
+      # Base de los enlaces que van en esos correos (completar registro, activar
+      # cuenta, restablecer contraseña) — debe ser donde quede publicado el frontend.
+      App__WebBaseUrl: "http://${SERVER_IP}:8081"
     ports:
       - "5054:8080"
     restart: unless-stopped

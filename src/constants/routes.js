@@ -8,6 +8,7 @@ export const ROUTES = {
   // ── Stack de autenticación ──────────────────────────────────────────────
   LOGIN: 'Login',
   FORGOT_PASSWORD: 'ForgotPassword',
+  COMPLETE_REGISTRATION: 'CompleteRegistration',
 
   // ── Stack por rol ───────────────────────────────────────────────────────
   DASHBOARD: 'Dashboard',

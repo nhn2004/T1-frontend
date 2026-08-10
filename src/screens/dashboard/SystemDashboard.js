@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
@@ -95,6 +96,13 @@ export default function SystemDashboard({ navigation }) {
   const [invitesModalVisible, setInvitesModalVisible] = useState(false);
   const [revokingId, setRevokingId] = useState(null);
 
+  // ── Enviar invitación (cuenta nueva, cualquier rol) ──
+  const [inviteVisible, setInviteVisible] = useState(false);
+  const [inviteEmail,   setInviteEmail]   = useState('');
+  const [inviteRole,    setInviteRole]    = useState(ROLES.MEDICAL);
+  const [inviteSending, setInviteSending] = useState(false);
+  const [inviteError,   setInviteError]   = useState('');
+
   // ── Editar permisos ──
   const [permTarget,     setPermTarget]     = useState(null); // usuario (item) o null
   const [permSelected,   setPermSelected]   = useState([]);
@@ -168,6 +176,33 @@ export default function SystemDashboard({ navigation }) {
       setRevokingId(null);
     }
   }, []);
+
+  const handleSendInvite = useCallback(async () => {
+    const email = inviteEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setInviteError('Ingresa un correo electrónico válido.');
+      return;
+    }
+    setInviteSending(true);
+    setInviteError('');
+    try {
+      const expiresAt = new Date(Date.now() + 7 * 86_400_000).toISOString();
+      await invitationService.create({ targetEmail: email, targetRoleCode: inviteRole, expiresAt });
+      setInviteVisible(false);
+      setInviteEmail('');
+      setToast({ message: `Invitación enviada a ${email}.`, tone: 'success' });
+      loadInvites();
+    } catch (e) {
+      if (!e.response) {
+        setInviteError('Sin conexión: no se pudo enviar la invitación. Intenta de nuevo cuando vuelva la señal.');
+        setInviteSending(false);
+        return;
+      }
+      setInviteError(e?.response?.data?.message ?? 'No se pudo enviar la invitación.');
+    } finally {
+      setInviteSending(false);
+    }
+  }, [inviteEmail, inviteRole, loadInvites]);
 
   // Sin fallback a datos ficticios: si la API de usuarios falla, la tabla queda vacía
   // y se avisa. Antes se mostraban usuarios inventados como si fueran reales.
@@ -299,6 +334,15 @@ export default function SystemDashboard({ navigation }) {
                   <Text style={styles.primaryButtonText}>Gestionar Usuarios</Text>
                 </TouchableOpacity>
               )}
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => { setInviteEmail(''); setInviteRole(ROLES.MEDICAL); setInviteError(''); setInviteVisible(true); }}
+                activeOpacity={0.85}
+                {...a11yButton('Enviar invitación')}
+              >
+                <Ionicons name="mail-outline" size={17} color="#FFFFFF" {...a11yDecorative} />
+                <Text style={styles.secondaryButtonText}>Enviar invitación</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </ImageBackground>
@@ -566,6 +610,79 @@ export default function SystemDashboard({ navigation }) {
         </TouchableWithoutFeedback>
       </Modal>
 
+      {/* ── Modal: enviar invitación ── */}
+      <Modal
+        visible={inviteVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !inviteSending && setInviteVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => !inviteSending && setInviteVisible(false)} accessible={false}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback accessible={false}>
+              <View style={styles.modalCard} {...a11yModal('Enviar invitación')}>
+                <Text style={styles.modalTitle} accessibilityRole="header">Enviar Invitación</Text>
+                <Text style={styles.modalSub}>
+                  Se manda un correo real con un enlace para completar el registro. La cuenta se crea recién cuando lo acepte.
+                </Text>
+
+                <Text style={styles.fieldLabel} nativeID="invite-email">Correo electrónico</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  value={inviteEmail}
+                  onChangeText={(v) => { setInviteEmail(v); setInviteError(''); }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  placeholder="persona@smab.app"
+                  placeholderTextColor={theme.textPlaceholder}
+                  accessibilityLabel="Correo electrónico"
+                  accessibilityLabelledBy="invite-email"
+                />
+
+                <Text style={styles.fieldLabel}>Rol</Text>
+                <View style={styles.roleChipRow}>
+                  {ALL_ROLE_CODES.map((code) => (
+                    <TouchableOpacity
+                      key={code}
+                      style={[styles.roleChip, inviteRole === code && styles.roleChipActive]}
+                      onPress={() => setInviteRole(code)}
+                      {...a11yButton(ROLE_LABELS[code] ?? code, { selected: inviteRole === code })}
+                    >
+                      <Text style={[styles.roleChipText, inviteRole === code && styles.roleChipTextActive]}>
+                        {ROLE_LABELS[code] ?? code}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {!!inviteError && <Text style={styles.modalError} accessibilityRole="alert">{inviteError}</Text>}
+
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalCancelBtn}
+                    onPress={() => setInviteVisible(false)}
+                    disabled={inviteSending}
+                    {...a11yButton('Cancelar', { disabled: inviteSending })}
+                  >
+                    <Text style={styles.modalCancelText}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalSubmitBtn, inviteSending && styles.modalSubmitBtnDisabled]}
+                    onPress={handleSendInvite}
+                    disabled={inviteSending}
+                    {...a11yButton('Enviar', { disabled: inviteSending, busy: inviteSending })}
+                  >
+                    {inviteSending
+                      ? <ActivityIndicator size="small" color={theme.onPrimarySolid} />
+                      : <Text style={styles.modalSubmitText}>Enviar</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
       {/* ── Modal: invitaciones pendientes (ver / revocar) ── */}
       <Modal
         visible={invitesModalVisible}
@@ -649,6 +766,14 @@ const makeStyles = (t, isCompact) =>
       paddingHorizontal: 18, minHeight: MIN_TOUCH_SIZE, justifyContent: 'center',
     },
     primaryButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+    secondaryButton: {
+      flexDirection: 'row', alignItems: 'center', gap: 8,
+      borderRadius: 7, borderWidth: 1.5,
+      borderColor: 'rgba(255,255,255,0.55)',
+      backgroundColor: 'rgba(0,0,0,0.35)',
+      paddingHorizontal: 18, minHeight: MIN_TOUCH_SIZE, justifyContent: 'center',
+    },
+    secondaryButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
 
     warningBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -756,6 +881,19 @@ const makeStyles = (t, isCompact) =>
     },
     modalTitle: { fontSize: 17, fontWeight: '800', color: t.textPrimary },
     modalSub: { fontSize: 13, color: t.textSecondary, lineHeight: 18, marginTop: -6 },
+    fieldLabel: { fontSize: 13, color: t.textSecondary, fontWeight: '600' },
+    fieldInput: {
+      borderWidth: 1.5, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
+      fontSize: 14, backgroundColor: t.cardAlt, borderColor: t.borderStrong, color: t.textPrimary,
+    },
+    roleChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    roleChip: {
+      paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8,
+      borderWidth: 1.5, borderColor: t.border, backgroundColor: t.cardAlt,
+    },
+    roleChipActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
+    roleChipText: { fontSize: 12, color: t.textPrimary, fontWeight: '600' },
+    roleChipTextActive: { color: t.onPrimarySolid },
     modalError: { fontSize: 12, color: t.status.danger.fg },
     modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
     modalCancelBtn: {

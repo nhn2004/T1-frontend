@@ -26,4 +26,20 @@ export const authService = {
   async changePassword(currentPassword, newPassword, confirmPassword) {
     await api.post('/auth/change-password', { currentPassword, newPassword, confirmPassword });
   },
+
+  /** Datos de una invitación pendiente — usado por CompleteRegistrationScreen para saber qué campos pedir. */
+  async invitationPreview(token) {
+    const { data: wrapper } = await api.get('/auth/invitation-preview', { params: { token } });
+    return wrapper.data;
+  },
+
+  /** Crea la cuenta a partir de una invitación por correo (cualquier rol). */
+  async completeRegistration(payload) {
+    await api.post('/auth/complete-registration', payload);
+  },
+
+  /** Pone la contraseña inicial de una cuenta creada directamente (ej. "Agregar Personal"). */
+  async activateAccount(token, password) {
+    await api.post('/auth/activate-account', { token, password });
+  },
 };

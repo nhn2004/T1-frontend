@@ -129,12 +129,17 @@ export const invitationService = {
     return wrapper.data;
   },
 
-  /** Invitación "suelta" (sin sesión) — ej. la que envía SystemDashboard para dar de alta un usuario. */
-  async create({ targetEmail, targetUserId = null, trainingSessionId = null, targetRoleId = null, expiresAt }) {
+  /**
+   * Invitación "suelta" (sin sesión) para alguien que todavía no tiene cuenta — el
+   * backend manda un correo real (Resend) con un enlace para completar el registro.
+   * `targetRoleCode` es el código del rol (ROLES.MEDICAL, ROLES.FIREFIGHTER_TRAINEE,
+   * etc.), no un id — el backend lo resuelve.
+   */
+  async create({ targetEmail, targetUserId = null, trainingSessionId = null, targetRoleCode = null, expiresAt }) {
     const { data: wrapper } = await api.post('/invitations', {
       targetUserId,
       trainingSessionId,
-      targetRoleId,
+      targetRoleCode,
       targetEmail,
       expiresAt,
     });

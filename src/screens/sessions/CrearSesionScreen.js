@@ -304,7 +304,6 @@ export default function CrearSesionScreen({ navigation }) {
             targetEmail:       r.email,
             trainingSessionId: sessionId,
             targetUserId:      r.userId,
-            targetRoleId:      null,
             expiresAt,
           })),
       );
