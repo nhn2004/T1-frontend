@@ -84,6 +84,12 @@ export default function PersonasScreen() {
       setNotice(`${deactivateTarget.name} fue dado de baja.`);
       refresh();
     } catch (e) {
+      if (!e.response) {
+        setDeactivateTarget(null);
+        setNotice(`Sin conexión: la baja de ${deactivateTarget.name} quedó guardada localmente y se aplicará cuando vuelva la señal.`);
+        setDeactivating(false);
+        return;
+      }
       setNotice(e?.response?.data?.message ?? 'No se pudo dar de baja. Intenta de nuevo.');
     } finally {
       setDeactivating(false);
@@ -576,6 +582,17 @@ function CreatePersonModal({ visible, isFireChief, institutionId, onClose, onCre
       setForm(EMPTY_CREATE);
       onCreated(fullName);
     } catch (e) {
+      if (!e.response) {
+        // A diferencia de un guardado simple, crear una persona es una cadena de 2-3
+        // pasos dependientes (usuario -> ficha de aspirante/personal -> roles), cada
+        // uno necesita el ID que devuelve el paso anterior. Si el primero queda
+        // encolado offline no hay forma de saber ese ID todavía, así que no se puede
+        // fingir que la cadena completa quedó guardada — se avisa explícitamente en
+        // vez de dejar un registro a medias sin que el usuario lo sepa.
+        setError('Sin conexión: crear una persona nueva necesita varios pasos seguidos contra el servidor y no se puede completar offline. Intenta de nuevo cuando vuelva la señal.');
+        setSubmitting(false);
+        return;
+      }
       setError(e?.response?.data?.message ?? 'No se pudo crear el registro. Intenta de nuevo.');
     } finally {
       setSubmitting(false);
@@ -703,6 +720,10 @@ function EditPersonModal({ visible, person, isFireChief, onClose, onSaved }) {
       }
       onSaved();
     } catch (e) {
+      if (!e.response) {
+        onSaved();
+        return;
+      }
       setError(e?.response?.data?.message ?? 'No se pudo guardar. Intenta de nuevo.');
     } finally {
       setSubmitting(false);

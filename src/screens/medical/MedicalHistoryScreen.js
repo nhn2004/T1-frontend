@@ -100,6 +100,14 @@ export default function MedicalHistoryScreen({ navigation, route }) {
       setRecord(saved);
       setToast({ message: t.savedToast, tone: 'success' });
     } catch (e) {
+      if (!e.response) {
+        // Encolado offline — se sincroniza solo cuando vuelva la señal. No se puede
+        // actualizar `record` con el resultado del servidor todavía, pero no hay
+        // razón para tratarlo como un error.
+        setToast({ message: 'Sin conexión: se guardó localmente y se sincronizará cuando vuelva la señal.', tone: 'warning' });
+        setSaving(false);
+        return;
+      }
       setToast({ message: e?.response?.data?.message ?? t.saveError, tone: 'error' });
     } finally {
       setSaving(false);

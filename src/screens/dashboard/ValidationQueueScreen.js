@@ -73,6 +73,15 @@ export default function ValidationQueueScreen({ navigation }) {
       setModalVisible(false);
       setSelectedItem(null);
     } catch (error) {
+      if (!error.response) {
+        // Encolado offline por api.js — se sincroniza solo cuando vuelva la señal.
+        setItems((prev) => prev.filter((i) => i.id !== id));
+        setToast({ message: 'Sin conexión: la acción quedó guardada localmente y se aplicará cuando vuelva la señal.', tone: 'warning' });
+        setModalVisible(false);
+        setSelectedItem(null);
+        setBusyId(null);
+        return;
+      }
       const detail = error?.response?.data?.message ?? 'Revisa tu conexión e inténtalo de nuevo.';
       setToast({ message: `No se pudo completar la acción. ${detail}`, tone: 'error' });
     } finally {

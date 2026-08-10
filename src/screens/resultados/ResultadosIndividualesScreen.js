@@ -162,6 +162,12 @@ export default function ResultadosIndividualesScreen({ navigation, route }) {
       }
       navigation.goBack();
     } catch (error) {
+      if (!error.response) {
+        // Encolado offline por api.js — se sincroniza solo cuando vuelva la señal.
+        setNotice({ tone: 'warning', message: 'Guardado localmente (sin conexión). Se enviará automáticamente cuando vuelva la señal.' });
+        navigation.goBack();
+        return;
+      }
       const detail = error?.response?.data?.message ?? error?.message ?? 'Error desconocido.';
       setNotice({ tone: 'error', message: `No se pudo guardar: ${detail}` });
     } finally {

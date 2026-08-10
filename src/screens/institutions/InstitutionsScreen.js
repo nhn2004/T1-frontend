@@ -277,6 +277,11 @@ function InstitutionModal({ visible, institution, onClose, onSaved }) {
       }
       onSaved(name.trim());
     } catch (e) {
+      if (!e.response) {
+        // Encolado offline — se sincroniza solo. No hace falta bloquear al usuario acá.
+        onSaved(name.trim());
+        return;
+      }
       setError(e?.response?.data?.message ?? 'No se pudo guardar la institución.');
     } finally {
       setSubmitting(false);
@@ -382,6 +387,10 @@ function LocationModal({ visible, location, institutions, onClose, onSaved }) {
       }
       onSaved(name.trim());
     } catch (e) {
+      if (!e.response) {
+        onSaved(name.trim());
+        return;
+      }
       setError(e?.response?.data?.message ?? 'No se pudo guardar el centro de entrenamiento.');
     } finally {
       setSubmitting(false);

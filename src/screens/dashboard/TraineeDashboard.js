@@ -184,6 +184,21 @@ export default function TraineeDashboard({ navigation }) {
       setModalVisible(false);
       setToast({ message: 'Asistencia confirmada.', tone: 'success' });
     } catch (error) {
+      if (!error.response) {
+        setInvitation((current) => {
+          if (!current || current.id !== id) return current;
+          setWeekSchedule((prev) => [
+            { id: current.id, day: current.weekDay, date: current.weekDate, title: current.title,
+              time: current.time, location: current.location, status: 'CONFIRMED', tone: 'success' },
+            ...prev,
+          ]);
+          return null;
+        });
+        setModalVisible(false);
+        setToast({ message: 'Sin conexión: la confirmación quedó guardada localmente y se enviará cuando vuelva la señal.', tone: 'warning' });
+        setBusy(false);
+        return;
+      }
       const detail = error?.response?.data?.message ?? 'Revisa tu conexión e inténtalo de nuevo.';
       setToast({ message: `No se pudo confirmar la asistencia. ${detail}`, tone: 'error' });
     } finally {

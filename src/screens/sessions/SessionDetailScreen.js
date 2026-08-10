@@ -260,6 +260,15 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
       }
       navigateToPersonas();
     } catch (error) {
+      if (!error.response) {
+        // Encolado offline por api.js — se sincroniza solo cuando vuelva la señal. No
+        // se puede reflejar el nuevo estado de la sesión todavía (depende de la
+        // respuesta del servidor), pero no hay razón para bloquear al usuario aquí.
+        setShowAmbientalModal(false);
+        setLoadError('Sin conexión: las condiciones ambientales quedaron guardadas localmente y se enviarán cuando vuelva la señal.');
+        navigateToPersonas();
+        return;
+      }
       const detail = error?.response?.data?.message ?? error?.message ?? 'Error desconocido.';
       setAmbSaveError(`No se pudieron guardar las condiciones ambientales: ${detail}`);
     } finally {
@@ -311,6 +320,15 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
       setShowEditModal(false);
       setNotice(t.sessionDetail.updatedToast);
     } catch (error) {
+      if (!error.response) {
+        // Encolado offline — el cambio se aplicará solo cuando vuelva la señal, pero
+        // esta pantalla no puede mostrar todavía el resultado (lo calcula el
+        // servidor), así que se cierra el modal en vez de dejar al usuario atascado.
+        setShowEditModal(false);
+        setNotice('Sin conexión: los cambios quedaron guardados localmente y se aplicarán cuando vuelva la señal.');
+        setSavingEdit(false);
+        return;
+      }
       const detail = error?.response?.data?.message ?? error?.message ?? 'Error desconocido.';
       setEditSaveError(`${t.sessionDetail.saveError}: ${detail}`);
     } finally {
@@ -326,9 +344,14 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
       setShowCancelConfirm(false);
       setNotice(t.sessionDetail.cancelledToast);
     } catch (error) {
+      setShowCancelConfirm(false);
+      if (!error.response) {
+        setNotice('Sin conexión: la cancelación quedó guardada localmente y se aplicará cuando vuelva la señal.');
+        setCancelling(false);
+        return;
+      }
       const detail = error?.response?.data?.message ?? error?.message ?? 'Error desconocido.';
       setLoadError(`${t.sessionDetail.cancelError}: ${detail}`);
-      setShowCancelConfirm(false);
     } finally {
       setCancelling(false);
     }

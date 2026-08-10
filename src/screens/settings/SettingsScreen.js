@@ -129,6 +129,15 @@ export default function SettingsScreen() {
       });
       setToast({ message: t.savedToast, tone: 'success' });
     } catch (e) {
+      if (!e.response) {
+        // Encolado offline — se aplica el cambio localmente igual (es información
+        // que el propio usuario ya conoce, no depende de un cálculo del servidor) y
+        // se sincroniza de verdad cuando vuelva la señal.
+        updateUser({ firstName: firstName.trim(), lastName: lastName.trim(), name: `${firstName.trim()} ${lastName.trim()}`.trim(), email: email.trim() });
+        setToast({ message: 'Sin conexión: se guardó localmente y se sincronizará cuando vuelva la señal.', tone: 'warning' });
+        setSaving(false);
+        return;
+      }
       const message = e?.response?.data?.message ?? t.saveError;
       setToast({ message, tone: 'error' });
     } finally {

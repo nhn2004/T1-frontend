@@ -152,6 +152,12 @@ export default function SystemDashboard({ navigation }) {
       setPendingInvitesList((prev) => prev.filter((i) => i.invitationId !== invitation.invitationId));
       setToast({ message: `Invitación a ${invitation.targetEmail} revocada.`, tone: 'success' });
     } catch (e) {
+      if (!e.response) {
+        setPendingInvitesList((prev) => prev.filter((i) => i.invitationId !== invitation.invitationId));
+        setToast({ message: 'Sin conexión: la revocación quedó guardada localmente y se aplicará cuando vuelva la señal.', tone: 'warning' });
+        setRevokingId(null);
+        return;
+      }
       setToast({ message: e?.response?.data?.message ?? 'No se pudo revocar la invitación.', tone: 'error' });
     } finally {
       setRevokingId(null);
@@ -221,6 +227,13 @@ export default function SystemDashboard({ navigation }) {
       setInviteEmail('');
       setToast({ message: `Invitación enviada a ${email}.`, tone: 'success' });
     } catch (e) {
+      if (!e.response) {
+        setInviteVisible(false);
+        setInviteEmail('');
+        setToast({ message: 'Sin conexión: la invitación quedó guardada localmente y se enviará cuando vuelva la señal.', tone: 'warning' });
+        setInviteSending(false);
+        return;
+      }
       setInviteError(e?.response?.data?.message ?? 'No se pudo enviar la invitación.');
     } finally {
       setInviteSending(false);
@@ -265,6 +278,15 @@ export default function SystemDashboard({ navigation }) {
       setPermTarget(null);
       setToast({ message: `Permisos de ${permTarget.code} actualizados.`, tone: 'success' });
     } catch (e) {
+      if (!e.response) {
+        setUsers((prev) => prev.map((u) => (
+          u.userId === permTarget.userId ? { ...u, roleLabel: getUserRole({ roles: permSelected }) } : u
+        )));
+        setPermTarget(null);
+        setToast({ message: 'Sin conexión: los permisos quedaron guardados localmente y se aplicarán cuando vuelva la señal.', tone: 'warning' });
+        setPermSaving(false);
+        return;
+      }
       setPermError(e?.response?.data?.message ?? 'No se pudieron guardar los permisos.');
     } finally {
       setPermSaving(false);

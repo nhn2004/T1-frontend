@@ -227,8 +227,15 @@ export default function CrearSesionScreen({ navigation }) {
 
     setFormError('');
     setSaving(true);
+
+    // La creación de la sesión se separa del envío de invitaciones: si el POST de la
+    // sesión queda encolado offline (api.js lo reintenta solo cuando vuelva la señal),
+    // todavía no existe un trainingSessionId real — las invitaciones dependen de ese
+    // ID, así que no se pueden encolar también. Se avisa y se detiene ahí, en vez de
+    // tratarlo como un error duro que descarta todo lo que el usuario configuró.
+    let sessionWrap;
     try {
-      const { data: sessionWrap } = await api.post('/training-sessions', {
+      const response = await api.post('/training-sessions', {
         institutionId: selectedLocation.institutionId,
         trainingLocationId: selectedLocation.id,
         title:           nombre.trim(),
@@ -238,6 +245,18 @@ export default function CrearSesionScreen({ navigation }) {
         scheduledEnd:    end.toISOString(),
         plannedCapacity: capacidad.trim() ? parseInt(capacidad, 10) : null,
       });
+      sessionWrap = response.data;
+    } catch (e) {
+      if (!e.response) {
+        setFormError('Sin conexión: la sesión quedó guardada localmente y se creará automáticamente cuando vuelva la señal. Las invitaciones deberás enviarlas manualmente después, una vez creada.');
+      } else {
+        setFormError(e?.response?.data?.message ?? e?.message ?? 'No se pudo crear la sesión.');
+      }
+      setSaving(false);
+      return;
+    }
+
+    try {
       const sessionId = sessionWrap.data?.trainingSessionId;
 
       // Destinatarios: bomberos por correo + personal seleccionado en los pasos 1 y 2.
