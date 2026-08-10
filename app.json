@@ -31,6 +31,12 @@
           }
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "aaac99c9-aef0-4cbf-8887-e204ff8e94f7"
+      }
+    },
+    "owner": "javaguti"
   }
 }
