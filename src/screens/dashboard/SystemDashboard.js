@@ -2,13 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
@@ -97,12 +94,6 @@ export default function SystemDashboard({ navigation }) {
   // ── Invitaciones pendientes (ver/revocar) ──
   const [invitesModalVisible, setInvitesModalVisible] = useState(false);
   const [revokingId, setRevokingId] = useState(null);
-
-  // ── Enviar invitación ──
-  const [inviteVisible, setInviteVisible] = useState(false);
-  const [inviteEmail,   setInviteEmail]   = useState('');
-  const [inviteSending, setInviteSending] = useState(false);
-  const [inviteError,   setInviteError]   = useState('');
 
   // ── Editar permisos ──
   const [permTarget,     setPermTarget]     = useState(null); // usuario (item) o null
@@ -226,34 +217,6 @@ export default function SystemDashboard({ navigation }) {
     });
   }, []);
 
-  const handleSendInvite = useCallback(async () => {
-    const email = inviteEmail.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setInviteError('Ingresa un correo electrónico válido.');
-      return;
-    }
-    setInviteSending(true);
-    setInviteError('');
-    try {
-      const expiresAt = new Date(Date.now() + 7 * 86_400_000).toISOString();
-      await invitationService.create({ targetEmail: email, expiresAt });
-      setInviteVisible(false);
-      setInviteEmail('');
-      setToast({ message: `Invitación enviada a ${email}.`, tone: 'success' });
-    } catch (e) {
-      if (!e.response) {
-        setInviteVisible(false);
-        setInviteEmail('');
-        setToast({ message: 'Sin conexión: la invitación quedó guardada localmente y se enviará cuando vuelva la señal.', tone: 'warning' });
-        setInviteSending(false);
-        return;
-      }
-      setInviteError(e?.response?.data?.message ?? 'No se pudo enviar la invitación.');
-    } finally {
-      setInviteSending(false);
-    }
-  }, [inviteEmail]);
-
   const handleOpenPermissions = useCallback(async (item) => {
     setPermTarget(item);
     setPermError('');
@@ -336,15 +299,6 @@ export default function SystemDashboard({ navigation }) {
                   <Text style={styles.primaryButtonText}>Gestionar Usuarios</Text>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => { setInviteEmail(''); setInviteError(''); setInviteVisible(true); }}
-                activeOpacity={0.85}
-                {...a11yButton('Enviar invitación')}
-              >
-                <Ionicons name="person-add-outline" size={17} color="#FFFFFF" {...a11yDecorative} />
-                <Text style={styles.secondaryButtonText}>Enviar invitación</Text>
-              </TouchableOpacity>
             </View>
           </View>
         </ImageBackground>
@@ -535,64 +489,6 @@ export default function SystemDashboard({ navigation }) {
         </View>
       </ScrollView>
 
-      {/* ── Modal: enviar invitación ── */}
-      <Modal
-        visible={inviteVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => !inviteSending && setInviteVisible(false)}
-      >
-        <KeyboardAvoidingView style={styles.kbAvoid} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <TouchableWithoutFeedback onPress={() => !inviteSending && setInviteVisible(false)} accessible={false}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback accessible={false}>
-              <View style={styles.modalCard} {...a11yModal('Enviar invitación')}>
-                <Text style={styles.modalTitle} accessibilityRole="header">Enviar Invitación</Text>
-                <Text style={styles.modalSub}>
-                  Se enviará un enlace de invitación válido por 7 días al correo indicado.
-                </Text>
-
-                <Text style={styles.fieldLabel} nativeID="invite-email">Correo electrónico</Text>
-                <TextInput
-                  style={styles.fieldInput}
-                  value={inviteEmail}
-                  onChangeText={(v) => { setInviteEmail(v); setInviteError(''); }}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  placeholder="persona@smab.app"
-                  placeholderTextColor={theme.textPlaceholder}
-                  accessibilityLabel="Correo electrónico"
-                  accessibilityLabelledBy="invite-email"
-                />
-                {!!inviteError && <Text style={styles.modalError} accessibilityRole="alert">{inviteError}</Text>}
-
-                <View style={styles.modalActions}>
-                  <TouchableOpacity
-                    style={styles.modalCancelBtn}
-                    onPress={() => setInviteVisible(false)}
-                    disabled={inviteSending}
-                    {...a11yButton('Cancelar', { disabled: inviteSending })}
-                  >
-                    <Text style={styles.modalCancelText}>Cancelar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.modalSubmitBtn, inviteSending && styles.modalSubmitBtnDisabled]}
-                    onPress={handleSendInvite}
-                    disabled={inviteSending}
-                    {...a11yButton('Enviar', { disabled: inviteSending, busy: inviteSending })}
-                  >
-                    {inviteSending
-                      ? <ActivityIndicator size="small" color={theme.onPrimarySolid} />
-                      : <Text style={styles.modalSubmitText}>Enviar</Text>}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
-      </Modal>
-
       {/* ── Modal: editar permisos ── */}
       <Modal
         visible={!!permTarget}
@@ -753,14 +649,6 @@ const makeStyles = (t, isCompact) =>
       paddingHorizontal: 18, minHeight: MIN_TOUCH_SIZE, justifyContent: 'center',
     },
     primaryButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
-    secondaryButton: {
-      flexDirection: 'row', alignItems: 'center', gap: 8,
-      borderRadius: 7, borderWidth: 1.5,
-      borderColor: 'rgba(255,255,255,0.55)',
-      backgroundColor: 'rgba(0,0,0,0.35)',
-      paddingHorizontal: 18, minHeight: MIN_TOUCH_SIZE, justifyContent: 'center',
-    },
-    secondaryButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
 
     warningBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -857,8 +745,7 @@ const makeStyles = (t, isCompact) =>
     auditTime: { fontSize: 11, color: t.textMuted },
     auditResource: { fontSize: 12, color: t.textSecondary },
 
-    // ── Modales (invitar / editar permisos) ──
-    kbAvoid: { flex: 1 },
+    // ── Modales (editar permisos / invitaciones pendientes) ──
     modalOverlay: {
       flex: 1, backgroundColor: t.overlay,
       alignItems: 'center', justifyContent: 'center', padding: 20,
@@ -869,11 +756,6 @@ const makeStyles = (t, isCompact) =>
     },
     modalTitle: { fontSize: 17, fontWeight: '800', color: t.textPrimary },
     modalSub: { fontSize: 13, color: t.textSecondary, lineHeight: 18, marginTop: -6 },
-    fieldLabel: { fontSize: 13, color: t.textSecondary, fontWeight: '600' },
-    fieldInput: {
-      borderWidth: 1.5, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
-      fontSize: 14, backgroundColor: t.cardAlt, borderColor: t.borderStrong, color: t.textPrimary,
-    },
     modalError: { fontSize: 12, color: t.status.danger.fg },
     modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
     modalCancelBtn: {
