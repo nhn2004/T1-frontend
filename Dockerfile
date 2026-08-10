@@ -26,6 +26,12 @@ RUN npx expo export --platform web
 # crash de sintaxis, no cambia comportamiento real.
 RUN sed -i 's/import\.meta/self/g' dist/_expo/static/js/web/*.js
 
+# PWA: `public/manifest.json` y los íconos ya se copiaron solos a dist/ (Expo copia
+# public/ tal cual), pero el <head> del index.html generado no los referencia — hay
+# que inyectar el link al manifest y las meta tags que iOS/Safari exige para permitir
+# "Agregar a inicio" como app standalone (con su propio ícono, sin barra de Safari).
+RUN sed -i 's|</head>|<link rel="manifest" href="/manifest.json"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="FireHealth"><meta name="theme-color" content="#E85D27"></head>|' dist/index.html
+
 # ---- Etapa 2: nginx ----
 FROM nginx:1.27-alpine AS runtime
 COPY --from=build /app/dist /usr/share/nginx/html

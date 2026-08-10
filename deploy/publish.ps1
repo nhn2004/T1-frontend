@@ -59,6 +59,17 @@ try {
         }
     }
 
+    # PWA: public/manifest.json y los íconos ya se copiaron solos a dist/ (Expo copia
+    # public/ tal cual), pero el <head> del index.html generado no los referencia — hay
+    # que inyectar el link al manifest y las meta tags que iOS/Safari exige para
+    # permitir "Agregar a inicio" como app standalone (con su propio ícono, sin barra
+    # de Safari).
+    Write-Host "Agregando meta tags de PWA al index.html..." -ForegroundColor Cyan
+    $indexPath = Join-Path $distPath 'index.html'
+    $pwaTags = '<link rel="manifest" href="/manifest.json"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="FireHealth"><meta name="theme-color" content="#E85D27"></head>'
+    (Get-Content $indexPath -Raw) -replace '</head>', $pwaTags |
+        Set-Content -NoNewline -Encoding utf8 $indexPath
+
     if ($SitePath) {
         Write-Host "Copiando dist\ -> $SitePath" -ForegroundColor Cyan
         New-Item -ItemType Directory -Force -Path $SitePath | Out-Null
