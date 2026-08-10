@@ -11,9 +11,13 @@ import { ROUTES } from '../../constants/routes';
 import { a11yAlert, a11yButton, a11yDecorative, ICON_HIT_SLOP, MIN_TOUCH_SIZE } from '../../constants/a11y';
 import api from '../../services/api';
 import useTheme from '../../hooks/useTheme';
+import { safeGoBack } from '../../utils/safeGoBack';
 
 const STEPS = { EMAIL: 'EMAIL', RESET: 'RESET', SUCCESS: 'SUCCESS' };
 const MIN_PASSWORD_LENGTH = 8;
+// Mismo patrón que LoginScreen.js — sin este chequeo, un correo mal escrito solo se
+// detectaba tras el viaje de ida y vuelta al servidor.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ForgotPasswordScreen({ navigation }) {
   const theme = useTheme();
@@ -34,6 +38,10 @@ export default function ForgotPasswordScreen({ navigation }) {
     setErrorMsg('');
     if (!email.trim()) {
       setErrorMsg('Ingresa tu correo electrónico.');
+      return;
+    }
+    if (!EMAIL_RE.test(email.trim())) {
+      setErrorMsg('Ingresa un correo electrónico válido.');
       return;
     }
     setLoading(true);
@@ -97,7 +105,7 @@ export default function ForgotPasswordScreen({ navigation }) {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => navigation?.goBack()}
+            onPress={() => safeGoBack(navigation, ROUTES.LOGIN)}
             hitSlop={ICON_HIT_SLOP}
             {...a11yButton('Volver')}
           >

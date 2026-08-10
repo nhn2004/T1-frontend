@@ -18,6 +18,7 @@ import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
 import Toast from '../../components/Toast';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import { safeGoBack } from '../../utils/safeGoBack';
 import { sessionService, environmentalDataService } from '../../services';
 import { traineeService } from '../../services/traineeService';
 import api from '../../services/api';
@@ -278,7 +279,7 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
 
   const handleBack = useCallback(() => {
     if (onBack) onBack();
-    else navigation?.goBack();
+    else safeGoBack(navigation);
   }, [onBack, navigation]);
 
   const handleOpenEdit = useCallback(() => {
@@ -294,7 +295,8 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
 
   const handleSaveEdit = useCallback(async () => {
     const start = parseDatetime(editFecha, editHora);
-    if (!editTitle.trim() || !start) {
+    const invalidCapacidad = editCapacidad.trim() !== '' && parseInt(editCapacidad, 10) <= 0;
+    if (!editTitle.trim() || !start || invalidCapacidad) {
       setEditErrors(true);
       return;
     }
@@ -709,11 +711,13 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
               </View>
 
               <View style={styles.fieldWrap}>
-                <Text style={styles.fieldLabel} nativeID="edit-capacidad">{t.sessionDetail.capacityLabel}</Text>
+                <Text style={[styles.fieldLabel, editErrors && editCapacidad.trim() !== '' && parseInt(editCapacidad, 10) <= 0 && styles.fieldLabelErr]} nativeID="edit-capacidad">
+                  {t.sessionDetail.capacityLabel}
+                </Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, editErrors && editCapacidad.trim() !== '' && parseInt(editCapacidad, 10) <= 0 && styles.inputErr]}
                   value={editCapacidad}
-                  onChangeText={setEditCapacidad}
+                  onChangeText={(v) => setEditCapacidad(v.replace(/\D/g, ''))}
                   keyboardType="number-pad"
                   accessibilityLabel={t.sessionDetail.capacityLabel}
                   accessibilityLabelledBy="edit-capacidad"
