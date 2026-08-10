@@ -269,8 +269,10 @@ const makeStyles = (t, isWide) =>
     flex: { flex: 1, minHeight: 0 },
     // `minHeight: 0` — sin esto, en web un hijo flex no se encoge por debajo del alto
     // de su propio contenido, así que en una pantalla baja (o con el teclado abierto)
-    // el formulario quedaba desbordado en vez de scrolleable.
-    scrollFlex: { flex: 1, minHeight: 0 },
+    // el formulario quedaba desbordado en vez de scrolleable. `overflow: 'scroll'`
+    // explícito porque react-native-web seguía generando el div con overflow-y:hidden
+    // en vez de scroll/auto aun ya acotado en alto — confirmado en el DOM real.
+    scrollFlex: { flex: 1, minHeight: 0, overflow: 'scroll' },
     scroll: {
       flexGrow: 1,
       flexDirection: isWide ? 'row' : 'column',

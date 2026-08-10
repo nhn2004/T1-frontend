@@ -327,8 +327,10 @@ const makeStyles = (t) =>
     // que la pantalla el navegador lo dejaba desbordar en vez de activar el scroll
     // interno — el documento en sí no hace scroll (así está configurado el resto de
     // la app), así que quedaba inalcanzable. `minHeight: 0` es lo que le permite ceder
-    // ese espacio y dejar que el ScrollView haga overflow-y:auto.
-    scrollFlex: { flex: 1, minHeight: 0 },
+    // ese espacio. `overflow: 'scroll'` se agrega explícito porque, aun ya acotado en
+    // alto, react-native-web seguía generando ese div con overflow-y:hidden en vez de
+    // scroll/auto — confirmado inspeccionando el DOM real.
+    scrollFlex: { flex: 1, minHeight: 0, overflow: 'scroll' },
     scroll: { flexGrow: 1, padding: 24, gap: 16, maxWidth: 560, width: '100%', alignSelf: 'center' },
 
     backBtn: {
