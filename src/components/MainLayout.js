@@ -1,14 +1,21 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Sidebar from './Sidebar';
 import useTheme from '../hooks/useTheme';
 import useTranslation from '../hooks/useTranslation';
-import { a11yButton } from '../constants/a11y';
+import { a11yButton, MIN_TOUCH_SIZE } from '../constants/a11y';
 
 export default function MainLayout({ children, navigation, route }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const theme = useTheme();
   const { t: tAll } = useTranslation();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  // Mismo umbral que usa Sidebar.js: por debajo de 860 el sidebar colapsado mide 0 y
+  // no ofrece forma de abrirlo, así que aquí aparece un botón de menú flotante propio.
+  const isWide = width >= 860;
 
   const close = useCallback(() => setSidebarOpen(false), []);
   const open  = useCallback(() => setSidebarOpen(true), []);
@@ -27,6 +34,16 @@ export default function MainLayout({ children, navigation, route }) {
 
       <View style={styles.content}>
         {children}
+
+        {!isWide && !sidebarOpen && (
+          <Pressable
+            style={[styles.menuButton, { top: insets.top + 12 }]}
+            onPress={open}
+            {...a11yButton(tAll.sidebar.expandMenu)}
+          >
+            <Ionicons name="menu" size={24} color={theme.onPrimarySolid} />
+          </Pressable>
+        )}
 
         {/* Capa que captura el toque fuera del sidebar para colapsarlo. Solo existe
             mientras está abierto; se expone como botón para que un lector de pantalla
@@ -58,5 +75,21 @@ const makeStyles = (t) =>
       ...StyleSheet.absoluteFillObject,
       zIndex: 100,
       backgroundColor: t.scrim,
+    },
+    menuButton: {
+      position: 'absolute',
+      left: 12,
+      width: MIN_TOUCH_SIZE,
+      height: MIN_TOUCH_SIZE,
+      borderRadius: MIN_TOUCH_SIZE / 2,
+      backgroundColor: t.primarySolid,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 150,
+      shadowColor: t.shadowColor,
+      shadowOpacity: t.shadowOpacity * 2,
+      shadowOffset: { width: 0, height: 2 },
+      shadowRadius: 6,
+      elevation: 6,
     },
   });

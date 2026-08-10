@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { ROLES } from '../constants/roles';
@@ -77,6 +77,14 @@ export default function Sidebar({ navigation, activeRoute, isOpen, onOpen, onClo
   const { t: tAll } = useTranslation();
   const t = tAll.sidebar;
 
+  const { width: windowWidth } = useWindowDimensions();
+  // Por debajo de este ancho no hay espacio para un sidebar que reste 72-280px de
+  // forma permanente (el mismo umbral que usa el resto de la app, ej. LoginScreen).
+  // Ahí el sidebar deja de empujar el contenido y pasa a flotar como overlay.
+  const isWide = windowWidth >= 860;
+  const collapsedWidth = isWide ? COLLAPSED_WIDTH : 0;
+  const expandedWidth  = isWide ? EXPANDED_WIDTH : Math.min(EXPANDED_WIDTH, windowWidth * 0.82);
+
   const [logoutVisible, setLogoutVisible] = useState(false);
 
   const effectiveRoles = useMemo(
@@ -94,21 +102,22 @@ export default function Sidebar({ navigation, activeRoute, isOpen, onOpen, onClo
     [effectiveRoles],
   );
 
-  const animatedWidth = useRef(new Animated.Value(COLLAPSED_WIDTH)).current;
+  const animatedWidth = useRef(new Animated.Value(collapsedWidth)).current;
 
   useEffect(() => {
     const animation = Animated.timing(animatedWidth, {
-      toValue: isOpen ? EXPANDED_WIDTH : COLLAPSED_WIDTH,
+      toValue: isOpen ? expandedWidth : collapsedWidth,
       duration: 240,
       useNativeDriver: false,
     });
     animation.start();
     return () => animation.stop();
-  }, [isOpen, animatedWidth]);
+  }, [isOpen, animatedWidth, expandedWidth, collapsedWidth]);
 
   const textOpacity = animatedWidth.interpolate({
-    inputRange: [COLLAPSED_WIDTH, EXPANDED_WIDTH],
+    inputRange: collapsedWidth === expandedWidth ? [0, 1] : [collapsedWidth, expandedWidth],
     outputRange: [0, 1],
+    extrapolate: 'clamp',
   });
 
   const handleItemPress = useCallback(
@@ -122,13 +131,16 @@ export default function Sidebar({ navigation, activeRoute, isOpen, onOpen, onClo
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   return (
-    // El área vacía del sidebar colapsado actúa como botón para expandirlo.
+    // El área vacía del sidebar colapsado actúa como botón para expandirlo. En
+    // pantallas angostas el sidebar colapsado mide 0 (ver isWide más arriba), así que
+    // ahí ese toque nunca es alcanzable — MainLayout ofrece un botón de menú aparte.
     <Pressable
-      onPress={isOpen ? undefined : onOpen}
-      style={styles.outerPress}
+      onPress={isOpen || !isWide ? undefined : onOpen}
+      style={[styles.outerPress, !isWide && styles.outerPressOverlay]}
+      pointerEvents={!isWide && !isOpen ? 'none' : 'auto'}
       // Cuando está abierto no es interactivo: evita que el lector de pantalla
       // anuncie un botón "expandir" que ya no hace nada.
-      {...(isOpen
+      {...(isOpen || !isWide
         ? { accessible: false }
         : a11yButton(t.expandMenu, { hint: t.expandMenu, expanded: false }))}
     >
@@ -247,6 +259,16 @@ const makeStyles = (t) =>
     outerPress: {
       height: '100%',
       zIndex: 10,
+    },
+    // En pantallas angostas el sidebar no reserva espacio en el layout de flexbox: se
+    // superpone al contenido (por encima del backdrop que pinta MainLayout) para no
+    // restarle ancho permanentemente a una pantalla ya reducida.
+    outerPressOverlay: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      zIndex: 200,
     },
     sidebar: {
       height: '100%',
