@@ -51,6 +51,10 @@ export default function PersonasScreen() {
   const canManage = isFireChief ? can('manageFirefighters') : can('manageHealthPersonnel');
 
   const [notice, setNotice] = useState(null);
+  // El tono del toast venía fijo en "warning" para cualquier mensaje — un aviso de
+  // éxito ("agregado correctamente") se veía como advertencia. showNotice separa el
+  // mensaje del tono para que cada caso use el color correcto (éxito/error/aviso).
+  const showNotice = useCallback((message, tone = 'success') => setNotice({ message, tone }), []);
   const [query, setQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('Todos');
   const [searchExpanded, setSearchExpanded] = useState(false);
@@ -87,20 +91,20 @@ export default function PersonasScreen() {
         await healthPersonnelService.setActive(deactivateTarget.id, false);
       }
       setDeactivateTarget(null);
-      setNotice(`${deactivateTarget.name} fue dado de baja.`);
+      showNotice(`${deactivateTarget.name} fue dado de baja.`, 'success');
       refresh();
     } catch (e) {
       if (!e.response) {
         setDeactivateTarget(null);
-        setNotice(`Sin conexión: la baja de ${deactivateTarget.name} quedó guardada localmente y se aplicará cuando vuelva la señal.`);
+        showNotice(`Sin conexión: la baja de ${deactivateTarget.name} quedó guardada localmente y se aplicará cuando vuelva la señal.`, 'info');
         setDeactivating(false);
         return;
       }
-      setNotice(e?.response?.data?.message ?? 'No se pudo dar de baja. Intenta de nuevo.');
+      showNotice(e?.response?.data?.message ?? 'No se pudo dar de baja. Intenta de nuevo.', 'error');
     } finally {
       setDeactivating(false);
     }
-  }, [deactivateTarget, isFireChief, refresh]);
+  }, [deactivateTarget, isFireChief, refresh, showNotice]);
 
   const filterCounts = useMemo(() => {
     const counts = { Todos: personas.length };
@@ -189,7 +193,7 @@ export default function PersonasScreen() {
 
       {!!notice && (
         <View style={styles.noticeWrap}>
-          <Toast message={notice} tone="warning" />
+          <Toast message={notice.message} tone={notice.tone} />
         </View>
       )}
 
@@ -328,7 +332,7 @@ export default function PersonasScreen() {
         onClose={() => setCreateVisible(false)}
         onCreated={(personName) => {
           setCreateVisible(false);
-          setNotice(`${personName} fue agregado correctamente.`);
+          showNotice(`${personName} fue agregado correctamente.`, 'success');
           refresh();
         }}
       />

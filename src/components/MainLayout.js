@@ -33,17 +33,25 @@ export default function MainLayout({ children, navigation, route }) {
       />
 
       <View style={styles.content}>
-        {children}
-
+        {/* Antes el botón de menú flotaba con position:absolute encima del contenido,
+            así que tapaba el inicio del título de cada pantalla (ninguna pantalla sabe
+            que este botón existe ni le deja espacio). Ahora reserva su propia franja
+            real arriba, empujando el contenido hacia abajo en vez de superponerse. */}
         {!isWide && !sidebarOpen && (
-          <Pressable
-            style={[styles.menuButton, { top: insets.top + 12 }]}
-            onPress={open}
-            {...a11yButton(tAll.sidebar.expandMenu)}
-          >
-            <Ionicons name="menu" size={24} color={theme.onPrimarySolid} />
-          </Pressable>
+          <View style={[styles.menuBar, { height: insets.top + MIN_TOUCH_SIZE + 16 }]}>
+            <Pressable
+              style={styles.menuButton}
+              onPress={open}
+              {...a11yButton(tAll.sidebar.expandMenu)}
+            >
+              <Ionicons name="menu" size={24} color={theme.onPrimarySolid} />
+            </Pressable>
+          </View>
         )}
+
+        <View style={styles.screenArea}>
+          {children}
+        </View>
 
         {/* Capa que captura el toque fuera del sidebar para colapsarlo. Solo existe
             mientras está abierto; se expone como botón para que un lector de pantalla
@@ -71,21 +79,30 @@ const makeStyles = (t) =>
       flex: 1,
       backgroundColor: t.background,
     },
+    // Franja real (no superpuesta) que reserva espacio para el botón de menú y respeta
+    // el notch/status bar (insets.top ya está sumado a su altura en el JSX).
+    menuBar: {
+      justifyContent: 'flex-end',
+      paddingLeft: 12,
+      paddingBottom: 8,
+      backgroundColor: t.background,
+    },
+    screenArea: {
+      flex: 1,
+      minHeight: 0,
+    },
     overlay: {
       ...StyleSheet.absoluteFillObject,
       zIndex: 100,
       backgroundColor: t.scrim,
     },
     menuButton: {
-      position: 'absolute',
-      left: 12,
       width: MIN_TOUCH_SIZE,
       height: MIN_TOUCH_SIZE,
       borderRadius: MIN_TOUCH_SIZE / 2,
       backgroundColor: t.primarySolid,
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 150,
       shadowColor: t.shadowColor,
       shadowOpacity: t.shadowOpacity * 2,
       shadowOffset: { width: 0, height: 2 },
