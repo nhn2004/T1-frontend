@@ -189,13 +189,23 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
   // iniciará la sesión" que ya usa el aspirante, aquí para cualquier rol sin permiso
   // de organizador.
   const canStartSession = can('createSession');
-  const display = useMemo(() => (
-    isTrainee
-      ? (TRAINEE_STATUS_DISPLAY[session.status] ?? TRAINEE_STATUS_DISPLAY.PLANNED)
-      : session.status === 'PLANNED' && !canStartSession
-        ? { ...STATUS_DISPLAY.PLANNED, btnLabelKey: 'instructorWillStart', btnTone: 'disabled', btnDisabled: true }
-        : (STATUS_DISPLAY[session.status] ?? STATUS_DISPLAY.PLANNED)
-  ), [isTrainee, session.status, canStartSession]);
+  // "Continuar" (ACTIVE) y "Ver resultados" (COMPLETED) navegan a la gestión de
+  // asistentes (ROUTES.PEOPLE_SESSIONS) — Investigador no tiene ese permiso
+  // (`viewPeople`) y hasta ahora veía el botón habilitado igual, para toparse recién al
+  // tocarlo con el aviso de `navigateToPersonas`. Incorrecto por el mismo motivo que el
+  // botón "Iniciar": si el rol nunca puede completar la acción, el botón no debería
+  // aparecer habilitado en primer lugar.
+  const canViewAttendance = canAccessRoute(ROUTES.PEOPLE_SESSIONS);
+  const display = useMemo(() => {
+    if (isTrainee) return TRAINEE_STATUS_DISPLAY[session.status] ?? TRAINEE_STATUS_DISPLAY.PLANNED;
+    if (session.status === 'PLANNED' && !canStartSession) {
+      return { ...STATUS_DISPLAY.PLANNED, btnLabelKey: 'instructorWillStart', btnTone: 'disabled', btnDisabled: true };
+    }
+    if ((session.status === 'ACTIVE' || session.status === 'COMPLETED') && !canViewAttendance) {
+      return { ...(STATUS_DISPLAY[session.status] ?? STATUS_DISPLAY.PLANNED), btnLabelKey: 'noAccess', btnTone: 'disabled', btnDisabled: true };
+    }
+    return STATUS_DISPLAY[session.status] ?? STATUS_DISPLAY.PLANNED;
+  }, [isTrainee, session.status, canStartSession, canViewAttendance]);
 
   const updateAmb = useCallback(
     (field, val) => setAmbiental((prev) => ({ ...prev, [field]: val })),
