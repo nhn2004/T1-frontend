@@ -17,6 +17,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 import { a11yButton, a11yDecorative, a11yGroup, MIN_TOUCH_SIZE } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import Toast from '../../components/Toast';
@@ -396,8 +397,8 @@ const makeStyles = (t, isCompact) =>
       width: 110, opacity: 0.22,
     },
     heroContent: { paddingHorizontal: isCompact ? 20 : 32, paddingVertical: 28, gap: 8 },
-    heroTitle: { color: '#FFFFFF', fontSize: isCompact ? 22 : 30, fontWeight: '900' },
-    heroSubtitle: { color: '#D5DCE5', fontSize: isCompact ? 13 : 15, fontWeight: '600' },
+    heroTitle: { color: '#FFFFFF', fontSize: isCompact ? FONT_SIZE.xxxl : FONT_SIZE.hero, fontWeight: FONT_WEIGHT.bold },
+    heroSubtitle: { color: '#D5DCE5', fontSize: isCompact ? FONT_SIZE.md : FONT_SIZE.xl, fontWeight: FONT_WEIGHT.semibold },
 
     privacyBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -405,7 +406,7 @@ const makeStyles = (t, isCompact) =>
       borderWidth: 1, borderColor: t.status.info.border,
       borderRadius: 8, padding: 12,
     },
-    privacyText: { flex: 1, color: t.status.info.fg, fontSize: 13, lineHeight: 18 },
+    privacyText: { flex: 1, color: t.status.info.fg, fontSize: FONT_SIZE.md, lineHeight: 18 },
 
     statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
     statCard: {
@@ -416,8 +417,8 @@ const makeStyles = (t, isCompact) =>
       paddingHorizontal: 16, paddingVertical: 14,
     },
     statTextBox: { flex: 1 },
-    statLabel: { color: t.textMuted, fontSize: 11, fontWeight: '900', lineHeight: 14 },
-    statValue: { color: t.textPrimary, fontSize: 25, fontWeight: '900', lineHeight: 30 },
+    statLabel: { color: t.textMuted, fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, lineHeight: 14 },
+    statValue: { color: t.textPrimary, fontSize: FONT_SIZE.display, fontWeight: FONT_WEIGHT.bold, lineHeight: 30 },
     statIcon: { width: 42, height: 42, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
 
     mainGrid: { flexDirection: isCompact ? 'column' : 'row', gap: 16, alignItems: 'stretch' },
@@ -435,17 +436,17 @@ const makeStyles = (t, isCompact) =>
       flexDirection: 'row', alignItems: 'center',
       justifyContent: 'space-between', gap: 12,
     },
-    panelTitle: { color: t.textPrimary, fontSize: 18, fontWeight: '900' },
+    panelTitle: { color: t.textPrimary, ...TEXT_STYLES.sectionTitle },
 
     formGrid: { gap: 14 },
     formField: { gap: 6 },
-    fieldLabel: { color: t.textMuted, fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
+    fieldLabel: { color: t.textMuted, fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, letterSpacing: 0.5 },
     selectBox: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       gap: 10, borderRadius: 8, borderWidth: 1, borderColor: t.border,
       backgroundColor: t.cardAlt, paddingHorizontal: 12, minHeight: MIN_TOUCH_SIZE,
     },
-    selectText: { color: t.textPrimary, fontSize: 14, fontWeight: '600' },
+    selectText: { color: t.textPrimary, ...TEXT_STYLES.bodyBold },
 
     checkboxGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     checkboxItem: {
@@ -459,32 +460,32 @@ const makeStyles = (t, isCompact) =>
       backgroundColor: t.card,
     },
     checkboxChecked: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
-    checkboxLabel: { color: t.textSecondary, fontSize: 12, fontWeight: '700' },
+    checkboxLabel: { color: t.textSecondary, fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold },
 
     generateButton: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
       backgroundColor: t.primarySolid, borderRadius: 8, minHeight: MIN_TOUCH_SIZE + 4,
     },
-    generateButtonText: { color: t.onPrimarySolid, fontSize: 15, fontWeight: '800' },
+    generateButtonText: { color: t.onPrimarySolid, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold },
     generateButtonDisabled: { opacity: 0.75 },
 
-    filterDisclosure: { color: t.textMuted, fontSize: 11, lineHeight: 15, fontStyle: 'italic' },
+    filterDisclosure: { color: t.textMuted, fontSize: FONT_SIZE.sm, lineHeight: 15, fontStyle: 'italic' },
 
     reportResultBox: {
       gap: 4, padding: 14, borderRadius: 8,
       backgroundColor: t.status.info.bg, borderWidth: 1, borderColor: t.status.info.border,
     },
-    reportResultTitle: { color: t.status.info.fg, fontSize: 13, fontWeight: '900', marginBottom: 2 },
-    reportResultLine: { color: t.status.info.fg, fontSize: 12.5 },
-    reportResultHint: { color: t.status.info.fg, fontSize: 11, marginTop: 4, opacity: 0.85 },
+    reportResultTitle: { color: t.status.info.fg, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold, marginBottom: 2 },
+    reportResultLine: { color: t.status.info.fg, fontSize: FONT_SIZE.md },
+    reportResultHint: { color: t.status.info.fg, fontSize: FONT_SIZE.sm, marginTop: 4, opacity: 0.85 },
 
-    datasetDescription: { color: t.textSecondary, fontSize: 13, lineHeight: 19 },
+    datasetDescription: { color: t.textSecondary, fontSize: FONT_SIZE.md, lineHeight: 19 },
     exportButton: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
       borderRadius: 8, minHeight: MIN_TOUCH_SIZE, borderWidth: 1.5, borderColor: t.primarySolid,
       backgroundColor: t.card,
     },
     exportButtonDisabled: { opacity: 0.75 },
-    exportButtonText: { color: t.primaryText, fontSize: 14, fontWeight: '700' },
-    datasetEmptyText: { color: t.textSecondary, fontSize: 12, lineHeight: 17, textAlign: 'center', marginTop: 4 },
+    exportButtonText: { color: t.primaryText, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold },
+    datasetEmptyText: { color: t.textSecondary, fontSize: FONT_SIZE.base, lineHeight: 17, textAlign: 'center', marginTop: 4 },
   });

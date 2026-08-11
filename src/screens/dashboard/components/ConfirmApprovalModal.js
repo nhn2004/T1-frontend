@@ -7,6 +7,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
 import { a11yButton, a11yDecorative, a11yModal, ICON_HIT_SLOP, MIN_TOUCH_SIZE } from '../../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../../constants/typography';
 
 // Dos vistas internas:
 //   'options' → Aprobar / Rechazar
@@ -242,49 +243,49 @@ const makeStyles = (t) =>
       width: 36, height: 36, borderRadius: 10,
       alignItems: 'center', justifyContent: 'center',
     },
-    title: { flex: 1, fontSize: 17, fontWeight: '700', color: t.textPrimary },
+    title: { flex: 1, ...TEXT_STYLES.modalTitle, color: t.textPrimary },
     // flexShrink permite que este bloque ceda espacio al resto de la tarjeta (header,
     // botones) y se vuelva desplazable en vez de forzar overflow fuera de la tarjeta.
     scrollBody: { flexShrink: 1 },
     divider: { height: 1, backgroundColor: t.divider, marginVertical: 14 },
     spacer: { height: 10 },
     sectionLabel: {
-      fontSize: 11, fontWeight: '700', color: t.textMuted,
+      fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, color: t.textMuted,
       letterSpacing: 1, marginBottom: 8,
     },
     infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
     infoBlock: { flex: 1, minWidth: 0 },
-    infoText: { flex: 1, minWidth: 0, fontSize: 14, color: t.textPrimary, fontWeight: '500' },
-    infoSubtext: { fontSize: 13, color: t.textSecondary, marginTop: 1 },
+    infoText: { flex: 1, minWidth: 0, fontSize: FONT_SIZE.lg, color: t.textPrimary, fontWeight: FONT_WEIGHT.medium },
+    infoSubtext: { fontSize: FONT_SIZE.md, color: t.textSecondary, marginTop: 1 },
 
     actions: { flexDirection: 'row', gap: 10, marginTop: 4 },
     cancelBtn: {
       flex: 1, minHeight: MIN_TOUCH_SIZE, justifyContent: 'center', borderRadius: 10,
       borderWidth: 1.5, borderColor: t.borderStrong, alignItems: 'center',
     },
-    cancelBtnText: { fontSize: 15, fontWeight: '600', color: t.textSecondary },
+    cancelBtnText: { ...TEXT_STYLES.button, color: t.textSecondary },
     approveBtn: {
       flex: 1, flexDirection: 'row', gap: 6,
       minHeight: MIN_TOUCH_SIZE, borderRadius: 10,
       backgroundColor: t.status.success.solid,
       alignItems: 'center', justifyContent: 'center',
     },
-    approveBtnText: { fontSize: 15, fontWeight: '700', color: t.status.success.onSolid },
+    approveBtnText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.status.success.onSolid },
     rejectBtn: {
       flex: 1, flexDirection: 'row', gap: 6,
       minHeight: MIN_TOUCH_SIZE, borderRadius: 10,
       backgroundColor: t.card, borderWidth: 1.5, borderColor: t.status.danger.border,
       alignItems: 'center', justifyContent: 'center',
     },
-    rejectBtnText: { fontSize: 15, fontWeight: '700', color: t.status.danger.fg },
+    rejectBtnText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.status.danger.fg },
     btnDisabled: { backgroundColor: t.disabledBg },
     btnBusy: { opacity: 0.85 },
 
     rejectView: { gap: 10 },
-    rejectLabel: { fontSize: 14, color: t.textSecondary, fontWeight: '600' },
+    rejectLabel: { ...TEXT_STYLES.bodyBold, color: t.textSecondary },
     textInput: {
       borderWidth: 1.5, borderColor: t.border, borderRadius: 10,
-      padding: 12, fontSize: 14, color: t.textPrimary,
+      padding: 12, fontSize: FONT_SIZE.lg, color: t.textPrimary,
       minHeight: 80, backgroundColor: t.cardAlt,
     },
   });

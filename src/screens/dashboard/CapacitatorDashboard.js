@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ROUTES } from '../../constants/routes';
 import { a11yButton, a11yDecorative, a11yGroup, MIN_TOUCH_SIZE } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import { sessionService } from '../../services';
@@ -351,9 +352,9 @@ const makeStyles = (t, isCompact) =>
     heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(20,0,7,0.62)' },
     heroTitle: {
       color: '#FFFFFF',
-      fontSize: isCompact ? 22 : 28,
+      fontSize: isCompact ? FONT_SIZE.display : FONT_SIZE.statValue,
       lineHeight: isCompact ? 27 : 33,
-      fontWeight: '900',
+      fontWeight: FONT_WEIGHT.bold,
       paddingHorizontal: isCompact ? 24 : 42,
       paddingVertical: 12,
       maxWidth: 640,
@@ -374,17 +375,17 @@ const makeStyles = (t, isCompact) =>
       marginBottom: 2,
       backgroundColor: t.scrim,
     },
-    statValue: { fontSize: 26, fontWeight: '900', lineHeight: 30 },
-    statLabel: { fontSize: 12, fontWeight: '700', lineHeight: 16 },
+    statValue: { fontSize: FONT_SIZE.statValue, fontWeight: FONT_WEIGHT.bold, lineHeight: 30 },
+    statLabel: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold, lineHeight: 16 },
 
     loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 40 },
-    loadingText: { color: t.textSecondary, fontSize: 14 },
+    loadingText: { color: t.textSecondary, fontSize: FONT_SIZE.lg },
 
     dashboardGrid: { flexDirection: 'row', alignItems: 'flex-start', gap: 30 },
     dashboardGridStacked: { flexDirection: 'column' },
 
     actionSection: { flex: 1, minWidth: 0, gap: 14 },
-    sectionTitle: { color: t.textPrimary, fontSize: 20, fontWeight: '700' },
+    sectionTitle: { color: t.textPrimary, fontSize: FONT_SIZE.xxxl, fontWeight: FONT_WEIGHT.bold },
 
     trainingCard: {
       minHeight: 250,
@@ -410,23 +411,23 @@ const makeStyles = (t, isCompact) =>
       minWidth: 86, alignItems: 'center', borderRadius: 999,
       paddingHorizontal: 12, paddingVertical: 5,
     },
-    progressText: { fontSize: 12, fontWeight: '800' },
-    invitedText: { color: t.textMuted, fontSize: 12, fontWeight: '700' },
+    progressText: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold },
+    invitedText: { color: t.textMuted, fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold },
 
-    trainingTitle: { color: t.textPrimary, fontSize: 17, lineHeight: 22, fontWeight: '900' },
-    trainingDescription: { color: t.textSecondary, fontSize: 13, lineHeight: 19 },
+    trainingTitle: { color: t.textPrimary, fontSize: FONT_SIZE.xxl, lineHeight: 22, fontWeight: FONT_WEIGHT.bold },
+    trainingDescription: { color: t.textSecondary, fontSize: FONT_SIZE.md, lineHeight: 19 },
     trainingDetailsRow: {
       flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap',
       justifyContent: 'space-between', gap: 14, marginTop: 2,
     },
-    trainingDetail: { color: t.textSecondary, fontSize: 13, fontWeight: '500' },
+    trainingDetail: { color: t.textSecondary, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.medium },
 
     detailsButton: {
       width: 160, minHeight: MIN_TOUCH_SIZE,
       alignItems: 'center', justifyContent: 'center',
       borderRadius: 8, marginTop: 14, backgroundColor: t.primarySolid,
     },
-    detailsButtonText: { color: t.onPrimarySolid, fontSize: 15, fontWeight: '900' },
+    detailsButtonText: { color: t.onPrimarySolid, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold },
     pressed: { opacity: 0.85 },
 
     emptyCard: {
@@ -434,7 +435,7 @@ const makeStyles = (t, isCompact) =>
       backgroundColor: t.card, borderRadius: 22, padding: 24,
       borderWidth: 1, borderColor: t.border,
     },
-    emptyText: { fontSize: 14, color: t.textMuted, fontWeight: '600', textAlign: 'center' },
+    emptyText: { ...TEXT_STYLES.bodyBold, color: t.textMuted, textAlign: 'center' },
 
     weekCard: {
       width: 294, borderRadius: 24, backgroundColor: t.card,
@@ -443,24 +444,24 @@ const makeStyles = (t, isCompact) =>
     },
     weekCardStacked: { width: '100%' },
     weekHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    weekTitle: { color: t.textPrimary, fontSize: 16, fontWeight: '900' },
-    emptyWeek: { fontSize: 14, color: t.textMuted, textAlign: 'center', paddingVertical: 16 },
+    weekTitle: { color: t.textPrimary, fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold },
+    emptyWeek: { ...TEXT_STYLES.body, color: t.textMuted, textAlign: 'center', paddingVertical: 16 },
 
     weekList: { gap: 14 },
     weekItem: { minHeight: 58, flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
     dateBlock: { width: 34, alignItems: 'center' },
-    weekDay: { color: t.textMuted, fontSize: 12, fontWeight: '900' },
-    weekDate: { color: t.textPrimary, fontSize: 20, fontWeight: '900', marginTop: 2 },
+    weekDay: { color: t.textMuted, fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold },
+    weekDate: { color: t.textPrimary, fontSize: FONT_SIZE.xxxl, fontWeight: FONT_WEIGHT.bold, marginTop: 2 },
 
     timeline: { width: 4, minHeight: 58, alignSelf: 'stretch', borderRadius: 999 },
 
     weekInfo: { flex: 1, minWidth: 0, gap: 4 },
-    weekSessionTitle: { color: t.textPrimary, fontSize: 14, fontWeight: '900' },
-    weekSessionMeta: { color: t.textSecondary, fontSize: 12, fontWeight: '600' },
+    weekSessionTitle: { color: t.textPrimary, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold },
+    weekSessionMeta: { color: t.textSecondary, fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.semibold },
 
     statusPill: {
       alignSelf: 'flex-start', borderRadius: 5,
       paddingHorizontal: 7, paddingVertical: 3, marginTop: 2,
     },
-    statusText: { fontSize: 11, fontWeight: '900' },
+    statusText: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold },
   });

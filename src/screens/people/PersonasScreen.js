@@ -24,6 +24,7 @@ import Toast from '../../components/Toast';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import { healthPersonnelService, invitationService, traineeService, userService } from '../../services';
 import { usePersonas } from './hooks/usePersonas';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 
 const SEX_OPTIONS = ['M', 'F', 'Otro'];
 const PROFESSION_OPTIONS = ['Médico', 'Enfermero', 'Nutricionista'];
@@ -913,16 +914,16 @@ const modalStyles = (t) =>
       borderWidth: 1,
       borderColor: t.border,
     },
-    title: { fontSize: 16, fontWeight: '700', color: t.textPrimary, marginBottom: 2 },
+    title: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary, marginBottom: 2 },
     modeRow: { flexDirection: 'row', gap: 8 },
     modeChip: {
       flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 8,
       borderWidth: 1.5, borderColor: t.border, backgroundColor: t.cardAlt,
     },
     modeChipActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
-    modeChipText: { fontSize: 12, fontWeight: '700', color: t.textPrimary },
+    modeChipText: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
     modeChipTextActive: { color: t.onPrimarySolid },
-    inviteHint: { fontSize: 12, color: t.textSecondary, lineHeight: 17 },
+    inviteHint: { fontSize: FONT_SIZE.base, color: t.textSecondary, lineHeight: 17 },
     formScrollArea: { maxHeight: 420 },
     formScroll: { gap: 10, paddingBottom: 2 },
     row: { flexDirection: 'row', gap: 10 },
@@ -931,13 +932,13 @@ const modalStyles = (t) =>
     // llenar el modal (que se autoajusta a su contenido), lo que hacía que se
     // superpusieran entre sí en vez de apilarse normalmente.
     field: { gap: 5 },
-    fieldLabel: { fontSize: 12, color: t.textSecondary },
+    fieldLabel: { fontSize: FONT_SIZE.base, color: t.textSecondary },
     fieldInput: {
       borderWidth: 1.5,
       borderRadius: 8,
       paddingHorizontal: 12,
       paddingVertical: 9,
-      fontSize: 13,
+      fontSize: FONT_SIZE.md,
       backgroundColor: t.cardAlt,
       borderColor: t.borderStrong,
       color: t.textPrimary,
@@ -952,9 +953,9 @@ const modalStyles = (t) =>
       borderColor: t.border,
     },
     chipActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
-    chipText: { fontSize: 12, color: t.textPrimary },
-    chipTextActive: { color: t.onPrimarySolid, fontWeight: '700' },
-    errorText: { fontSize: 12, color: t.status.danger.fg },
+    chipText: { fontSize: FONT_SIZE.base, color: t.textPrimary },
+    chipTextActive: { color: t.onPrimarySolid, fontWeight: FONT_WEIGHT.bold },
+    errorText: { fontSize: FONT_SIZE.base, color: t.status.danger.fg },
     actions: { flexDirection: 'row', gap: 10, marginTop: 2 },
     cancelBtn: {
       flex: 1,
@@ -965,7 +966,7 @@ const modalStyles = (t) =>
       borderWidth: 1.5,
       borderColor: t.borderStrong,
     },
-    cancelBtnText: { fontSize: 13, fontWeight: '600', color: t.textSecondary },
+    cancelBtnText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textSecondary },
     submitBtn: {
       flex: 1,
       minHeight: 42,
@@ -975,7 +976,7 @@ const modalStyles = (t) =>
       backgroundColor: t.primarySolid,
     },
     submitBtnDisabled: { opacity: 0.7 },
-    submitBtnText: { fontSize: 13, fontWeight: '700', color: t.onPrimarySolid },
+    submitBtnText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold, color: t.onPrimarySolid },
   });
 
 const makeStyles = (t) => StyleSheet.create({
@@ -993,8 +994,7 @@ const makeStyles = (t) => StyleSheet.create({
     gap: 16,
   },
   pageTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    ...TEXT_STYLES.sectionTitle,
     color: t.textPrimary,
   },
   medicalTabRow: {
@@ -1012,7 +1012,7 @@ const makeStyles = (t) => StyleSheet.create({
     backgroundColor: t.card,
   },
   medicalTabChipActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
-  medicalTabText: { fontSize: 13, fontWeight: '700', color: t.textPrimary },
+  medicalTabText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
   medicalTabTextActive: { color: t.onPrimarySolid },
   addButton: {
     minWidth: 174,
@@ -1030,8 +1030,7 @@ const makeStyles = (t) => StyleSheet.create({
   },
   addButtonText: {
     color: t.onPrimarySolid,
-    fontSize: 14,
-    fontWeight: '600',
+    ...TEXT_STYLES.bodyBold,
   },
   filterBar: {
     flexDirection: 'row',
@@ -1058,12 +1057,12 @@ const makeStyles = (t) => StyleSheet.create({
   },
   pillText: {
     color: t.textPrimary,
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.semibold,
   },
   pillTextActive: {
     color: t.onPrimarySolid,
-    fontWeight: '700',
+    fontWeight: FONT_WEIGHT.bold,
   },
   countBadge: {
     backgroundColor: t.pill,
@@ -1077,8 +1076,8 @@ const makeStyles = (t) => StyleSheet.create({
     backgroundColor: t.scrim,
   },
   countText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
     color: t.textSecondary,
   },
   countTextActive: {
@@ -1100,7 +1099,7 @@ const makeStyles = (t) => StyleSheet.create({
     borderColor: t.border,
     backgroundColor: t.cardAlt,
     paddingHorizontal: 14,
-    fontSize: 13,
+    fontSize: FONT_SIZE.md,
     color: t.textPrimary,
   },
   carousel: {
@@ -1134,12 +1133,12 @@ const makeStyles = (t) => StyleSheet.create({
     flex: 1,
   },
   emptyBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
-  emptyText: { fontSize: 15, color: t.textMuted, textAlign: 'center' },
+  emptyText: { fontSize: FONT_SIZE.lg, color: t.textMuted, textAlign: 'center' },
   retryBtn: {
     paddingHorizontal: 18, minHeight: MIN_TOUCH_SIZE, justifyContent: 'center',
     borderRadius: 10, borderWidth: 1.5, borderColor: t.primaryBorder,
   },
-  retryText: { color: t.primaryText, fontSize: 14, fontWeight: '700' },
+  retryText: { color: t.primaryText, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold },
   noticeWrap: { paddingHorizontal: 14, paddingBottom: 6 },
   avatarFallback: {
     width: '100%', height: '100%',
@@ -1184,8 +1183,8 @@ const makeStyles = (t) => StyleSheet.create({
   },
   inactivePillText: {
     color: t.status.danger.fg,
-    fontSize: 8,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.bold,
   },
   personRow: {
     flexDirection: 'row',
@@ -1214,8 +1213,8 @@ const makeStyles = (t) => StyleSheet.create({
   },
   personName: {
     color: t.textPrimary,
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.base,
+    fontWeight: FONT_WEIGHT.semibold,
     marginBottom: 4,
   },
   rolePill: {
@@ -1230,8 +1229,8 @@ const makeStyles = (t) => StyleSheet.create({
   },
   rolePillText: {
     color: t.onPrimarySolid,
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.bold,
   },
   contactLine: {
     flexDirection: 'row',
@@ -1241,7 +1240,7 @@ const makeStyles = (t) => StyleSheet.create({
   },
   contactText: {
     color: t.textSecondary,
-    fontSize: 11,
+    fontSize: FONT_SIZE.sm,
     flexShrink: 1,
   },
   cardDivider: {
@@ -1257,8 +1256,7 @@ const makeStyles = (t) => StyleSheet.create({
   },
   sessionsTitle: {
     color: t.textSecondary,
-    fontSize: 11,
-    fontWeight: '600',
+    ...TEXT_STYLES.label,
   },
   sessionMetric: {
     flexDirection: 'row',
@@ -1272,7 +1270,7 @@ const makeStyles = (t) => StyleSheet.create({
   sessionLabel: {
     width: 76,
     color: t.textSecondary,
-    fontSize: 11,
+    fontSize: FONT_SIZE.sm,
   },
   pendingBadge: {
     minWidth: 20,
@@ -1294,7 +1292,7 @@ const makeStyles = (t) => StyleSheet.create({
   },
   badgeText: {
     color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.bold,
   },
 });

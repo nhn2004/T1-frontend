@@ -4,6 +4,7 @@ import { COLORS } from '../../../constants';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
 import { fullDateLabel } from '../utils/calendarUtils';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../../constants/typography';
 
 export default function DayAgendaPanel({ selectedDate, events = [], onViewDetails, compact }) {
   const theme = useTheme();
@@ -87,12 +88,11 @@ const makeStyles = (t) =>
     alignItems: 'flex-start',
   },
   weekday: {
-    fontSize: 17,
-    fontWeight: '800',
+    ...TEXT_STYLES.sectionTitle,
     color: t.textPrimary,
   },
   dayMonth: {
-    fontSize: 12,
+    fontSize: FONT_SIZE.base,
     color: t.textMuted,
     marginTop: 2,
   },
@@ -105,8 +105,8 @@ const makeStyles = (t) =>
     justifyContent: 'center',
   },
   dateBadgeText: {
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.bold,
     color: COLORS.primary,
   },
   divider: {
@@ -115,7 +115,7 @@ const makeStyles = (t) =>
     marginVertical: 14,
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: FONT_SIZE.md,
     color: t.iconMuted,
   },
   item: {
@@ -132,22 +132,22 @@ const makeStyles = (t) =>
     gap: 2,
   },
   itemTime: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
     color: t.iconMuted,
   },
   itemTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.bold,
     color: t.textPrimary,
   },
   itemLocation: {
-    fontSize: 12,
+    fontSize: FONT_SIZE.base,
     color: t.textMuted,
   },
   detailsLink: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.base,
+    fontWeight: FONT_WEIGHT.bold,
     color: COLORS.primary,
     marginTop: 4,
   },

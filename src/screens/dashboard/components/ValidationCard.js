@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
 import { a11yButton, a11yDecorative, a11yGroup, MIN_TOUCH_SIZE } from '../../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../../constants/typography';
 
 /**
  * Tarjeta de una solicitud pendiente de validación.
@@ -171,10 +172,10 @@ const makeStyles = (t, compact) =>
       backgroundColor: t.primarySoft,
       alignItems: 'center', justifyContent: 'center',
     },
-    avatarText: { fontSize: 14, fontWeight: '800', color: t.onPrimarySoft },
+    avatarText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.onPrimarySoft },
     personText: { flex: 1, minWidth: 0 },
-    name: { fontSize: 15, fontWeight: '700', color: t.textPrimary },
-    email: { fontSize: 12, color: t.textMuted, marginTop: 1 },
+    name: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    email: { fontSize: FONT_SIZE.base, color: t.textMuted, marginTop: 1 },
     professionChip: {
       backgroundColor: t.pill,
       borderRadius: 999,
@@ -182,7 +183,7 @@ const makeStyles = (t, compact) =>
       paddingVertical: 4,
       maxWidth: compact ? 110 : 150,
     },
-    professionText: { fontSize: 11, fontWeight: '700', color: t.textSecondary },
+    professionText: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, color: t.textSecondary },
 
     sessionBox: {
       flexDirection: 'row',
@@ -193,8 +194,8 @@ const makeStyles = (t, compact) =>
       padding: 10,
     },
     sessionText: { flex: 1, minWidth: 0 },
-    sessionTitle: { fontSize: 14, fontWeight: '600', color: t.textPrimary, lineHeight: 19 },
-    sessionMeta: { fontSize: 12, color: t.textMuted, marginTop: 2 },
+    sessionTitle: { ...TEXT_STYLES.bodyBold, color: t.textPrimary, lineHeight: 19 },
+    sessionMeta: { fontSize: FONT_SIZE.base, color: t.textMuted, marginTop: 2 },
 
     metaRow: {
       flexDirection: 'row',
@@ -204,9 +205,9 @@ const makeStyles = (t, compact) =>
       gap: 8,
     },
     metaItem: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1 },
-    metaText: { fontSize: 12, color: t.textMuted },
+    metaText: { fontSize: FONT_SIZE.base, color: t.textMuted },
     expiryChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
-    expiryText: { fontSize: 11, fontWeight: '800' },
+    expiryText: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold },
 
     actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     btnBusy: { opacity: 0.6 },
@@ -220,7 +221,7 @@ const makeStyles = (t, compact) =>
       borderRadius: 10,
       backgroundColor: t.status.success.solid,
     },
-    approveText: { fontSize: 14, fontWeight: '700', color: t.status.success.onSolid },
+    approveText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.status.success.onSolid },
     rejectBtn: {
       flex: 1,
       flexDirection: 'row',
@@ -233,7 +234,7 @@ const makeStyles = (t, compact) =>
       borderWidth: 1.5,
       borderColor: t.status.danger.border,
     },
-    rejectText: { fontSize: 14, fontWeight: '700', color: t.status.danger.fg },
+    rejectText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.status.danger.fg },
     detailBtn: {
       width: MIN_TOUCH_SIZE - 4,
       minHeight: MIN_TOUCH_SIZE - 4,

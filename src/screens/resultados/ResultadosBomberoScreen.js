@@ -11,6 +11,7 @@ import { useAuditOnMount } from '../../hooks/useAuditTrail';
 import useTheme from '../../hooks/useTheme';
 import Toast from '../../components/Toast';
 import { a11yButton, a11yDecorative } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 import { safeGoBack } from '../../utils/safeGoBack';
 
 // Ancho máximo del panel del cuerpo; ya no es un ancho fijo, solo un tope para
@@ -190,15 +191,15 @@ const makeStyles = (t, isWide) =>
     shadowRadius: 3,
   },
   headerLeft: { gap: 4 },
-  pageTitle: { fontSize: 18, fontWeight: '700', color: t.textPrimary },
+  pageTitle: { ...TEXT_STYLES.sectionTitle, color: t.textPrimary },
   sessionInfoRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
   },
-  sessionTitle: { fontSize: 13, fontWeight: '600', color: t.textPrimary },
-  sessionDot: { fontSize: 13, color: t.textFaint },
-  sessionDate: { fontSize: 12, color: t.textMuted },
+  sessionTitle: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textPrimary },
+  sessionDot: { fontSize: FONT_SIZE.md, color: t.textFaint },
+  sessionDate: { fontSize: FONT_SIZE.base, color: t.textMuted },
 
   backButton: {
     flexDirection: 'row',
@@ -211,7 +212,7 @@ const makeStyles = (t, isWide) =>
     paddingVertical: 8,
     backgroundColor: t.card,
   },
-  backButtonText: { fontSize: 13, fontWeight: '600', color: t.textPrimary },
+  backButtonText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textPrimary },
 
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
@@ -252,8 +253,8 @@ const makeStyles = (t, isWide) =>
     alignSelf: 'center',
   },
   columnTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.xl,
+    fontWeight: FONT_WEIGHT.bold,
     color: t.textPrimary,
     marginBottom: 8,
   },
@@ -297,8 +298,8 @@ const makeStyles = (t, isWide) =>
     gap: 7,
   },
   metricTitle: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.bold,
     color: t.textPrimary,
   },
   metricStatusBadge: {
@@ -308,8 +309,8 @@ const makeStyles = (t, isWide) =>
     paddingVertical: 3,
   },
   metricStatus: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
   },
   metricValueBlock: {
     flexDirection: 'row',
@@ -319,13 +320,12 @@ const makeStyles = (t, isWide) =>
     minWidth: 96,
   },
   metricValue: {
-    fontSize: 28,
-    fontWeight: '700',
+    ...TEXT_STYLES.statValue,
     color: t.textPrimary,
   },
   metricUnit: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.semibold,
     color: t.textMuted,
   },
   progressBarBg: {

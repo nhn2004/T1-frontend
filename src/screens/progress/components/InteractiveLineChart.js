@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import useTheme from '../../../hooks/useTheme';
+import { FONT_SIZE, FONT_WEIGHT } from '../../../constants/typography';
 
 const CHART_HEIGHT = 220;
 const TOP_PAD = 16;
@@ -58,7 +59,7 @@ export default function InteractiveLineChart({ series = [], points = [], emptyLa
   if (!points.length) {
     return (
       <View style={[styles.emptyBox, { backgroundColor: theme.pill }]}>
-        <Text style={{ color: theme.textMuted, fontSize: 13 }}>{emptyLabel}</Text>
+        <Text style={{ color: theme.textMuted, fontSize: FONT_SIZE.md }}>{emptyLabel}</Text>
       </View>
     );
   }
@@ -253,8 +254,8 @@ const makeStyles = (t) =>
     borderRadius: 5,
   },
   legendText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.base,
+    fontWeight: FONT_WEIGHT.semibold,
   },
   legendTextHidden: {
     textDecorationLine: 'line-through',
@@ -265,8 +266,8 @@ const makeStyles = (t) =>
     left: 0,
   },
   gridLabel: {
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.bold,
     paddingHorizontal: 4,
     marginTop: -8,
   },
@@ -279,8 +280,8 @@ const makeStyles = (t) =>
     height: BOTTOM_PAD,
   },
   xLabel: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.bold,
   },
   tooltip: {
     position: 'absolute',
@@ -297,17 +298,17 @@ const makeStyles = (t) =>
   },
   tooltipTitle: {
     color: t.card,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.base,
+    fontWeight: FONT_WEIGHT.bold,
   },
   tooltipDate: {
     color: 'rgba(255,255,255,0.7)',
-    fontSize: 10,
+    fontSize: FONT_SIZE.xs,
     marginBottom: 4,
   },
   tooltipValue: {
     color: t.card,
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
   },
 });

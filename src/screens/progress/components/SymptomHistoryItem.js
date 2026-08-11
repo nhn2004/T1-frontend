@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
 import { SEVERITY_BADGE_KEY } from '../__mocks__/progressData';
+import { FONT_SIZE, FONT_WEIGHT } from '../../../constants/typography';
 
 // Entrada de línea de tiempo: una por sesión. Si no hubo síntomas se muestra
 // como fila compacta y silenciosa (no compite visualmente con las que sí
@@ -86,13 +87,13 @@ const makeStyles = (t) =>
     gap: 8,
   },
   title: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.bold,
     flex: 1,
   },
   date: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
   },
   chipsRow: {
     flexDirection: 'row',
@@ -105,8 +106,8 @@ const makeStyles = (t) =>
     paddingVertical: 3,
   },
   chipText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
   },
   severityBadge: {
     alignSelf: 'flex-start',
@@ -115,12 +116,12 @@ const makeStyles = (t) =>
     paddingVertical: 2,
   },
   severityText: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.bold,
     textTransform: 'uppercase',
   },
   noneText: {
-    fontSize: 12,
+    fontSize: FONT_SIZE.base,
   },
   viewLink: {
     flexDirection: 'row',
@@ -129,8 +130,8 @@ const makeStyles = (t) =>
     marginTop: 2,
   },
   viewLinkText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.base,
+    fontWeight: FONT_WEIGHT.bold,
     color: t.primaryText,
   },
 });

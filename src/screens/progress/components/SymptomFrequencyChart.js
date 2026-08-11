@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { COLORS } from '../../../constants';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
+import { FONT_SIZE, FONT_WEIGHT } from '../../../constants/typography';
 
 // Barras horizontales de frecuencia — tocar una barra filtra el historial de
 // abajo por ese síntoma. Mismo patrón visual (pill + barra) que el resto de
@@ -16,7 +17,7 @@ export default function SymptomFrequencyChart({ items = [], selected, onSelect, 
   if (!items.length) {
     return (
       <View style={[styles.emptyBox, { backgroundColor: theme.pill }]}>
-        <Text style={{ color: theme.textMuted, fontSize: 13 }}>{emptyLabel}</Text>
+        <Text style={{ color: theme.textMuted, fontSize: FONT_SIZE.md }}>{emptyLabel}</Text>
       </View>
     );
   }
@@ -36,7 +37,7 @@ export default function SymptomFrequencyChart({ items = [], selected, onSelect, 
             accessibilityRole="button"
             accessibilityState={{ selected: isActive }}
           >
-            <Text style={[styles.label, { color: theme.textSecondary }, isActive && { color: COLORS.primary, fontWeight: '800' }]} numberOfLines={1}>
+            <Text style={[styles.label, { color: theme.textSecondary }, isActive && { color: COLORS.primary, fontWeight: FONT_WEIGHT.bold }]} numberOfLines={1}>
               {t.progress.symptoms[item.label] ?? item.label}
             </Text>
             <View style={[styles.track, { backgroundColor: theme.pill }]}>
@@ -75,8 +76,8 @@ const styles = StyleSheet.create({
   },
   label: {
     width: 130,
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.base,
+    fontWeight: FONT_WEIGHT.semibold,
   },
   track: {
     flex: 1,
@@ -91,7 +92,7 @@ const styles = StyleSheet.create({
   count: {
     width: 24,
     textAlign: 'right',
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.base,
+    fontWeight: FONT_WEIGHT.bold,
   },
 });

@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
 import { a11yButton, a11yDecorative, a11yModal, MIN_TOUCH_SIZE } from '../../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../../constants/typography';
 
 // Diálogo de confirmación antes de aceptar una invitación de sesión.
 
@@ -115,9 +116,9 @@ const makeStyles = (t) =>
       justifyContent: 'center',
       marginBottom: 10,
     },
-    title: { fontSize: 17, fontWeight: '700', marginBottom: 8, color: t.textPrimary, textAlign: 'center' },
-    message: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 18, color: t.textSecondary },
-    bold: { fontWeight: '700', color: t.textPrimary },
+    title: { ...TEXT_STYLES.modalTitle, marginBottom: 8, color: t.textPrimary, textAlign: 'center' },
+    message: { ...TEXT_STYLES.body, textAlign: 'center', lineHeight: 20, marginBottom: 18, color: t.textSecondary },
+    bold: { fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
 
     actions: { flexDirection: 'row', gap: 10, width: '100%' },
     cancelBtn: {
@@ -129,7 +130,7 @@ const makeStyles = (t) =>
       borderColor: t.borderStrong,
       alignItems: 'center',
     },
-    cancelBtnText: { fontSize: 15, fontWeight: '600', color: t.textSecondary },
+    cancelBtnText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.semibold, color: t.textSecondary },
     confirmBtn: {
       flex: 1,
       flexDirection: 'row',
@@ -141,5 +142,5 @@ const makeStyles = (t) =>
       justifyContent: 'center',
     },
     confirmBtnBusy: { opacity: 0.8 },
-    confirmBtnText: { fontSize: 15, fontWeight: '700', color: t.status.success.onSolid },
+    confirmBtnText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.status.success.onSolid },
   });

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import useTheme from '../../../hooks/useTheme';
 import { a11yDecorative, a11yGroup } from '../../../constants/a11y';
+import { FONT_SIZE, TEXT_STYLES } from '../../../constants/typography';
 
 // Entrada de actividad. Sin estado ni lógica.
 // `tone` es una clave semántica del tema ('success' | 'danger' | 'warning' | 'info' |
@@ -38,7 +39,7 @@ const makeStyles = (t) =>
     },
     dot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
     textBlock: { flex: 1 },
-    title: { fontSize: 14, fontWeight: '600', color: t.textPrimary },
-    subtitle: { fontSize: 13, color: t.textSecondary, marginTop: 1 },
-    time: { fontSize: 12, color: t.textMuted, flexShrink: 0 },
+    title: { ...TEXT_STYLES.bodyBold, color: t.textPrimary },
+    subtitle: { fontSize: FONT_SIZE.md, color: t.textSecondary, marginTop: 1 },
+    time: { fontSize: FONT_SIZE.base, color: t.textMuted, flexShrink: 0 },
   });

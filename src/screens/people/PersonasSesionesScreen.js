@@ -20,6 +20,7 @@ import useTheme from '../../hooks/useTheme';
 import { useAuth } from '../../hooks';
 import { useAuditOnMount } from '../../hooks/useAuditTrail';
 import { safeGoBack } from '../../utils/safeGoBack';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 
 const STATUS_STYLES = {
   COMPLETADO: { label: 'Completado', icon: 'checkmark',    tone: 'success' },
@@ -458,8 +459,7 @@ const makeStyles = (t) => StyleSheet.create({
     gap: 14,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
+    ...TEXT_STYLES.sectionTitle,
     color: t.textPrimary,
     flex: 1,
   },
@@ -486,7 +486,7 @@ const makeStyles = (t) => StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  toggleText: { fontSize: 13, fontWeight: '600', color: t.textMuted },
+  toggleText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textMuted },
   toggleTextActive: { color: t.textPrimary },
   backBtn: {
     flexDirection: 'row',
@@ -499,7 +499,7 @@ const makeStyles = (t) => StyleSheet.create({
     borderWidth: 1.5,
     borderColor: t.border,
   },
-  backBtnText: { fontSize: 13, fontWeight: '600', color: t.textPrimary },
+  backBtnText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textPrimary },
 
   // Filter bar
   filterBar: {
@@ -521,7 +521,7 @@ const makeStyles = (t) => StyleSheet.create({
     borderColor: t.border,
   },
   pillActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid, shadowColor: t.primarySolid, shadowOpacity: 0.3, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 3 },
-  pillText: { fontSize: 13, fontWeight: '600', color: t.textPrimary },
+  pillText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textPrimary },
   pillTextActive: { color: t.card },
   countBadge: {
     minWidth: 20, height: 20, borderRadius: 10,
@@ -530,7 +530,7 @@ const makeStyles = (t) => StyleSheet.create({
     paddingHorizontal: 5,
   },
   countBadgeActive: { backgroundColor: t.scrim },
-  countText: { fontSize: 11, fontWeight: '700', color: t.textSecondary },
+  countText: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, color: t.textSecondary },
   countTextActive: { color: t.card },
 
   searchIconBtn: {
@@ -546,7 +546,7 @@ const makeStyles = (t) => StyleSheet.create({
     borderColor: t.border,
     backgroundColor: t.cardAlt,
     paddingHorizontal: 14,
-    fontSize: 13,
+    fontSize: FONT_SIZE.md,
     color: t.textPrimary,
   },
 
@@ -608,10 +608,10 @@ const makeStyles = (t) => StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     gap: 3, paddingHorizontal: 7,
   },
-  statusBadgeText: { color: t.card, fontSize: 9, fontWeight: '600' },
-  personName: { color: t.textPrimary, fontSize: 12, fontWeight: '600', marginBottom: 4 },
+  statusBadgeText: { color: t.card, fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.semibold },
+  personName: { color: t.textPrimary, fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.semibold, marginBottom: 4 },
   infoLine: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
-  infoText: { color: t.textSecondary, fontSize: 11 },
+  infoText: { color: t.textSecondary, fontSize: FONT_SIZE.sm },
 
   actions: { marginTop: 8, flexDirection: 'row', gap: 6 },
   cardBtn: {
@@ -625,12 +625,12 @@ const makeStyles = (t) => StyleSheet.create({
     justifyContent: 'center', gap: 5,
   },
   cardBtnSolid: { backgroundColor: t.primarySolid },
-  cardBtnSolidText: { color: t.card, fontSize: 12, fontWeight: '600', flexShrink: 1 },
+  cardBtnSolidText: { color: t.card, fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.semibold, flexShrink: 1 },
   cardBtnOutline: { borderWidth: 1, borderColor: t.primarySolid, backgroundColor: t.card },
-  cardBtnOutlineText: { color: t.primarySolid, fontSize: 12, fontWeight: '500', flexShrink: 1 },
+  cardBtnOutlineText: { color: t.primarySolid, fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.medium, flexShrink: 1 },
   cardBtnDisabled: { borderWidth: 1, borderColor: t.border, backgroundColor: t.disabledBg },
-  cardBtnDisabledText: { color: t.textDisabled, fontSize: 12, fontWeight: '500', flexShrink: 1 },
+  cardBtnDisabledText: { color: t.textDisabled, fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.medium, flexShrink: 1 },
 
   emptyBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { fontSize: 14, color: t.textMuted },
+  emptyText: { fontSize: FONT_SIZE.lg, color: t.textMuted },
 });

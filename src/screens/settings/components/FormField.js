@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import useTheme from '../../../hooks/useTheme';
+import { FONT_SIZE } from '../../../constants/typography';
 
 // Etiqueta + campo de texto — usado por la tarjeta Perfil de Usuario.
 // `editable={false}` produce el aspecto atenuado de solo lectura (Rol, ID de Bombero).
@@ -39,13 +40,13 @@ export default function FormField({
 const makeStyles = (t) =>
   StyleSheet.create({
     field: { flex: 1, gap: 6 },
-    label: { fontSize: 13, color: t.textSecondary },
+    label: { fontSize: FONT_SIZE.md, color: t.textSecondary },
     input: {
       borderWidth: 1.5,
       borderRadius: 8,
       paddingHorizontal: 12,
       paddingVertical: 9,
-      fontSize: 14,
+      fontSize: FONT_SIZE.lg,
       backgroundColor: t.cardAlt,
       borderColor: t.borderStrong,
       color: t.textPrimary,

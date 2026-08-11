@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, useWindowDimensions, ActivityIndica
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { COLORS, ROUTES } from '../../constants';
+import { TEXT_STYLES } from '../../constants/typography';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
 import FilterTabs from '../sessions/components/FilterTabs';
@@ -187,8 +188,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
   },
   topTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    ...TEXT_STYLES.sectionTitle,
   },
   content: {
     flex: 1,

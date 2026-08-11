@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
 import { a11yDecorative } from '../../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT } from '../../../constants/typography';
 
 // Tarjeta genérica de sección usada por cada bloque de Configuración
 // (Perfil, Notificaciones, Datos y Sincronización, Apariencia, Idioma, Seguridad).
@@ -36,6 +37,6 @@ const makeStyles = (t) =>
       borderColor: t.border,
     },
     header: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    title: { fontSize: 16, fontWeight: '700', color: t.textPrimary },
+    title: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
     body: { gap: 12 },
   });

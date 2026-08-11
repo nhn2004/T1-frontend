@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ROUTES } from '../../constants/routes';
 import { a11yDecorative } from '../../constants/a11y';
+import { TEXT_STYLES } from '../../constants/typography';
 import useAuthStore from '../../store/authStore';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
@@ -301,9 +302,9 @@ const makeStyles = (t) =>
     },
     emptyInvitationWide: { flex: 1.3 },
     emptyInvitationCompact: { width: '100%', minHeight: 120 },
-    emptyText: { fontSize: 14, color: t.textSecondary, textAlign: 'center' },
+    emptyText: { ...TEXT_STYLES.body, color: t.textSecondary, textAlign: 'center' },
 
-    sectionTitle: { fontSize: 17, fontWeight: '700', color: t.textPrimary },
+    sectionTitle: { ...TEXT_STYLES.sectionTitle, color: t.textPrimary },
 
     statsRow: { flexDirection: 'row', gap: 12 },
     statsRowCompact: { flexWrap: 'wrap' },

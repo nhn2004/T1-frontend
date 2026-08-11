@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
 import { a11yButton, MIN_TOUCH_SIZE } from '../../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT } from '../../../constants/typography';
 
 // Tarjeta "Acción inmediata requerida": una invitación de sesión pendiente.
 
@@ -98,8 +99,8 @@ const makeStyles = (t) =>
       width: '100%',
     },
     sectionTitle: {
-      fontSize: 16,
-      fontWeight: '700',
+      fontSize: FONT_SIZE.xl,
+      fontWeight: FONT_WEIGHT.bold,
       color: t.textPrimary,
       marginBottom: 12,
     },
@@ -122,14 +123,14 @@ const makeStyles = (t) =>
       gap: 8,
     },
     badge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-    badgeText: { fontSize: 11, fontWeight: '700' },
-    invitedAgo: { fontSize: 12, fontWeight: '700', color: t.textMuted },
+    badgeText: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold },
+    invitedAgo: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold, color: t.textMuted },
 
-    title: { fontSize: 16, fontWeight: '700', color: t.textPrimary },
-    description: { fontSize: 13, color: t.textSecondary, lineHeight: 18 },
+    title: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    description: { fontSize: FONT_SIZE.md, color: t.textSecondary, lineHeight: 18 },
 
     metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 2 },
-    metaText: { fontSize: 13, color: t.textSecondary },
+    metaText: { fontSize: FONT_SIZE.md, color: t.textSecondary },
 
     actions: {
       flexDirection: 'row',
@@ -147,12 +148,12 @@ const makeStyles = (t) =>
       paddingHorizontal: 18,
     },
     confirmBtnDisabled: { backgroundColor: t.disabledBg },
-    confirmBtnText: { color: t.onPrimarySolid, fontSize: 14, fontWeight: '700' },
+    confirmBtnText: { color: t.onPrimarySolid, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold },
 
     detailsBtn: {
       minHeight: MIN_TOUCH_SIZE,
       justifyContent: 'center',
       paddingHorizontal: 4,
     },
-    detailsText: { color: t.primaryText, fontSize: 14, fontWeight: '700' },
+    detailsText: { color: t.primaryText, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold },
   });

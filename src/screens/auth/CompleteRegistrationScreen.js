@@ -12,6 +12,7 @@ import { ROLES, ROLE_LABELS } from '../../constants/roles';
 import { a11yAlert, a11yButton, a11yDecorative, ICON_HIT_SLOP, MIN_TOUCH_SIZE } from '../../constants/a11y';
 import { authService } from '../../services/authService';
 import useTheme from '../../hooks/useTheme';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 
 const MIN_PASSWORD_LENGTH = 8;
 const SEX_OPTIONS = ['M', 'F', 'Otro'];
@@ -487,8 +488,8 @@ const makeStyles = (t) =>
       alignSelf: 'flex-start', marginBottom: 4,
     },
 
-    title:    { fontSize: 26, fontWeight: '900', color: t.textPrimary, textAlign: 'center' },
-    subtitle: { fontSize: 15, color: t.textSecondary, lineHeight: 21, marginBottom: 4, textAlign: 'center' },
+    title:    { fontSize: FONT_SIZE.display, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary, textAlign: 'center' },
+    subtitle: { fontSize: FONT_SIZE.lg, color: t.textSecondary, lineHeight: 21, marginBottom: 4, textAlign: 'center' },
 
     errorBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -496,10 +497,10 @@ const makeStyles = (t) =>
       borderWidth: 1.5, borderColor: t.status.danger.border,
       borderRadius: 10, padding: 12,
     },
-    errorBannerText: { flex: 1, fontSize: 14, color: t.status.danger.fg, fontWeight: '600' },
+    errorBannerText: { flex: 1, ...TEXT_STYLES.bodyBold, color: t.status.danger.fg },
 
     fieldBlock: { gap: 6 },
-    label:      { fontSize: 13, fontWeight: '700', color: t.textSecondary },
+    label:      { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold, color: t.textSecondary },
 
     inputRow: {
       flexDirection: 'row', alignItems: 'center',
@@ -508,7 +509,7 @@ const makeStyles = (t) =>
       minHeight: MIN_TOUCH_SIZE + 4,
       backgroundColor: t.cardAlt, gap: 8,
     },
-    input: { flex: 1, fontSize: 15, color: t.textPrimary, paddingVertical: 12 },
+    input: { flex: 1, fontSize: FONT_SIZE.lg, color: t.textPrimary, paddingVertical: 12 },
 
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: {
@@ -516,7 +517,7 @@ const makeStyles = (t) =>
       borderWidth: 1.5, borderColor: t.border, backgroundColor: t.cardAlt,
     },
     chipActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
-    chipText: { fontSize: 13, color: t.textPrimary, fontWeight: '600' },
+    chipText: { fontSize: FONT_SIZE.md, color: t.textPrimary, fontWeight: FONT_WEIGHT.semibold },
     chipTextActive: { color: t.onPrimarySolid },
 
     btn: {
@@ -525,5 +526,5 @@ const makeStyles = (t) =>
       minHeight: MIN_TOUCH_SIZE + 8, marginTop: 4,
     },
     btnDisabled: { backgroundColor: t.disabledBg },
-    btnText:     { color: t.onPrimarySolid, fontSize: 16, fontWeight: '800' },
+    btnText:     { color: t.onPrimarySolid, fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold },
   });

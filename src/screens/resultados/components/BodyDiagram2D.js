@@ -3,6 +3,7 @@ import { View, Image, Pressable, Animated, Text, StyleSheet } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
 import { a11yDecorative } from '../../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT } from '../../../constants/typography';
 
 const NORMAL_STATUSES = ['Normal', 'Seguro'];
 const IMAGE_ASPECT_RATIO = 446 / 740;
@@ -265,13 +266,13 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     flex: 1,
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.base,
+    fontWeight: FONT_WEIGHT.semibold,
     color: '#2C323A',
   },
   infoValue: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.base,
+    fontWeight: FONT_WEIGHT.bold,
   },
   // All positions are % of the image's own box, measured against the actual
   // photo — see src/assets/anatomy/full-body.png.

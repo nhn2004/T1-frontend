@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
 import { a11yDecorative, MIN_TOUCH_SIZE } from '../../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT } from '../../../constants/typography';
 
 // Panel "Esta semana": próximos elementos de agenda. Distinto del timeline completo
 // de Agenda que se usa en el detalle de sesión.
@@ -118,7 +119,7 @@ const makeStyles = (t) =>
       alignItems: 'center',
       marginBottom: 14,
     },
-    headerTitle: { fontSize: 16, fontWeight: '700', color: t.textPrimary },
+    headerTitle: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
     list: { gap: 6 },
     row: {
       flexDirection: 'row',
@@ -127,10 +128,10 @@ const makeStyles = (t) =>
       minHeight: MIN_TOUCH_SIZE,
       paddingVertical: 6,
     },
-    emptyText: { fontSize: 14, color: t.textMuted },
+    emptyText: { fontSize: FONT_SIZE.lg, color: t.textMuted },
     dateColumn: { width: 34, alignItems: 'center' },
-    day: { fontSize: 11, fontWeight: '700', color: t.textMuted },
-    date: { fontSize: 16, fontWeight: '700', color: t.textPrimary },
+    day: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, color: t.textMuted },
+    date: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
     bar: {
       width: 3,
       borderRadius: 2,
@@ -139,8 +140,8 @@ const makeStyles = (t) =>
       alignSelf: 'stretch',
     },
     content: { flex: 1, gap: 2 },
-    title: { fontSize: 14, fontWeight: '700', color: t.textPrimary },
-    subtitle: { fontSize: 13, color: t.textSecondary },
+    title: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    subtitle: { fontSize: FONT_SIZE.md, color: t.textSecondary },
     badge: {
       alignSelf: 'flex-start',
       borderRadius: 6,
@@ -148,5 +149,5 @@ const makeStyles = (t) =>
       paddingVertical: 2,
       marginTop: 2,
     },
-    badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+    badgeText: { fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.bold, textTransform: 'uppercase' },
   });

@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ROUTES } from '../../constants/routes';
 import { a11yButton, a11yDecorative, MIN_TOUCH_SIZE } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
@@ -140,7 +141,7 @@ const makeStyles = (t) =>
       flexWrap: 'wrap',
       gap: 10,
     },
-    pageTitle: { fontSize: 19, fontWeight: '800', color: t.textPrimary },
+    pageTitle: { ...TEXT_STYLES.screenTitle, color: t.textPrimary },
     crearBtn: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -150,11 +151,11 @@ const makeStyles = (t) =>
       paddingHorizontal: 16,
       minHeight: MIN_TOUCH_SIZE,
     },
-    crearBtnText: { color: t.onPrimarySolid, fontSize: 14, fontWeight: '700' },
+    crearBtnText: { color: t.onPrimarySolid, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold },
 
     emptyBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: 20 },
-    emptyText: { fontSize: 15, color: t.textMuted, textAlign: 'center' },
-    errorText: { fontSize: 15, color: t.status.danger.fg, textAlign: 'center', fontWeight: '600' },
+    emptyText: { fontSize: FONT_SIZE.xl, color: t.textMuted, textAlign: 'center' },
+    errorText: { fontSize: FONT_SIZE.xl, color: t.status.danger.fg, textAlign: 'center', fontWeight: FONT_WEIGHT.semibold },
     retryBtn: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -165,5 +166,5 @@ const makeStyles = (t) =>
       borderWidth: 1.5,
       borderColor: t.primaryBorder,
     },
-    retryText: { color: t.primaryText, fontSize: 14, fontWeight: '700' },
+    retryText: { color: t.primaryText, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold },
   });

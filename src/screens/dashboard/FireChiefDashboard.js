@@ -8,6 +8,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { ROUTES } from '../../constants/routes';
 import { a11yButton, a11yDecorative, a11yGroup, MIN_TOUCH_SIZE } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 import useAuthStore from '../../store/authStore';
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
@@ -246,15 +247,15 @@ const makeStyles = (t, isWide) =>
       justifyContent: 'space-between', flexWrap: 'wrap', gap: 10,
     },
     headerText: { flex: 1, minWidth: 200 },
-    greeting: { fontSize: 20, fontWeight: '800', color: t.textPrimary },
-    subtitle: { fontSize: 13, color: t.textSecondary, marginTop: 2 },
+    greeting: { fontSize: FONT_SIZE.xxxl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    subtitle: { fontSize: FONT_SIZE.md, color: t.textSecondary, marginTop: 2 },
     headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     crearBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
       backgroundColor: t.primarySolid, borderRadius: 10,
       paddingHorizontal: 16, minHeight: MIN_TOUCH_SIZE,
     },
-    crearBtnText: { color: t.onPrimarySolid, fontSize: 15, fontWeight: '700' },
+    crearBtnText: { color: t.onPrimarySolid, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold },
 
     middleRow: { flexDirection: isWide ? 'row' : 'column', gap: 12 },
 
@@ -273,8 +274,8 @@ const makeStyles = (t, isWide) =>
     },
     statIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
     statTexts: { flex: 1 },
-    statValue: { fontSize: 24, fontWeight: '800', color: t.textPrimary },
-    statLabel: { fontSize: 12, color: t.textSecondary, marginTop: 2 },
+    statValue: { fontSize: FONT_SIZE.display, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    statLabel: { fontSize: FONT_SIZE.base, color: t.textSecondary, marginTop: 2 },
 
     panel: {
       flex: 1, backgroundColor: t.card, borderRadius: 14,
@@ -282,9 +283,9 @@ const makeStyles = (t, isWide) =>
       padding: 14, gap: 10,
     },
     panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 2 },
-    panelTitle: { fontSize: 16, fontWeight: '700', color: t.textPrimary },
+    panelTitle: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
 
-    emptyText: { color: t.textMuted, fontSize: 14, textAlign: 'center', marginVertical: 8 },
+    emptyText: { ...TEXT_STYLES.body, color: t.textMuted, textAlign: 'center', marginVertical: 8 },
 
     upcomingRow: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -292,19 +293,19 @@ const makeStyles = (t, isWide) =>
       borderBottomWidth: 1, borderBottomColor: t.divider,
     },
     upcomingLeft: { flex: 1 },
-    upcomingTitle: { fontSize: 14, fontWeight: '700', color: t.textPrimary },
-    upcomingMeta:  { fontSize: 13, color: t.textSecondary, marginTop: 2 },
+    upcomingTitle: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    upcomingMeta:  { fontSize: FONT_SIZE.md, color: t.textSecondary, marginTop: 2 },
     statusBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-    statusBadgeText: { fontSize: 11, fontWeight: '700' },
+    statusBadgeText: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold },
 
     verTodosBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
       minHeight: MIN_TOUCH_SIZE, justifyContent: 'flex-end',
     },
-    verTodosText: { fontSize: 14, color: t.primaryText, fontWeight: '600' },
+    verTodosText: { color: t.primaryText, ...TEXT_STYLES.bodyBold },
 
     recentList: { gap: 10 },
     recentRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    recentText: { flex: 1, fontSize: 14, color: t.textPrimary },
-    recentTime: { fontSize: 12, color: t.textMuted },
+    recentText: { flex: 1, color: t.textPrimary, ...TEXT_STYLES.body },
+    recentTime: { fontSize: FONT_SIZE.base, color: t.textMuted },
   });

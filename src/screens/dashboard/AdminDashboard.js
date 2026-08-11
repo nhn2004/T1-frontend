@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ROUTES } from '../../constants/routes';
 import { a11yButton, a11yDecorative, a11yGroup, MIN_TOUCH_SIZE } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import { sessionService }         from '../../services';
@@ -247,8 +248,8 @@ const makeStyles = (t) =>
       justifyContent: 'space-between', gap: 12,
     },
     headerText: { flex: 1 },
-    greeting: { fontSize: 22, fontWeight: '800', color: t.textPrimary },
-    subtitle: { fontSize: 13, color: t.textSecondary, marginTop: 2 },
+    greeting: { fontSize: FONT_SIZE.display, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    subtitle: { fontSize: FONT_SIZE.md, color: t.textSecondary, marginTop: 2 },
 
     warningBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -256,7 +257,7 @@ const makeStyles = (t) =>
       borderWidth: 1, borderColor: t.status.warning.border,
       borderRadius: 10, padding: 12,
     },
-    warningText: { flex: 1, fontSize: 13, color: t.status.warning.fg },
+    warningText: { flex: 1, fontSize: FONT_SIZE.md, color: t.status.warning.fg },
 
     statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     statCard: {
@@ -268,8 +269,8 @@ const makeStyles = (t) =>
       alignItems: 'center', justifyContent: 'center',
       marginBottom: 2, backgroundColor: t.scrim,
     },
-    statValue: { fontSize: 26, fontWeight: '900', lineHeight: 30 },
-    statLabel: { fontSize: 12, fontWeight: '700', lineHeight: 16 },
+    statValue: { fontSize: FONT_SIZE.statValue, fontWeight: FONT_WEIGHT.bold, lineHeight: 30 },
+    statLabel: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold, lineHeight: 16 },
 
     card: {
       backgroundColor: t.card, borderRadius: 14,
@@ -277,7 +278,7 @@ const makeStyles = (t) =>
       padding: 16, gap: 10,
     },
     cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-    cardTitle:  { fontSize: 16, fontWeight: '700', color: t.textPrimary },
+    cardTitle:  { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
     inlineLoader: { marginVertical: 16 },
 
     sessionRow: {
@@ -286,11 +287,11 @@ const makeStyles = (t) =>
       borderTopWidth: 1, borderTopColor: t.divider,
     },
     sessionInfo:  { flex: 1 },
-    sessionTitle: { fontSize: 14, fontWeight: '700', color: t.textPrimary },
-    sessionMeta:  { fontSize: 13, color: t.textMuted, marginTop: 2 },
+    sessionTitle: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    sessionMeta:  { fontSize: FONT_SIZE.md, color: t.textMuted, marginTop: 2 },
     badge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-    badgeText: { fontSize: 11, fontWeight: '800' },
-    emptyText: { fontSize: 14, color: t.textMuted, textAlign: 'center', paddingVertical: 12 },
+    badgeText: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold },
+    emptyText: { ...TEXT_STYLES.body, color: t.textMuted, textAlign: 'center', paddingVertical: 12 },
 
     quickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     quickCard: {
@@ -300,5 +301,5 @@ const makeStyles = (t) =>
       alignItems: 'center', justifyContent: 'center',
       paddingVertical: 16, gap: 6, minHeight: MIN_TOUCH_SIZE + 20,
     },
-    quickLabel: { fontSize: 12, fontWeight: '700', color: t.textSecondary, textAlign: 'center' },
+    quickLabel: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold, color: t.textSecondary, textAlign: 'center' },
   });

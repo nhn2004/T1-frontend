@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
 import { weekdayLabels, monthLabel, isSameDay } from '../utils/calendarUtils';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../../constants/typography';
 
 const MAX_VISIBLE_CHIPS = 3;
 
@@ -144,12 +145,11 @@ const makeStyles = (t) =>
     marginBottom: 16,
   },
   monthTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    ...TEXT_STYLES.screenTitle,
     color: t.textPrimary,
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: FONT_SIZE.base,
     color: t.textMuted,
     marginTop: 2,
   },
@@ -174,8 +174,8 @@ const makeStyles = (t) =>
     justifyContent: 'center',
   },
   todayBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.base,
+    fontWeight: FONT_WEIGHT.bold,
   },
   weekdayRow: {
     flexDirection: 'row',
@@ -184,8 +184,8 @@ const makeStyles = (t) =>
   weekdayLabel: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
     color: t.iconMuted,
   },
   grid: {
@@ -233,8 +233,8 @@ const makeStyles = (t) =>
     backgroundColor: t.primarySolid,
   },
   dayNumber: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.base,
+    fontWeight: FONT_WEIGHT.bold,
     color: t.textPrimary,
   },
   dayNumberToday: {
@@ -249,12 +249,12 @@ const makeStyles = (t) =>
     paddingVertical: 1,
   },
   chipText: {
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.bold,
   },
   moreText: {
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.bold,
     color: t.iconMuted,
   },
 });

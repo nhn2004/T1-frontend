@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ImageBackground, StyleSheet } from 'react-native';
 import useTranslation from '../../../hooks/useTranslation';
 import { a11yDecorative } from '../../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT } from '../../../constants/typography';
 
 const BANNER_IMAGE = {
   uri: 'https://images.unsplash.com/photo-1578736641330-3155e606cd40?w=900&q=80',
@@ -58,14 +59,14 @@ const styles = StyleSheet.create({
   },
   greeting: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.xl,
+    fontWeight: FONT_WEIGHT.bold,
     letterSpacing: 1,
   },
   name: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: FONT_SIZE.xxl,
+    fontWeight: FONT_WEIGHT.bold,
     letterSpacing: 0.5,
     marginTop: 4,
   },

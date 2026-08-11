@@ -14,6 +14,7 @@ import useTranslation from '../../hooks/useTranslation';
 import Toast from '../../components/Toast';
 import { healthPersonnelService, medicalHistoryService } from '../../services';
 import { safeGoBack } from '../../utils/safeGoBack';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 
 const EMPTY_FORM = {
   allergies: '', preexistingConditions: '', currentMedication: '', generalObservations: '',
@@ -229,14 +230,14 @@ const makeStyles = (t) =>
     content: { padding: 16, gap: 14, maxWidth: 760, width: '100%', alignSelf: 'center' },
     topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' },
     topTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    pageTitle: { fontSize: 20, fontWeight: '700', color: t.textPrimary },
-    subtitle: { fontSize: 13, color: t.textSecondary, marginTop: 2 },
+    pageTitle: { ...TEXT_STYLES.screenTitle, color: t.textPrimary },
+    subtitle: { fontSize: FONT_SIZE.md, color: t.textSecondary, marginTop: 2 },
     backBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
       paddingHorizontal: 14, minHeight: 40, borderRadius: 10,
       backgroundColor: t.card, borderWidth: 1.5, borderColor: t.border,
     },
-    backBtnText: { fontSize: 14, fontWeight: '600', color: t.textPrimary },
+    backBtnText: { ...TEXT_STYLES.bodyBold, color: t.textPrimary },
     loadingBox: { paddingVertical: 40, alignItems: 'center' },
 
     card: {
@@ -248,23 +249,23 @@ const makeStyles = (t) =>
       backgroundColor: t.status.info.bg,
     },
     noRecordTextWrap: { flex: 1, gap: 3 },
-    noRecordTitle: { fontSize: 13, fontWeight: '700', color: t.status.info.fg },
-    noRecordBody: { fontSize: 12, color: t.status.info.fg, lineHeight: 17 },
+    noRecordTitle: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold, color: t.status.info.fg },
+    noRecordBody: { fontSize: FONT_SIZE.base, color: t.status.info.fg, lineHeight: 17 },
 
     field: { gap: 6 },
-    fieldLabel: { fontSize: 13, color: t.textSecondary, fontWeight: '600' },
+    fieldLabel: { fontSize: FONT_SIZE.md, color: t.textSecondary, fontWeight: FONT_WEIGHT.semibold },
     input: {
       borderWidth: 1.5, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
-      fontSize: 14, backgroundColor: t.cardAlt, borderColor: t.borderStrong, color: t.textPrimary,
+      fontSize: FONT_SIZE.lg, backgroundColor: t.cardAlt, borderColor: t.borderStrong, color: t.textPrimary,
     },
     inputMultiline: { minHeight: 90, textAlignVertical: 'top' },
     inputDisabled: { opacity: 0.6 },
-    updatedText: { fontSize: 12, color: t.textMuted },
+    updatedText: { fontSize: FONT_SIZE.base, color: t.textMuted },
 
     saveBtn: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
       borderRadius: 8, paddingVertical: 12, backgroundColor: t.primarySolid,
     },
     saveBtnDisabled: { opacity: 0.7 },
-    saveBtnText: { fontSize: 14, fontWeight: '700', color: t.onPrimarySolid },
+    saveBtnText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.onPrimarySolid },
   });

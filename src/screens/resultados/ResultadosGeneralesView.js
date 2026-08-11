@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { vitalSignsService } from '../../services/vitalSignsService';
 import useTheme from '../../hooks/useTheme';
 import { a11yDecorative, a11yGroup } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT } from '../../constants/typography';
 
 /** Promedio de los valores no nulos; `null` si no hay ninguno. */
 function average(values, decimals = 0) {
@@ -204,7 +205,7 @@ const makeStyles = (t) =>
     paddingTop: 8,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: FONT_SIZE.lg,
     color: t.textMuted,
     marginBottom: 20,
   },
@@ -243,26 +244,26 @@ const makeStyles = (t) =>
   },
   tagText: {
     color: '#fff',
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.semibold,
   },
   topCardBody: {
     marginTop: 8,
   },
   topCardValue: {
-    fontSize: 32,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.hero,
+    fontWeight: FONT_WEIGHT.bold,
     color: '#fff',
   },
   topCardTitle: {
-    fontSize: 13,
+    fontSize: FONT_SIZE.md,
     color: 'rgba(255,255,255,0.9)',
-    fontWeight: '500',
+    fontWeight: FONT_WEIGHT.medium,
     marginTop: 4,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.xl,
+    fontWeight: FONT_WEIGHT.semibold,
     color: t.textPrimary,
     marginBottom: 16,
   },
@@ -297,8 +298,8 @@ const makeStyles = (t) =>
     justifyContent: 'center',
   },
   metricTitle: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.medium,
     color: t.textSecondary,
     flex: 1,
   },
@@ -309,13 +310,13 @@ const makeStyles = (t) =>
     marginBottom: 16,
   },
   metricValue: {
-    fontSize: 32,
-    fontWeight: '700',
+    fontSize: FONT_SIZE.hero,
+    fontWeight: FONT_WEIGHT.bold,
     color: t.textPrimary,
   },
   metricUnit: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.semibold,
     color: t.textMuted,
   },
   progressBarBg: {

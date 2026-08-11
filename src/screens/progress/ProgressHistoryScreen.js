@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, ROUTES } from '../../constants';
 import useTheme from '../../hooks/useTheme';
 import { a11yDecorative, a11yTab } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 import useTranslation from '../../hooks/useTranslation';
 import { getStatus } from '../resultados/utils/vitalThresholds';
 import { useAuth } from '../../hooks';
@@ -372,8 +373,8 @@ const makeStyles = (t) =>
     paddingHorizontal: 14,
     paddingTop: 14,
   },
-  topTitle: { fontSize: 18, fontWeight: '800' },
-  topSubtitle: { fontSize: 12, marginTop: 2 },
+  topTitle: { ...TEXT_STYLES.sectionTitle },
+  topSubtitle: { fontSize: FONT_SIZE.base, marginTop: 2 },
   content: { padding: 14, gap: 14, paddingBottom: 28 },
 
   filterRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
@@ -384,7 +385,7 @@ const makeStyles = (t) =>
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5,
   },
   pillActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  pillText: { fontSize: 12, fontWeight: '600' },
+  pillText: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.semibold },
   pillTextActive: { color: t.onPrimarySolid },
 
   card: {
@@ -392,10 +393,10 @@ const makeStyles = (t) =>
     shadowColor: t.shadowColor, shadowOffset: { width: 0, height: 2 }, shadowOpacity: t.shadowOpacity, shadowRadius: 6, elevation: 2,
   },
   cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 },
-  cardTitle: { fontSize: 15, fontWeight: '700' },
-  cardSubtitle: { fontSize: 12, marginTop: 2 },
+  cardTitle: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold },
+  cardSubtitle: { fontSize: FONT_SIZE.base, marginTop: 2 },
   sessionsPill: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  sessionsPillText: { fontSize: 11, fontWeight: '700' },
+  sessionsPillText: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold },
 
   statsGrid: { flexDirection: 'row', gap: 12 },
   statsGridCompact: { flexWrap: 'wrap' },
@@ -404,10 +405,10 @@ const makeStyles = (t) =>
 
   investigationGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 10 },
   investigationItem: { minWidth: 110 },
-  investigationLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
-  investigationValue: { fontSize: 18, fontWeight: '800', marginTop: 2 },
+  investigationLabel: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, letterSpacing: 0.3 },
+  investigationValue: { fontSize: FONT_SIZE.xxl, fontWeight: FONT_WEIGHT.bold, marginTop: 2 },
 
-  clearFilterText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
-  filteredByText: { fontSize: 12, marginTop: -8, marginBottom: 4 },
+  clearFilterText: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold, color: COLORS.primary },
+  filteredByText: { fontSize: FONT_SIZE.base, marginTop: -8, marginBottom: 4 },
   divider: { height: 1, marginTop: 6 },
 });

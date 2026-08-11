@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { a11yButton, a11yDecorative, a11yTab, MIN_TOUCH_SIZE } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 import useTheme from '../../hooks/useTheme';
 import { useAuditOnMount } from '../../hooks/useAuditTrail';
 import useAuthStore from '../../store/authStore';
@@ -262,8 +263,8 @@ const makeStyles = (t, compact) =>
     },
     headerMain: { flex: 1, minWidth: 200, gap: 2 },
     titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    title: { fontSize: 20, fontWeight: '800', color: t.textPrimary },
-    subtitle: { fontSize: 13, color: t.textMuted },
+    title: { color: t.textPrimary, ...TEXT_STYLES.screenTitle },
+    subtitle: { fontSize: FONT_SIZE.md, color: t.textMuted },
 
     headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     iconBtn: {
@@ -281,7 +282,7 @@ const makeStyles = (t, compact) =>
       paddingHorizontal: 14, minHeight: MIN_TOUCH_SIZE, borderRadius: 10,
       backgroundColor: t.card, borderWidth: 1, borderColor: t.border,
     },
-    backBtnText: { fontSize: 14, fontWeight: '600', color: t.textPrimary },
+    backBtnText: { color: t.textPrimary, ...TEXT_STYLES.bodyBold },
 
     filterRow: {
       flexDirection: 'row',
@@ -297,7 +298,7 @@ const makeStyles = (t, compact) =>
       borderWidth: 1.5, borderColor: t.border,
     },
     filterPillActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
-    filterText: { fontSize: 13, fontWeight: '600', color: t.textSecondary },
+    filterText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textSecondary },
     filterTextActive: { color: t.onPrimarySolid },
     filterCount: {
       minWidth: 22, alignItems: 'center',
@@ -305,7 +306,7 @@ const makeStyles = (t, compact) =>
       backgroundColor: t.pill,
     },
     filterCountActive: { backgroundColor: t.scrim },
-    filterCountText: { fontSize: 11, fontWeight: '800', color: t.textSecondary },
+    filterCountText: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, color: t.textSecondary },
     filterCountTextActive: { color: t.onPrimarySolid },
 
     list: {
@@ -327,6 +328,6 @@ const makeStyles = (t, compact) =>
       backgroundColor: t.status.success.bg,
       alignItems: 'center', justifyContent: 'center',
     },
-    emptyTitle: { fontSize: 17, fontWeight: '800', color: t.textPrimary },
-    emptyText: { fontSize: 14, color: t.textMuted, textAlign: 'center', maxWidth: 320 },
+    emptyTitle: { fontSize: FONT_SIZE.xxl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    emptyText: { ...TEXT_STYLES.body, color: t.textMuted, textAlign: 'center', maxWidth: 320 },
   });

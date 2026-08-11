@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, Switch, StyleSheet } from 'react-native';
 import useTheme from '../../../hooks/useTheme';
 import { a11ySwitch } from '../../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT } from '../../../constants/typography';
 
 // Etiqueta + descripción + interruptor — usado por Notificaciones, Datos y
 // Sincronización, y Apariencia.
@@ -42,6 +43,6 @@ const makeStyles = (t) =>
       backgroundColor: t.cardAlt,
     },
     textBlock: { flex: 1, gap: 2 },
-    label: { fontSize: 13, fontWeight: '600', color: t.textSecondary },
-    description: { fontSize: 12, color: t.textMuted },
+    label: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textSecondary },
+    description: { fontSize: FONT_SIZE.base, color: t.textMuted },
   });

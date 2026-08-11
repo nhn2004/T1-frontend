@@ -22,6 +22,7 @@ import { safeGoBack } from '../../utils/safeGoBack';
 import { sessionService, environmentalDataService } from '../../services';
 import { traineeService } from '../../services/traineeService';
 import api from '../../services/api';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 
 /** Inserta las barras dd/mm/aaaa automáticamente a medida que se escriben los dígitos. */
 function formatFechaInput(text) {
@@ -818,13 +819,13 @@ const makeStyles = (t, isCompact) =>
       alignItems: 'center', flexWrap: 'wrap', gap: 10,
     },
     topTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
-    topTitle: { fontSize: 18, fontWeight: '800', color: t.textPrimary },
+    topTitle: { ...TEXT_STYLES.sectionTitle, color: t.textPrimary },
     backBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
       paddingHorizontal: 14, minHeight: MIN_TOUCH_SIZE, borderRadius: 10,
       backgroundColor: t.card, borderWidth: 1.5, borderColor: t.border,
     },
-    backBtnText: { fontSize: 14, fontWeight: '600', color: t.textPrimary },
+    backBtnText: { ...TEXT_STYLES.bodyBold, color: t.textPrimary },
 
     body: { flex: 1, flexDirection: isCompact ? 'column' : 'row', gap: 14 },
     bodyCompactContent: { gap: 14, paddingBottom: 24 },
@@ -841,23 +842,23 @@ const makeStyles = (t, isCompact) =>
       shadowOpacity: t.shadowOpacity, shadowRadius: 6, elevation: 2,
     },
     overviewCard: { flex: 1 },
-    sessionTitle: { fontSize: 20, fontWeight: '800', color: t.textPrimary },
-    sessionDesc: { fontSize: 14, color: t.textSecondary, lineHeight: 20 },
+    sessionTitle: { ...TEXT_STYLES.screenTitle, color: t.textPrimary },
+    sessionDesc: { fontSize: FONT_SIZE.lg, color: t.textSecondary, lineHeight: 20 },
     statsRow: { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
     statItem: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     statIconBox: {
       width: 38, height: 38, borderRadius: 10,
       backgroundColor: t.pill, alignItems: 'center', justifyContent: 'center',
     },
-    statLabel: { fontSize: 11, fontWeight: '700', color: t.textMuted, letterSpacing: 0.5 },
-    statValue: { fontSize: 14, fontWeight: '700', color: t.textPrimary, marginTop: 1 },
+    statLabel: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, color: t.textMuted, letterSpacing: 0.5 },
+    statValue: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary, marginTop: 1 },
 
     sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-    sectionTitle: { fontSize: 16, fontWeight: '700', color: t.textPrimary },
+    sectionTitle: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
     overviewScroll: { flex: 1 },
     overviewScrollContent: { gap: 10, paddingBottom: 8 },
-    note: { fontSize: 14, color: t.textSecondary, lineHeight: 20 },
-    noteBold: { fontWeight: '700', color: t.textPrimary },
+    note: { fontSize: FONT_SIZE.lg, color: t.textSecondary, lineHeight: 20 },
+    noteBold: { fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
 
     statusCard: {
       backgroundColor: t.card, borderRadius: 18, padding: 18, gap: 12,
@@ -868,14 +869,14 @@ const makeStyles = (t, isCompact) =>
     watermark: { position: 'absolute', right: 12, bottom: -10 },
     watermarkIcon: { opacity: 0.08 },
     statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-    statusLabel: { fontSize: 15, fontWeight: '700', color: t.textPrimary },
+    statusLabel: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
     badge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-    badgeText: { fontSize: 12, fontWeight: '700' },
+    badgeText: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold },
     actionBtn: {
       borderRadius: 12, minHeight: MIN_TOUCH_SIZE + 6,
       alignItems: 'center', justifyContent: 'center',
     },
-    actionBtnText: { fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+    actionBtnText: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, letterSpacing: 0.3 },
     manageRow: { flexDirection: 'row', gap: 10, marginTop: 2 },
     manageBtn: {
       flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -883,7 +884,7 @@ const makeStyles = (t, isCompact) =>
       backgroundColor: t.card,
     },
     manageBtnDanger: { borderColor: t.status.danger.border },
-    manageBtnText: { fontSize: 13, fontWeight: '700', color: t.textPrimary },
+    manageBtnText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
     editScroll: { maxHeight: 360 },
 
     // ── Modal ──
@@ -904,17 +905,17 @@ const makeStyles = (t, isCompact) =>
       width: 44, height: 44, borderRadius: 12,
       backgroundColor: t.primarySoft, alignItems: 'center', justifyContent: 'center',
     },
-    sheetTitle: { fontSize: 18, fontWeight: '800', color: t.textPrimary },
-    sheetSub: { fontSize: 13, color: t.textSecondary, marginTop: 3, lineHeight: 18 },
+    sheetTitle: { ...TEXT_STYLES.modalTitle, color: t.textPrimary },
+    sheetSub: { fontSize: FONT_SIZE.md, color: t.textSecondary, marginTop: 3, lineHeight: 18 },
     fields: { gap: 16 },
     fieldWrap: { gap: 6 },
-    fieldLabel: { fontSize: 14, fontWeight: '600', color: t.textSecondary },
+    fieldLabel: { ...TEXT_STYLES.bodyBold, color: t.textSecondary },
     fieldLabelErr: { color: t.status.danger.fg },
-    required: { fontWeight: '400', fontSize: 13 },
+    required: { fontWeight: FONT_WEIGHT.regular, fontSize: FONT_SIZE.md },
     input: {
       borderWidth: 1, borderColor: t.border, borderRadius: 10,
       paddingHorizontal: 14, minHeight: MIN_TOUCH_SIZE,
-      fontSize: 15, color: t.textPrimary, fontWeight: '600',
+      fontSize: FONT_SIZE.lg, color: t.textPrimary, fontWeight: FONT_WEIGHT.semibold,
       backgroundColor: t.cardAlt,
     },
     inputErr: { borderColor: t.status.danger.border, backgroundColor: t.status.danger.bg, borderWidth: 1.5 },
@@ -923,12 +924,12 @@ const makeStyles = (t, isCompact) =>
       paddingHorizontal: 22, minHeight: MIN_TOUCH_SIZE, justifyContent: 'center',
       borderRadius: 10, borderWidth: 1.5, borderColor: t.borderStrong,
     },
-    cancelBtnText: { fontSize: 15, fontWeight: '600', color: t.textSecondary },
+    cancelBtnText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.semibold, color: t.textSecondary },
     confirmBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
       backgroundColor: t.primarySolid, borderRadius: 10,
       paddingHorizontal: 22, minHeight: MIN_TOUCH_SIZE, justifyContent: 'center',
     },
     confirmBtnBusy: { opacity: 0.8 },
-    confirmBtnText: { fontSize: 15, fontWeight: '700', color: t.onPrimarySolid },
+    confirmBtnText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.onPrimarySolid },
   });

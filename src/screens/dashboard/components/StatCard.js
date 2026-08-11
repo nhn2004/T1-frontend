@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
 import { a11yDecorative, a11yGroup } from '../../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../../constants/typography';
 
 // Layout horizontal: icono a la izquierda, información a la derecha.
 // Con `breakdown` (array de {label, count}) muestra mini-chips debajo del valor.
@@ -76,9 +77,9 @@ const makeStyles = (t) =>
       flexShrink: 0,
     },
     info: { flex: 1, gap: 2 },
-    title: { fontSize: 12, color: t.textMuted, fontWeight: '600' },
-    value: { fontSize: 26, fontWeight: '800', color: t.textPrimary, lineHeight: 30 },
-    subtitle: { fontSize: 12, color: t.textSecondary, lineHeight: 16, flexWrap: 'wrap' },
+    title: { fontSize: FONT_SIZE.base, color: t.textMuted, fontWeight: FONT_WEIGHT.semibold },
+    value: { ...TEXT_STYLES.statValue, color: t.textPrimary, lineHeight: 30 },
+    subtitle: { fontSize: FONT_SIZE.base, color: t.textSecondary, lineHeight: 16, flexWrap: 'wrap' },
 
     breakdown: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 },
     chip: {
@@ -90,6 +91,6 @@ const makeStyles = (t) =>
       paddingHorizontal: 6,
       paddingVertical: 2,
     },
-    chipCount: { fontSize: 12, fontWeight: '800', color: t.textPrimary },
-    chipLabel: { fontSize: 11, color: t.textMuted },
+    chipCount: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    chipLabel: { fontSize: FONT_SIZE.sm, color: t.textMuted },
   });

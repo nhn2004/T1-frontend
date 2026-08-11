@@ -7,6 +7,7 @@ import { ROLE_TONES } from '../sessionDisplay';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
 import { a11yButton, a11yDecorative, a11yGroup, MIN_TOUCH_SIZE } from '../../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT } from '../../../constants/typography';
 
 // Barra lateral derecha: centro de entrenamiento + personal asignado.
 // Puramente presentacional: recibe todo por props.
@@ -149,20 +150,20 @@ const makeStyles = (t) =>
     centerImage: { width: '100%', height: 120, backgroundColor: t.pill },
     centerImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
     centerInfo: { padding: 14, gap: 8 },
-    centerName: { fontSize: 15, fontWeight: '800', color: t.textPrimary },
+    centerName: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
     addressRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
-    addressText: { flex: 1, fontSize: 13, color: t.textSecondary, lineHeight: 18 },
+    addressText: { flex: 1, fontSize: FONT_SIZE.md, color: t.textSecondary, lineHeight: 18 },
     specificBox: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
       backgroundColor: t.pill, borderRadius: 8,
       paddingHorizontal: 10, paddingVertical: 8,
     },
-    specificText: { flex: 1, fontSize: 13, color: t.textSecondary },
+    specificText: { flex: 1, fontSize: FONT_SIZE.md, color: t.textSecondary },
     directionsRow: {
       flexDirection: 'row', alignItems: 'center', gap: 6,
       minHeight: MIN_TOUCH_SIZE - 8,
     },
-    directionsText: { fontSize: 14, fontWeight: '700', color: t.primaryText },
+    directionsText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.primaryText },
 
     instructorsCard: {
       backgroundColor: t.card,
@@ -173,10 +174,10 @@ const makeStyles = (t) =>
       gap: 12,
     },
     instructorsLabel: {
-      fontSize: 11, fontWeight: '800', color: t.textMuted,
+      fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, color: t.textMuted,
       letterSpacing: 0.6, textTransform: 'uppercase',
     },
-    emptyText: { fontSize: 13, color: t.textMuted, lineHeight: 18 },
+    emptyText: { fontSize: FONT_SIZE.md, color: t.textMuted, lineHeight: 18 },
 
     instructorRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
     avatar: {
@@ -184,13 +185,13 @@ const makeStyles = (t) =>
       backgroundColor: t.primarySoft,
       alignItems: 'center', justifyContent: 'center',
     },
-    avatarText: { fontSize: 15, fontWeight: '800', color: t.onPrimarySoft },
+    avatarText: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.onPrimarySoft },
     instructorInfo: { flex: 1, gap: 2 },
-    instructorName: { fontSize: 14, fontWeight: '700', color: t.textPrimary },
-    instructorDivision: { fontSize: 12, color: t.textSecondary },
+    instructorName: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    instructorDivision: { fontSize: FONT_SIZE.base, color: t.textSecondary },
     roleBadge: {
       alignSelf: 'flex-start', borderRadius: 6,
       paddingHorizontal: 8, paddingVertical: 2, marginTop: 2,
     },
-    roleBadgeText: { fontSize: 11, fontWeight: '700' },
+    roleBadgeText: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold },
   });

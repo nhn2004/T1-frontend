@@ -7,6 +7,7 @@ import useTranslation from '../../../hooks/useTranslation';
 import { useAuth } from '../../../hooks';
 import { ROLES } from '../../../constants/roles';
 import { a11yButton, a11yDecorative, a11yGroup, MIN_TOUCH_SIZE } from '../../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT } from '../../../constants/typography';
 
 // Tono semántico + icono por estado. El color lo resuelve el tema en ambos modos.
 const STATUS_CONFIG = {
@@ -124,8 +125,8 @@ const makeStyles = (t) =>
 
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 6 },
     titleBlock: { flex: 1 },
-    title: { fontSize: 14, fontWeight: '700', color: t.textPrimary },
-    applicants: { fontSize: 12, color: t.textMuted, fontWeight: '500', marginTop: 2 },
+    title: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    applicants: { fontSize: FONT_SIZE.base, color: t.textMuted, fontWeight: FONT_WEIGHT.medium, marginTop: 2 },
 
     badge: {
       flexDirection: 'row',
@@ -135,7 +136,7 @@ const makeStyles = (t) =>
       paddingHorizontal: 8,
       paddingVertical: 3,
     },
-    badgeText: { fontSize: 10, fontWeight: '700' },
+    badgeText: { fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.bold },
 
     details: {
       borderTopWidth: 1,
@@ -145,7 +146,7 @@ const makeStyles = (t) =>
       gap: 5,
     },
     detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    detailText: { fontSize: 12, flex: 1, color: t.textSecondary },
+    detailText: { fontSize: FONT_SIZE.base, flex: 1, color: t.textSecondary },
 
     btn: {
       flexDirection: 'row',
@@ -162,6 +163,6 @@ const makeStyles = (t) =>
     },
     btnEnabled:  { backgroundColor: t.primarySolid },
     btnDisabled: { backgroundColor: t.disabledBg, borderWidth: 1, borderColor: t.border },
-    btnText: { color: t.onPrimarySolid, fontSize: 13, fontWeight: '700' },
+    btnText: { color: t.onPrimarySolid, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold },
     btnTextDisabled: { color: t.textDisabled },
   });

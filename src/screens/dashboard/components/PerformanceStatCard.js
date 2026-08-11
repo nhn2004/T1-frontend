@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
 import { a11yDecorative, a11yGroup, a11yProgress } from '../../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT } from '../../../constants/typography';
 
 // Tarjeta vertical de estadística usada en "Resumen de Desempeño" del aspirante.
 // Distinta de StatCard (horizontal, usada por los dashboards de Médico/Admin).
@@ -80,9 +81,9 @@ const makeStyles = (t) =>
       justifyContent: 'center',
       marginBottom: 4,
     },
-    label: { fontSize: 14, color: t.textSecondary, textAlign: 'center' },
-    value: { fontSize: 22, fontWeight: '700' },
-    hint: { fontSize: 12, fontWeight: '600' },
+    label: { fontSize: FONT_SIZE.lg, color: t.textSecondary, textAlign: 'center' },
+    value: { fontSize: FONT_SIZE.display, fontWeight: FONT_WEIGHT.bold },
+    hint: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.semibold },
     progressTrack: {
       width: '100%',
       height: 6,

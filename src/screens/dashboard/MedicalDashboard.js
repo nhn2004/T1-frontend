@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ROUTES } from '../../constants/routes';
 import { a11yButton, a11yDecorative, MIN_TOUCH_SIZE } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 import useAuthStore from '../../store/authStore';
 import useTheme from '../../hooks/useTheme';
 import { useAuditOnMount } from '../../hooks/useAuditTrail';
@@ -322,14 +323,14 @@ const makeStyles = (t, isWide) =>
       gap: 8,
     },
     queueTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
-    queueTitle: { fontSize: 16, fontWeight: '700', color: t.textPrimary },
+    queueTitle: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
     countBadge: {
       backgroundColor: t.status.warning.bg,
       borderRadius: 8,
       paddingHorizontal: 10,
       paddingVertical: 4,
     },
-    countBadgeText: { color: t.status.warning.fg, fontSize: 12, fontWeight: '700' },
+    countBadgeText: { color: t.status.warning.fg, fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold },
 
     viewAllBtn: {
       marginTop: 8,
@@ -340,10 +341,10 @@ const makeStyles = (t, isWide) =>
       justifyContent: 'center',
       alignItems: 'center',
     },
-    viewAllText: { color: t.status.danger.fg, fontSize: 14, fontWeight: '600' },
+    viewAllText: { color: t.status.danger.fg, ...TEXT_STYLES.bodyBold },
 
     emptyBox: { alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 24 },
-    emptyText: { fontSize: 14, color: t.textMuted, paddingVertical: 4 },
+    emptyText: { fontSize: FONT_SIZE.lg, color: t.textMuted, paddingVertical: 4 },
 
     statsPanel: { flex: isWide ? 0.9 : undefined, gap: 10 },
 
@@ -354,5 +355,5 @@ const makeStyles = (t, isWide) =>
       borderColor: t.border,
       padding: 14,
     },
-    sectionTitle: { fontSize: 16, fontWeight: '700', color: t.textPrimary, marginBottom: 6 },
+    sectionTitle: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary, marginBottom: 6 },
   });

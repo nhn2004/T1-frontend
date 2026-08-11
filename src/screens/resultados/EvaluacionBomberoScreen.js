@@ -14,6 +14,7 @@ import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import { useAuditOnMount } from '../../hooks/useAuditTrail';
 import { a11yButton, a11yDecorative } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 import Toast from '../../components/Toast';
 import { safeGoBack } from '../../utils/safeGoBack';
 
@@ -1180,21 +1181,21 @@ const makeSt = (t) =>
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: t.primarySolid, alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { color: t.onPrimarySolid, fontSize: 16, fontWeight: '800' },
-  bomberName: { fontSize: 17, fontWeight: '800', color: t.textPrimary },
-  bomberSub:  { fontSize: 11, color: t.textMuted, marginTop: 2 },
+  avatarText: { color: t.onPrimarySolid, fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold },
+  bomberName: { fontSize: FONT_SIZE.xxl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+  bomberSub:  { fontSize: FONT_SIZE.sm, color: t.textMuted, marginTop: 2 },
   volverBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: t.card, borderRadius: 8,
     paddingHorizontal: 14, paddingVertical: 8,
     borderWidth: 1, borderColor: t.border,
   },
-  volverText: { fontSize: 13, fontWeight: '600', color: t.textPrimary },
+  volverText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textPrimary },
   noAptoBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: t.status.danger.solid, paddingHorizontal: 20, paddingVertical: 8,
   },
-  noAptoBannerText: { color: t.onPrimarySolid, fontSize: 12, fontWeight: '700' },
+  noAptoBannerText: { color: t.onPrimarySolid, fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold },
   body: { flex: 1 },
   bodyContent: { flexGrow: 1, paddingHorizontal: 16, paddingBottom: 14 },
   card: {
@@ -1216,18 +1217,18 @@ const makeTl = (t) =>
   },
   dotActive: { backgroundColor: t.primarySolid },
   dotDone:   { backgroundColor: t.status.success.solid },
-  dotText:   { fontSize: 11, fontWeight: '700', color: t.iconMuted },
+  dotText:   { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, color: t.iconMuted },
   line:      { flex: 1, height: 2, backgroundColor: t.border },
   lineDone:  { backgroundColor: t.status.success.solid },
-  label:     { fontSize: 10, color: t.iconMuted, textAlign: 'center' },
-  labelActive:{ color: t.primaryText, fontWeight: '700' },
+  label:     { fontSize: FONT_SIZE.xs, color: t.iconMuted, textAlign: 'center' },
+  labelActive:{ color: t.primaryText, fontWeight: FONT_WEIGHT.bold },
   labelDone:  { color: t.status.success.fg },
   });
 
 const makeP = (t, isWide) =>
   StyleSheet.create({
   unsupportedNote: {
-    fontSize: 12, color: t.status.warning.fg, backgroundColor: t.status.warning.bg,
+    fontSize: FONT_SIZE.base, color: t.status.warning.fg, backgroundColor: t.status.warning.bg,
     borderRadius: 8, padding: 10, marginTop: 8, lineHeight: 17,
   },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 22 },
@@ -1236,8 +1237,8 @@ const makeP = (t, isWide) =>
   rightCol: isWide ? { flex: 1.1, gap: 10 } : { gap: 10 },
 
   panelHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  panelTitle:  { fontSize: 16, fontWeight: '800', color: t.textPrimary },
-  secLabel:    { fontSize: 12, fontWeight: '700', color: t.textSecondary },
+  panelTitle:  { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+  secLabel:    { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold, color: t.textSecondary },
 
   // Rol chips
   chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -1247,7 +1248,7 @@ const makeP = (t, isWide) =>
   },
   roleChipActive: { backgroundColor: t.primarySolid, borderColor: t.primary },
   roleChipErr:    { borderColor: t.status.danger.border },
-  roleChipText:   { fontSize: 13, fontWeight: '600', color: t.textMuted },
+  roleChipText:   { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textMuted },
   roleChipTextActive: { color: t.onPrimarySolid },
 
   // Result badge
@@ -1255,8 +1256,8 @@ const makeP = (t, isWide) =>
     alignItems: 'center', gap: 10, borderRadius: 16, padding: 28,
     borderWidth: 1,
   },
-  resultTitle: { fontSize: 26, fontWeight: '900' },
-  resultSub:   { fontSize: 13, color: t.textMuted, textAlign: 'center', maxWidth: 360 },
+  resultTitle: { fontSize: FONT_SIZE.statValue, fontWeight: FONT_WEIGHT.bold },
+  resultSub:   { fontSize: FONT_SIZE.md, color: t.textMuted, textAlign: 'center', maxWidth: 360 },
 
   // Vitales summary
   vitalesSummary: {
@@ -1272,11 +1273,11 @@ const makeP = (t, isWide) =>
     borderWidth: 1, borderColor: t.border,
   },
   vitalStatBad: { borderColor: t.status.danger.border, backgroundColor: t.status.danger.bg },
-  vitalStatLabel: { fontSize: 10, color: t.textMuted, fontWeight: '600' },
-  vitalStatValue: { fontSize: 15, fontWeight: '800', color: t.textPrimary, marginTop: 2 },
+  vitalStatLabel: { fontSize: FONT_SIZE.xs, color: t.textMuted, fontWeight: FONT_WEIGHT.semibold },
+  vitalStatValue: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary, marginTop: 2 },
 
   // Fire circle (quema activa)
-  quemaLabel: { fontSize: 16, fontWeight: '700', color: t.textMuted },
+  quemaLabel: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textMuted },
   fireCircleOuter: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
   fireCircle: {
     width: 120, height: 120, borderRadius: 60,
@@ -1291,18 +1292,20 @@ const makeP = (t, isWide) =>
     paddingHorizontal: 10, paddingVertical: 4,
     borderWidth: 2, borderColor: t.card,
   },
-  fireNumText: { color: t.onPrimarySolid, fontSize: 14, fontWeight: '900' },
+  fireNumText: { color: t.onPrimarySolid, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold },
 
   timerBox:  { alignItems: 'center', gap: 4 },
-  timerText: { fontSize: 68, fontWeight: '900', color: t.status.danger.fg, letterSpacing: 2 },
-  timerSub:  { fontSize: 12, color: t.iconMuted, letterSpacing: 6 },
+  // 68px: el reloj de cuenta regresiva es un display numérico grande, no texto de UI —
+  // queda fuera a propósito de la escala tipográfica (que llega hasta 32).
+  timerText: { fontSize: 68, fontWeight: FONT_WEIGHT.bold, color: t.status.danger.fg, letterSpacing: 2 },
+  timerSub:  { fontSize: FONT_SIZE.base, color: t.iconMuted, letterSpacing: 6 },
 
   // Duración
   duracionRow:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
   duracionField:{ alignItems: 'center', backgroundColor: t.cardAlt, borderRadius: 10, padding: 12, flex: 1, borderWidth: 1, borderColor: t.border },
-  duracionUnit: { fontSize: 10, color: t.textMuted, fontWeight: '600' },
-  duracionValue:{ fontSize: 28, fontWeight: '900', color: t.textPrimary },
-  duracionSep:  { fontSize: 24, fontWeight: '300', color: t.iconMuted },
+  duracionUnit: { fontSize: FONT_SIZE.xs, color: t.textMuted, fontWeight: FONT_WEIGHT.semibold },
+  duracionValue:{ fontSize: FONT_SIZE.statValue, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+  duracionSep:  { fontSize: FONT_SIZE.display, fontWeight: FONT_WEIGHT.regular, color: t.iconMuted },
 
   // No Apto note
   noAptoNote: {
@@ -1310,7 +1313,7 @@ const makeP = (t, isWide) =>
     backgroundColor: t.status.danger.bg, borderRadius: 8, padding: 10,
     borderWidth: 1, borderColor: t.status.danger.border,
   },
-  noAptoNoteText: { flex: 1, fontSize: 12, color: t.status.danger.fg, fontWeight: '600' },
+  noAptoNoteText: { flex: 1, fontSize: FONT_SIZE.base, color: t.status.danger.fg, fontWeight: FONT_WEIGHT.semibold },
 
   // Investigacion
   invToggleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
@@ -1320,29 +1323,29 @@ const makeP = (t, isWide) =>
     alignItems: 'center', justifyContent: 'center',
   },
   invCheckboxActive: { backgroundColor: t.primarySolid, borderColor: t.primary },
-  invToggleText: { fontSize: 13, fontWeight: '600', color: t.textSecondary },
+  invToggleText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textSecondary },
   invSection: {
     backgroundColor: t.cardAlt, borderRadius: 10,
     borderWidth: 1, borderColor: t.border, padding: 12, gap: 8,
   },
-  invSectionTitle: { fontSize: 12, fontWeight: '700', color: t.primaryText, marginBottom: 4 },
-  invGroupLabel:   { fontSize: 11, fontWeight: '700', color: t.textMuted },
+  invSectionTitle: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold, color: t.primaryText, marginBottom: 4 },
+  invGroupLabel:   { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, color: t.textMuted },
   invRow:          { flexDirection: 'row', gap: 8 },
   invField:        { flex: 1, gap: 4 },
-  invFieldLabel:   { fontSize: 10, color: t.textMuted, fontWeight: '600' },
+  invFieldLabel:   { fontSize: FONT_SIZE.xs, color: t.textMuted, fontWeight: FONT_WEIGHT.semibold },
   invInput: {
     backgroundColor: t.card, borderRadius: 8,
     paddingHorizontal: 10, paddingVertical: 8,
-    fontSize: 13, color: t.textPrimary,
+    fontSize: FONT_SIZE.md, color: t.textPrimary,
     borderWidth: 1, borderColor: t.border,
-    textAlign: 'center', fontWeight: '600',
+    textAlign: 'center', fontWeight: FONT_WEIGHT.semibold,
   },
 
   // Text area
   textArea: {
     backgroundColor: t.cardAlt, borderRadius: 10,
     paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 13, color: t.textPrimary, minHeight: 80,
+    fontSize: FONT_SIZE.md, color: t.textPrimary, minHeight: 80,
   },
 
   // Evaluar btn (bottom-right)
@@ -1352,7 +1355,7 @@ const makeP = (t, isWide) =>
     backgroundColor: t.primarySolid, borderRadius: 12,
     paddingHorizontal: 24, paddingVertical: 13,
   },
-  evalBtnText: { color: t.onPrimarySolid, fontSize: 14, fontWeight: '700' },
+  evalBtnText: { color: t.onPrimarySolid, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold },
 
   // Generic buttons
   mainBtn: {
@@ -1360,13 +1363,13 @@ const makeP = (t, isWide) =>
     backgroundColor: t.primarySolid, borderRadius: 12,
     paddingHorizontal: 24, paddingVertical: 13,
   },
-  mainBtnText: { color: t.onPrimarySolid, fontSize: 14, fontWeight: '700' },
+  mainBtnText: { color: t.onPrimarySolid, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold },
   outlineBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 24, paddingVertical: 13, borderRadius: 12,
     borderWidth: 1.5, borderColor: t.primary,
   },
-  outlineBtnText: { fontSize: 14, fontWeight: '600', color: t.primaryText },
+  outlineBtnText: { ...TEXT_STYLES.button, color: t.primaryText },
   btnRow: { flexDirection: 'row', gap: 12 },
   });
 
@@ -1375,27 +1378,27 @@ const makeVi = (t) =>
   grid:     { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   fieldWrap:{ width: '47%', gap: 4 },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  label:    { fontSize: 11, fontWeight: '600', color: t.textSecondary },
+  label:    { ...TEXT_STYLES.label, color: t.textSecondary },
   dot:      { width: 10, height: 10, borderRadius: 5 },
   input: {
     borderRadius: 8, paddingHorizontal: 10, paddingVertical: 9,
-    fontSize: 14, color: t.textPrimary, fontWeight: '600',
+    ...TEXT_STYLES.bodyBold, color: t.textPrimary,
   },
-  errorText: { fontSize: 10, color: t.status.danger.fg, marginTop: 1 },
+  errorText: { fontSize: FONT_SIZE.xs, color: t.status.danger.fg, marginTop: 1 },
   bpWrap:  { width: '47%', gap: 4 },
-  bpLabel: { fontSize: 11, fontWeight: '600', color: t.textSecondary },
+  bpLabel: { ...TEXT_STYLES.label, color: t.textSecondary },
   bpRow:   { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  bpSlash: { fontSize: 20, fontWeight: '300', color: t.iconMuted },
+  bpSlash: { fontSize: FONT_SIZE.xxxl, fontWeight: FONT_WEIGHT.regular, color: t.iconMuted },
   sintomasGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   sintomaChip: {
     paddingHorizontal: 11, paddingVertical: 6, borderRadius: 8,
     borderWidth: 1, borderColor: t.borderStrong, backgroundColor: t.cardAlt,
   },
   sintomaChipActive:    { backgroundColor: t.primarySolid, borderColor: t.primary },
-  sintomaChipText:      { fontSize: 12, color: t.textMuted },
-  sintomaChipTextActive:{ color: t.onPrimarySolid, fontWeight: '600' },
+  sintomaChipText:      { fontSize: FONT_SIZE.base, color: t.textMuted },
+  sintomaChipTextActive:{ color: t.onPrimarySolid, fontWeight: FONT_WEIGHT.semibold },
   yesNoWrap:  { gap: 4 },
-  yesNoLabel: { fontSize: 12, color: t.textSecondary, lineHeight: 16 },
+  yesNoLabel: { fontSize: FONT_SIZE.base, color: t.textSecondary, lineHeight: 16 },
   yesNoRow:   { flexDirection: 'row', gap: 8 },
   yesNoBtn: {
     flex: 1, paddingVertical: 8, borderRadius: 8,
@@ -1404,5 +1407,5 @@ const makeVi = (t) =>
   },
   yesNoBtnActive: { backgroundColor: t.primarySolid, borderColor: t.primary },
   yesNoBtnErr:    { borderColor: t.status.danger.border },
-  yesNoBtnText:   { fontSize: 13, fontWeight: '600', color: t.textMuted },
+  yesNoBtnText:   { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textMuted },
   });

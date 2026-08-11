@@ -5,6 +5,7 @@ import { FILTERS } from '../sessionFilters';
 import useTheme from '../../../hooks/useTheme';
 import useTranslation from '../../../hooks/useTranslation';
 import { a11yButton, a11yDecorative, a11yTab, MIN_TOUCH_SIZE } from '../../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT } from '../../../constants/typography';
 
 export default function FilterTabs({
   activeFilter, counts, onSelect,
@@ -103,7 +104,7 @@ const makeStyles = (t) =>
       borderColor: t.border,
     },
     tabActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
-    label: { fontSize: 14, fontWeight: '600', color: t.textSecondary },
+    label: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.semibold, color: t.textSecondary },
     labelActive: { color: t.onPrimarySolid },
     countBadge: {
       backgroundColor: t.pill,
@@ -114,7 +115,7 @@ const makeStyles = (t) =>
       alignItems: 'center',
     },
     countBadgeActive: { backgroundColor: t.scrim },
-    countText: { fontSize: 12, fontWeight: '700', color: t.textSecondary },
+    countText: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold, color: t.textSecondary },
     countTextActive: { color: t.onPrimarySolid },
     searchIconBtn: {
       width: MIN_TOUCH_SIZE,
@@ -133,7 +134,7 @@ const makeStyles = (t) =>
       borderColor: t.border,
       backgroundColor: t.cardAlt,
       paddingHorizontal: 16,
-      fontSize: 14,
+      fontSize: FONT_SIZE.lg,
       color: t.textPrimary,
     },
   });

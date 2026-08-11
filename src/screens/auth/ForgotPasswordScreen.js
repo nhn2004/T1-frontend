@@ -12,6 +12,7 @@ import { a11yAlert, a11yButton, a11yDecorative, ICON_HIT_SLOP, MIN_TOUCH_SIZE } 
 import api from '../../services/api';
 import useTheme from '../../hooks/useTheme';
 import { safeGoBack } from '../../utils/safeGoBack';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 
 const STEPS = { EMAIL: 'EMAIL', RESET: 'RESET', SUCCESS: 'SUCCESS' };
 const MIN_PASSWORD_LENGTH = 8;
@@ -352,8 +353,8 @@ const makeStyles = (t) =>
       alignSelf: 'flex-start', marginBottom: 4,
     },
 
-    title:    { fontSize: 26, fontWeight: '900', color: t.textPrimary },
-    subtitle: { fontSize: 15, color: t.textSecondary, lineHeight: 21, marginBottom: 4 },
+    title:    { fontSize: FONT_SIZE.display, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    subtitle: { fontSize: FONT_SIZE.lg, color: t.textSecondary, lineHeight: 21, marginBottom: 4 },
 
     errorBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -361,7 +362,7 @@ const makeStyles = (t) =>
       borderWidth: 1.5, borderColor: t.status.danger.border,
       borderRadius: 10, padding: 12,
     },
-    errorBannerText: { flex: 1, fontSize: 14, color: t.status.danger.fg, fontWeight: '600' },
+    errorBannerText: { flex: 1, ...TEXT_STYLES.bodyBold, color: t.status.danger.fg },
 
     noticeBanner: {
       flexDirection: 'row', alignItems: 'flex-start', gap: 8,
@@ -369,10 +370,10 @@ const makeStyles = (t) =>
       borderWidth: 1, borderColor: t.status.warning.border,
       borderRadius: 10, padding: 12,
     },
-    noticeText: { flex: 1, fontSize: 13, color: t.status.warning.fg, lineHeight: 18 },
+    noticeText: { flex: 1, fontSize: FONT_SIZE.md, color: t.status.warning.fg, lineHeight: 18 },
 
     fieldBlock: { gap: 6 },
-    label:      { fontSize: 13, fontWeight: '700', color: t.textSecondary },
+    label:      { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold, color: t.textSecondary },
 
     inputRow: {
       flexDirection: 'row', alignItems: 'center',
@@ -381,8 +382,8 @@ const makeStyles = (t) =>
       minHeight: MIN_TOUCH_SIZE + 4,
       backgroundColor: t.cardAlt, gap: 8,
     },
-    input: { flex: 1, fontSize: 15, color: t.textPrimary, paddingVertical: 12 },
-    tokenInput: { fontSize: 13 },
+    input: { flex: 1, fontSize: FONT_SIZE.lg, color: t.textPrimary, paddingVertical: 12 },
+    tokenInput: { fontSize: FONT_SIZE.md },
 
     btn: {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -390,8 +391,8 @@ const makeStyles = (t) =>
       minHeight: MIN_TOUCH_SIZE + 8, marginTop: 4,
     },
     btnDisabled: { backgroundColor: t.disabledBg },
-    btnText:     { color: t.onPrimarySolid, fontSize: 16, fontWeight: '800' },
+    btnText:     { color: t.onPrimarySolid, fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold },
 
     secondaryBtn: { alignItems: 'center', justifyContent: 'center', minHeight: MIN_TOUCH_SIZE },
-    secondaryBtnText: { fontSize: 14, color: t.textSecondary, fontWeight: '600' },
+    secondaryBtnText: { ...TEXT_STYLES.bodyBold, color: t.textSecondary },
   });

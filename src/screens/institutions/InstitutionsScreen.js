@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { a11yButton, a11yGroup, a11yModal, ICON_HIT_SLOP } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 import useTheme from '../../hooks/useTheme';
 import Toast from '../../components/Toast';
 import { institutionService, trainingLocationService } from '../../services';
@@ -480,17 +481,17 @@ const modalStyles = (t) =>
       borderRadius: 16, padding: 20, width: '100%', maxWidth: 440, maxHeight: '90%', gap: 12,
       backgroundColor: t.card, borderWidth: 1, borderColor: t.border,
     },
-    title: { fontSize: 16, fontWeight: '700', color: t.textPrimary, marginBottom: 2 },
+    title: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary, marginBottom: 2 },
     formScrollArea: { flexShrink: 1 },
     formScroll: { gap: 10, paddingBottom: 2 },
     row: { flexDirection: 'row', gap: 10 },
     field: { flex: 1, gap: 5 },
-    fieldLabel: { fontSize: 12, color: t.textSecondary },
-    required: { fontSize: 12, fontWeight: '700', color: t.status.danger.fg },
+    fieldLabel: { fontSize: FONT_SIZE.base, color: t.textSecondary },
+    required: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold, color: t.status.danger.fg },
     fieldInput: {
       borderWidth: 1.5, borderRadius: 8,
       paddingHorizontal: 12, paddingVertical: 9,
-      fontSize: 13, backgroundColor: t.cardAlt,
+      fontSize: FONT_SIZE.md, backgroundColor: t.cardAlt,
       borderColor: t.borderStrong, color: t.textPrimary,
     },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -500,41 +501,41 @@ const modalStyles = (t) =>
       borderWidth: 1.5, backgroundColor: t.card, borderColor: t.border,
     },
     chipActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
-    chipText: { fontSize: 12, color: t.textPrimary },
-    chipTextActive: { color: t.onPrimarySolid, fontWeight: '700' },
-    errorText: { fontSize: 12, color: t.status.danger.fg },
+    chipText: { fontSize: FONT_SIZE.base, color: t.textPrimary },
+    chipTextActive: { color: t.onPrimarySolid, fontWeight: FONT_WEIGHT.bold },
+    errorText: { fontSize: FONT_SIZE.base, color: t.status.danger.fg },
     actions: { flexDirection: 'row', gap: 10, marginTop: 2 },
     cancelBtn: {
       flex: 1, minHeight: 42, justifyContent: 'center', alignItems: 'center',
       borderRadius: 10, borderWidth: 1.5, borderColor: t.borderStrong,
     },
-    cancelBtnText: { fontSize: 13, fontWeight: '600', color: t.textSecondary },
+    cancelBtnText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textSecondary },
     submitBtn: {
       flex: 1, minHeight: 42, justifyContent: 'center', alignItems: 'center',
       borderRadius: 10, backgroundColor: t.primarySolid,
     },
     submitBtnDisabled: { opacity: 0.7 },
-    submitBtnText: { fontSize: 13, fontWeight: '700', color: t.onPrimarySolid },
+    submitBtnText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold, color: t.onPrimarySolid },
   });
 
 const makeStyles = (t) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: t.background },
     titleRow: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
-    pageTitle: { fontSize: 18, fontWeight: '800', color: t.textPrimary },
-    pageSubtitle: { fontSize: 12, color: t.textMuted, marginTop: 2 },
+    pageTitle: { color: t.textPrimary, ...TEXT_STYLES.sectionTitle },
+    pageSubtitle: { fontSize: FONT_SIZE.base, color: t.textMuted, marginTop: 2 },
     noticeWrap: { paddingHorizontal: 16, paddingBottom: 6 },
     body: { padding: 16, gap: 20 },
     section: { gap: 10 },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    sectionTitle: { fontSize: 15, fontWeight: '700', color: t.textPrimary },
+    sectionTitle: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
     addBtn: {
       flexDirection: 'row', alignItems: 'center', gap: 4,
       borderWidth: 1.5, borderColor: t.primary, borderRadius: 8,
       paddingHorizontal: 12, paddingVertical: 6,
     },
     addBtnDisabled: { borderColor: t.border },
-    addBtnText: { fontSize: 13, color: t.primaryText, fontWeight: '600' },
+    addBtnText: { fontSize: FONT_SIZE.md, color: t.primaryText, fontWeight: FONT_WEIGHT.semibold },
     row: {
       flexDirection: 'row', alignItems: 'center', gap: 12,
       backgroundColor: t.card, borderRadius: 10, borderWidth: 1, borderColor: t.border,
@@ -545,17 +546,17 @@ const makeStyles = (t) =>
       alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     },
     rowText: { flex: 1, minWidth: 0 },
-    rowTitle: { fontSize: 13, fontWeight: '700', color: t.textPrimary },
-    rowSub: { fontSize: 11, color: t.textSecondary, marginTop: 1 },
+    rowTitle: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    rowSub: { fontSize: FONT_SIZE.sm, color: t.textSecondary, marginTop: 1 },
     editBtn: {
       width: 32, height: 32, borderRadius: 8, backgroundColor: t.cardAlt,
       alignItems: 'center', justifyContent: 'center',
     },
     emptyBox: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 40 },
-    emptyText: { fontSize: 13, color: t.textMuted, textAlign: 'center' },
+    emptyText: { fontSize: FONT_SIZE.md, color: t.textMuted, textAlign: 'center' },
     retryBtn: {
       paddingHorizontal: 18, minHeight: 44, justifyContent: 'center',
       borderRadius: 10, borderWidth: 1.5, borderColor: t.primaryBorder,
     },
-    retryText: { color: t.primaryText, fontSize: 14, fontWeight: '700' },
+    retryText: { color: t.primaryText, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold },
   });

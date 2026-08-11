@@ -14,6 +14,7 @@ import useAuthStore from '../../store/authStore';
 import { authService } from '../../services';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 
 // Credenciales sembradas por seed_local_users.sql / DbSeeder. Cubre los 7 roles para
 // poder probar cada dashboard sin tener que recordar los correos.
@@ -302,11 +303,11 @@ const makeStyles = (t, isWide) =>
     },
     // Este panel siempre es oscuro (identidad de marca), así que su texto no
     // depende del tema: los valores están fijados para contrastar sobre #1A1A1A.
-    appName: { fontSize: isWide ? 32 : 24, fontWeight: '900', color: '#FFFFFF', letterSpacing: 1 },
-    appSub: { fontSize: 13, color: '#C9CFD8', textAlign: 'center', lineHeight: 19 },
+    appName: { fontSize: isWide ? FONT_SIZE.hero : FONT_SIZE.display, fontWeight: FONT_WEIGHT.bold, color: '#FFFFFF', letterSpacing: 1 },
+    appSub: { fontSize: FONT_SIZE.md, color: '#C9CFD8', textAlign: 'center', lineHeight: 19 },
     dividerLine: { width: 40, height: 2, backgroundColor: t.primary, borderRadius: 2, marginVertical: 8 },
-    tagline: { fontSize: 14, color: '#C9CFD8', textAlign: 'center', lineHeight: 21 },
-    countries: { fontSize: 14, color: '#A8AEB8', marginTop: 4 },
+    tagline: { fontSize: FONT_SIZE.lg, color: '#C9CFD8', textAlign: 'center', lineHeight: 21 },
+    countries: { fontSize: FONT_SIZE.lg, color: '#A8AEB8', marginTop: 4 },
 
     rightPanel: {
       flex: isWide ? 0.58 : 1,
@@ -315,11 +316,11 @@ const makeStyles = (t, isWide) =>
       justifyContent: 'center',
       gap: 16,
     },
-    welcomeTitle: { fontSize: 28, fontWeight: '800', color: t.textPrimary },
-    welcomeSub: { fontSize: 14, color: t.textSecondary, lineHeight: 20, marginBottom: 4 },
+    welcomeTitle: { fontSize: FONT_SIZE.statValue, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    welcomeSub: { fontSize: FONT_SIZE.lg, color: t.textSecondary, lineHeight: 20, marginBottom: 4 },
 
     fieldGroup: { gap: 6 },
-    label: { fontSize: 13, fontWeight: '700', color: t.textSecondary },
+    label: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold, color: t.textSecondary },
     inputBox: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -331,10 +332,10 @@ const makeStyles = (t, isWide) =>
       minHeight: MIN_TOUCH_SIZE + 4,
       gap: 10,
     },
-    input: { flex: 1, fontSize: 15, color: t.textPrimary, paddingVertical: 12 },
+    input: { flex: 1, fontSize: FONT_SIZE.lg, color: t.textPrimary, paddingVertical: 12 },
 
     forgotRow: { alignSelf: 'flex-end', marginTop: -6, paddingVertical: 4 },
-    forgotText: { fontSize: 13, color: t.primaryText, fontWeight: '600' },
+    forgotText: { fontSize: FONT_SIZE.md, color: t.primaryText, fontWeight: FONT_WEIGHT.semibold },
 
     errorBanner: {
       flexDirection: 'row',
@@ -347,7 +348,7 @@ const makeStyles = (t, isWide) =>
       paddingHorizontal: 14,
       paddingVertical: 11,
     },
-    errorBannerText: { flex: 1, fontSize: 14, color: t.status.danger.fg, fontWeight: '600' },
+    errorBannerText: { flex: 1, ...TEXT_STYLES.bodyBold, color: t.status.danger.fg },
 
     loginBtn: {
       flexDirection: 'row',
@@ -360,12 +361,12 @@ const makeStyles = (t, isWide) =>
       marginTop: 4,
     },
     loginBtnDisabled: { backgroundColor: t.disabledBg },
-    loginBtnText: { color: t.onPrimarySolid, fontSize: 16, fontWeight: '800' },
+    loginBtnText: { color: t.onPrimarySolid, fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold },
 
     demoSection: { gap: 10, marginTop: 4 },
     demoDividerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     demoDivider: { flex: 1, height: 1, backgroundColor: t.border },
-    demoLabel: { fontSize: 12, color: t.textMuted, fontWeight: '600' },
+    demoLabel: { fontSize: FONT_SIZE.base, color: t.textMuted, fontWeight: FONT_WEIGHT.semibold },
     demoChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     demoChip: {
       flexDirection: 'row',
@@ -379,5 +380,5 @@ const makeStyles = (t, isWide) =>
       backgroundColor: t.primarySoft,
       borderColor: t.primaryBorder,
     },
-    demoChipText: { fontSize: 13, fontWeight: '700', color: t.onPrimarySoft },
+    demoChipText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold, color: t.onPrimarySoft },
   });
