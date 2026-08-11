@@ -1,15 +1,18 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { ROLE_LABELS } from '../../constants';
-import { ROUTES } from '../../constants/routes';
+import { ROLE_LABELS, ROLES } from '../../constants';
 import { a11yButton, a11yDecorative, a11yHeader } from '../../constants/a11y';
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
 import { userService } from '../../services';
+import Toast from '../../components/Toast';
+import ChangePasswordModal from '../../components/ChangePasswordModal';
+import SettingsCard from '../settings/components/SettingsCard';
+import FormField from '../settings/components/FormField';
 
 function initials(name) {
   const parts = (name || '').split(' ').filter(Boolean).slice(0, 2);
@@ -25,8 +28,8 @@ function Row({ label, value, styles }) {
   );
 }
 
-export default function ProfileScreen({ navigation }) {
-  const { user, roles } = useAuth();
+export default function ProfileScreen() {
+  const { user, role, roles, updateUser } = useAuth();
   const theme = useTheme();
   const { t: tAll } = useTranslation();
   const t = tAll.profile;
@@ -35,6 +38,23 @@ export default function ProfileScreen({ navigation }) {
   const [details, setDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Campos editables. Se hidratan desde el mismo `userService.getById` que ya se
+  // pedía para la ficha de solo lectura — antes esta pantalla y Configuración pedían
+  // el detalle del usuario por separado para lo mismo.
+  const [firstName, setFirstName] = useState(user?.firstName ?? '');
+  const [lastName, setLastName] = useState(user?.lastName ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
+  const [phone, setPhone] = useState(user?.phone ?? null);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const timer = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +67,12 @@ export default function ProfileScreen({ navigation }) {
       setError(null);
       try {
         const data = await userService.getById(user.userId);
-        if (!cancelled) setDetails(data);
+        if (cancelled) return;
+        setDetails(data);
+        setFirstName(data.firstName ?? '');
+        setLastName(data.lastName ?? '');
+        setEmail(data.email ?? '');
+        setPhone(data.phone ?? null);
       } catch {
         if (!cancelled) setError(t.loadError);
       } finally {
@@ -59,6 +84,57 @@ export default function ProfileScreen({ navigation }) {
   }, [user?.userId, t.loadError]);
 
   const roleLabels = (roles ?? []).map((r) => ROLE_LABELS[r] ?? r).join(' · ');
+  const isTrainee = role === ROLES.FIREFIGHTER_TRAINEE;
+
+  const hasProfileChanges =
+    firstName.trim() !== (user?.firstName ?? '') ||
+    lastName.trim() !== (user?.lastName ?? '') ||
+    email.trim() !== (user?.email ?? '');
+
+  const handleSave = useCallback(async () => {
+    if (!firstName.trim() || !lastName.trim() || !email.trim()) {
+      setToast({ message: t.incompleteMessage, tone: 'error' });
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setToast({ message: t.invalidEmailMessage, tone: 'error' });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const updated = await userService.update(user.userId, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone,
+        email: email.trim(),
+      });
+      updateUser({
+        firstName: updated.firstName,
+        lastName: updated.lastName,
+        name: updated.name,
+        email: updated.email,
+      });
+      setDetails((d) => (d ? { ...d, ...updated } : d));
+      setToast({ message: t.savedToast, tone: 'success' });
+    } catch (e) {
+      if (!e.response) {
+        updateUser({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          name: `${firstName.trim()} ${lastName.trim()}`.trim(),
+          email: email.trim(),
+        });
+        setToast({ message: 'Sin conexión: se guardó localmente y se sincronizará cuando vuelva la señal.', tone: 'warning' });
+        setSaving(false);
+        return;
+      }
+      const message = e?.response?.data?.message ?? t.saveError;
+      setToast({ message, tone: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  }, [firstName, lastName, email, phone, user, updateUser, t]);
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: theme.background }]}>
@@ -68,6 +144,8 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.pageTitle} {...a11yHeader(t.pageTitle)}>{t.pageTitle}</Text>
         </View>
 
+        {!!toast && <Toast message={toast.message} tone={toast.tone} />}
+
         <View style={styles.identityCard}>
           <View style={styles.avatar} {...a11yDecorative}>
             <Text style={styles.avatarText}>{initials(user?.name)}</Text>
@@ -76,15 +154,67 @@ export default function ProfileScreen({ navigation }) {
           {!!roleLabels && <Text style={styles.role}>{roleLabels}</Text>}
         </View>
 
-        <View style={styles.detailCard}>
-          {loading ? (
+        {loading ? (
+          <View style={styles.detailCard}>
             <ActivityIndicator color={theme.primary} />
-          ) : error ? (
+          </View>
+        ) : error ? (
+          <View style={styles.detailCard}>
             <Text style={styles.errorText}>{error}</Text>
-          ) : (
-            <>
-              <Row label={t.emailLabel} value={details?.email ?? user?.email ?? '—'} styles={styles} />
-              <Row label={t.phoneLabel} value={details?.phone ?? '—'} styles={styles} />
+          </View>
+        ) : (
+          <>
+            <SettingsCard icon="create-outline" title={t.editSectionTitle}>
+              <View style={styles.formRow}>
+                <FormField label={t.firstNameLabel} value={firstName} onChangeText={setFirstName} />
+                <FormField label={t.lastNameLabel} value={lastName} onChangeText={setLastName} />
+              </View>
+
+              <View style={styles.formRow}>
+                {isTrainee ? (
+                  <>
+                    <FormField
+                      label={t.firefighterId}
+                      value={user?.applicantCode ?? user?.userId ?? '—'}
+                      editable={false}
+                    />
+                    <FormField label={t.rank} value={ROLE_LABELS[role] ?? role ?? ''} editable={false} />
+                  </>
+                ) : (
+                  <FormField label={t.role} value={ROLE_LABELS[role] ?? role ?? ''} editable={false} />
+                )}
+              </View>
+
+              <FormField label={t.emailLabel} value={email} onChangeText={setEmail} keyboardType="email-address" />
+
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: hasProfileChanges ? theme.primarySolid : theme.disabledBg }]}
+                onPress={handleSave}
+                activeOpacity={hasProfileChanges ? 0.85 : 1}
+                disabled={!hasProfileChanges || saving}
+                {...a11yButton(hasProfileChanges ? t.saveChanges : t.noChanges, {
+                  disabled: !hasProfileChanges || saving,
+                  busy: saving,
+                })}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color={theme.onPrimarySolid} />
+                ) : (
+                  <Ionicons
+                    name="save-outline"
+                    size={16}
+                    color={hasProfileChanges ? theme.onPrimarySolid : theme.textDisabled}
+                    {...a11yDecorative}
+                  />
+                )}
+                <Text style={[styles.saveBtnText, { color: hasProfileChanges ? theme.onPrimarySolid : theme.textDisabled }]}>
+                  {hasProfileChanges ? t.saveChanges : t.noChanges}
+                </Text>
+              </TouchableOpacity>
+            </SettingsCard>
+
+            <View style={styles.detailCard}>
+              <Row label={t.phoneLabel} value={phone ?? '—'} styles={styles} />
               <Row
                 label={t.statusLabel}
                 value={details?.accountStatus === 'active' ? t.statusActive : (details?.accountStatus ?? '—')}
@@ -95,20 +225,29 @@ export default function ProfileScreen({ navigation }) {
                 value={details?.createdAt ? new Date(details.createdAt).toLocaleDateString() : '—'}
                 styles={styles}
               />
-            </>
-          )}
-        </View>
+            </View>
 
-        <TouchableOpacity
-          style={styles.editBtn}
-          onPress={() => navigation?.navigate(ROUTES.SETTINGS)}
-          activeOpacity={0.85}
-          {...a11yButton(t.editButton)}
-        >
-          <Ionicons name="create-outline" size={16} color={theme.onPrimarySolid} {...a11yDecorative} />
-          <Text style={styles.editBtnText}>{t.editButton}</Text>
-        </TouchableOpacity>
+            <SettingsCard icon="shield-checkmark-outline" title={t.security}>
+              <TouchableOpacity
+                style={[styles.outlineBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
+                onPress={() => setPasswordModalVisible(true)}
+                activeOpacity={0.8}
+                {...a11yButton(t.changePassword)}
+              >
+                <Text style={[styles.outlineBtnText, { color: theme.textPrimary }]}>{t.changePassword}</Text>
+              </TouchableOpacity>
+            </SettingsCard>
+          </>
+        )}
       </ScrollView>
+
+      <ChangePasswordModal
+        visible={passwordModalVisible}
+        t={t}
+        theme={theme}
+        onClose={() => setPasswordModalVisible(false)}
+        onSuccess={() => setToast({ message: t.changePasswordSuccess, tone: 'success' })}
+      />
     </SafeAreaView>
   );
 }
@@ -148,6 +287,8 @@ const makeStyles = (t) =>
     name: { fontSize: 18, fontWeight: '700', color: t.textPrimary },
     role: { fontSize: 13, color: t.textSecondary },
 
+    formRow: { flexDirection: 'row', gap: 14, marginBottom: 12 },
+
     detailCard: {
       padding: 18,
       borderRadius: 14,
@@ -165,14 +306,22 @@ const makeStyles = (t) =>
     rowValue: { fontSize: 13, fontWeight: '600', color: t.textPrimary, flexShrink: 1, textAlign: 'right' },
     errorText: { fontSize: 13, color: t.status.danger.fg, textAlign: 'center' },
 
-    editBtn: {
+    saveBtn: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 8,
       borderRadius: 8,
       paddingVertical: 11,
-      backgroundColor: t.primarySolid,
+      marginTop: 4,
     },
-    editBtnText: { fontSize: 14, fontWeight: '700', color: t.onPrimarySolid },
+    saveBtnText: { fontSize: 14, fontWeight: '700' },
+
+    outlineBtn: {
+      borderWidth: 1.5,
+      borderRadius: 8,
+      paddingVertical: 9,
+      paddingHorizontal: 14,
+    },
+    outlineBtnText: { fontSize: 13 },
   });

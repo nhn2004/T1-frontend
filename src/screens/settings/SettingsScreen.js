@@ -1,14 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, useWindowDimensions, Modal, TouchableWithoutFeedback, ActivityIndicator,
-  KeyboardAvoidingView, Platform,
+  StyleSheet, useWindowDimensions, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
-import { ROLE_LABELS, ROLES } from '../../constants';
-import { a11yButton, a11yDecorative, a11yModal } from '../../constants/a11y';
+import { a11yButton, a11yDecorative } from '../../constants/a11y';
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
@@ -20,11 +18,9 @@ import { ensureNotificationPermission } from '../../services/notifications';
 import { createAndShareBackup } from '../../services/backup';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import Toast from '../../components/Toast';
-import { authService, userService } from '../../services';
 
 import SettingsCard from './components/SettingsCard';
 import ToggleRow from './components/ToggleRow';
-import FormField from './components/FormField';
 
 function formatTime(date) {
   // `offlineQueueStore` persiste `lastSyncedAt` como string ISO (AsyncStorage solo
@@ -36,9 +32,8 @@ function formatTime(date) {
 }
 
 export default function SettingsScreen() {
-  const { user, role, updateUser, logout } = useAuth();
+  const { logout } = useAuth();
   const { width } = useWindowDimensions();
-  const isCompact = width < 700;
   const isWide = width >= 1100;
 
   const darkMode = useSettingsStore((s) => s.darkMode);
@@ -74,94 +69,14 @@ export default function SettingsScreen() {
   const { t: tAll } = useTranslation();
   const t = tAll.settings;
 
-  const [firstName, setFirstName] = useState(user?.firstName ?? '');
-  const [lastName, setLastName] = useState(user?.lastName ?? '');
-  const [email, setEmail] = useState(user?.email ?? '');
-  // El login no devuelve el teléfono (authService.login no lo mapea), así que se
-  // hidrata aparte desde el backend para no perderlo al guardar — sin esto, guardar
-  // nombre/correo mandaría `phone: undefined` y borraría el teléfono ya guardado.
-  const [phone, setPhone] = useState(user?.phone ?? null);
-  const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null); // { message, tone }
   const [logoutVisible, setLogoutVisible] = useState(false);
-  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
 
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(null), 3000);
     return () => clearTimeout(timer);
   }, [toast]);
-
-  useEffect(() => {
-    if (!user?.userId) return undefined;
-    let cancelled = false;
-    userService.getById(user.userId)
-      .then((full) => {
-        if (cancelled) return;
-        setFirstName(full.firstName ?? '');
-        setLastName(full.lastName ?? '');
-        setEmail(full.email ?? '');
-        setPhone(full.phone ?? null);
-      })
-      .catch(() => {}); // silencioso: si falla, se sigue con los valores de authStore
-    return () => { cancelled = true; };
-  }, [user?.userId]);
-
-  const isTrainee = role === ROLES.FIREFIGHTER_TRAINEE;
-
-  // El botón "Guardar Cambios" solo tiene sentido para Nombres/Apellidos/Correo: son
-  // los únicos campos en estado local de este formulario — todo lo demás (toggles,
-  // idioma, modo oscuro) ya se aplica al instante contra el store. Se deshabilita si
-  // no hay ediciones pendientes, para que sea evidente qué hace y cuándo hace algo.
-  const hasProfileChanges =
-    firstName.trim() !== (user?.firstName ?? '') ||
-    lastName.trim() !== (user?.lastName ?? '') ||
-    email.trim() !== (user?.email ?? '');
-
-  const handleSave = useCallback(async () => {
-    if (!firstName.trim() || !lastName.trim() || !email.trim()) {
-      setToast({ message: t.incompleteMessage, tone: 'error' });
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setToast({ message: t.invalidEmailMessage, tone: 'error' });
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const updated = await userService.update(user.userId, {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phone,
-        email: email.trim(),
-      });
-      // `updateUser` (setUser en authStore) preserva rol, token y sesión — a diferencia
-      // de `login`/`setAuth`, que espera `roles` y dejaría el rol global en null si no
-      // se le pasa, rompiendo el navigator (pantalla blanca sin dashboard).
-      updateUser({
-        firstName: updated.firstName,
-        lastName: updated.lastName,
-        name: updated.name,
-        email: updated.email,
-      });
-      setToast({ message: t.savedToast, tone: 'success' });
-    } catch (e) {
-      if (!e.response) {
-        // Encolado offline — se aplica el cambio localmente igual (es información
-        // que el propio usuario ya conoce, no depende de un cálculo del servidor) y
-        // se sincroniza de verdad cuando vuelva la señal.
-        updateUser({ firstName: firstName.trim(), lastName: lastName.trim(), name: `${firstName.trim()} ${lastName.trim()}`.trim(), email: email.trim() });
-        setToast({ message: 'Sin conexión: se guardó localmente y se sincronizará cuando vuelva la señal.', tone: 'warning' });
-        setSaving(false);
-        return;
-      }
-      const message = e?.response?.data?.message ?? t.saveError;
-      setToast({ message, tone: 'error' });
-    } finally {
-      setSaving(false);
-    }
-  }, [firstName, lastName, email, phone, user, updateUser, t]);
 
   const handleSyncNow = useCallback(async () => {
     if (pendingCount === 0) {
@@ -217,73 +132,6 @@ export default function SettingsScreen() {
         </View>
 
         {toast && <Toast message={toast.message} tone={toast.tone} />}
-
-        <SettingsCard icon="person-outline" title={t.profile}>
-          <View style={[styles.row, isCompact && styles.rowCompact]}>
-            <FormField label={t.firstNameLabel} value={firstName} onChangeText={setFirstName} />
-            <FormField label={t.lastNameLabel} value={lastName} onChangeText={setLastName} />
-          </View>
-
-          <View style={[styles.row, isCompact && styles.rowCompact]}>
-            {isTrainee ? (
-              <>
-                {/* Antes este campo mostraba el JWT de sesión completo — la misma
-                    credencial que viaja en el header Authorization — etiquetado como
-                    "ID de Bombero". Ahora muestra el identificador real del usuario. */}
-                <FormField
-                  label={t.firefighterId}
-                  value={user?.applicantCode ?? user?.userId ?? '—'}
-                  editable={false}
-                 
-                />
-                <FormField label={t.rank} value={ROLE_LABELS[role] ?? role ?? ''} editable={false} />
-              </>
-            ) : (
-              <FormField label={t.role} value={ROLE_LABELS[role] ?? role ?? ''} editable={false} />
-            )}
-          </View>
-
-          <FormField
-            label={t.email}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-           
-          />
-
-          <TouchableOpacity
-            style={[
-              styles.saveBtn,
-              { backgroundColor: hasProfileChanges ? theme.primarySolid : theme.disabledBg },
-            ]}
-            onPress={handleSave}
-            activeOpacity={hasProfileChanges ? 0.85 : 1}
-            disabled={!hasProfileChanges || saving}
-            {...a11yButton(hasProfileChanges ? t.saveChanges : t.noChanges, {
-              disabled: !hasProfileChanges || saving,
-              busy: saving,
-            })}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color={theme.onPrimarySolid} />
-            ) : (
-              <Ionicons
-                name="save-outline"
-                size={16}
-                color={hasProfileChanges ? theme.onPrimarySolid : theme.textDisabled}
-                {...a11yDecorative}
-              />
-            )}
-            <Text
-              style={[
-                styles.saveBtnText,
-                { color: hasProfileChanges ? theme.onPrimarySolid : theme.textDisabled },
-              ]}
-            >
-              {hasProfileChanges ? t.saveChanges : t.noChanges}
-            </Text>
-          </TouchableOpacity>
-        </SettingsCard>
 
         <View style={[styles.gridRow, isWide && styles.gridRowWide]}>
           <View style={[styles.gridItem, isWide && styles.gridItemWide]}>
@@ -454,17 +302,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <SettingsCard icon="shield-checkmark-outline" title={t.security}>
-          <TouchableOpacity
-            style={[styles.outlineBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
-            onPress={() => setPasswordModalVisible(true)}
-            activeOpacity={0.8}
-            {...a11yButton(t.changePassword)}
-          >
-            <Text style={[styles.outlineBtnText, { color: theme.textPrimary }]}>{t.changePassword}</Text>
-          </TouchableOpacity>
-        </SettingsCard>
-
         <TouchableOpacity
           style={[styles.logoutBtn, { backgroundColor: theme.card, borderColor: theme.border }]}
           onPress={() => setLogoutVisible(true)}
@@ -489,186 +326,9 @@ export default function SettingsScreen() {
           logout();
         }}
       />
-
-      <ChangePasswordModal
-        visible={passwordModalVisible}
-        t={t}
-        theme={theme}
-        onClose={() => setPasswordModalVisible(false)}
-        onSuccess={() => setToast({ message: t.changePasswordSuccess, tone: 'success' })}
-      />
     </SafeAreaView>
   );
 }
-
-function ChangePasswordModal({ visible, t, theme, onClose, onSuccess }) {
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const styles = modalStyles(theme);
-
-  const reset = useCallback(() => {
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setError('');
-  }, []);
-
-  const handleClose = useCallback(() => {
-    if (submitting) return;
-    reset();
-    onClose();
-  }, [submitting, reset, onClose]);
-
-  const handleSubmit = useCallback(async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setError(t.changePasswordIncomplete);
-      return;
-    }
-    if (newPassword.length < 8) {
-      setError(t.changePasswordTooShort);
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError(t.changePasswordMismatch);
-      return;
-    }
-
-    setError('');
-    setSubmitting(true);
-    try {
-      await authService.changePassword(currentPassword, newPassword, confirmPassword);
-      reset();
-      onClose();
-      onSuccess();
-    } catch (e) {
-      setError(e?.response?.data?.message ?? t.changePasswordError);
-    } finally {
-      setSubmitting(false);
-    }
-  }, [currentPassword, newPassword, confirmPassword, t, reset, onClose, onSuccess]);
-
-  return (
-    <Modal transparent animationType="fade" visible={visible} onRequestClose={handleClose} statusBarTranslucent>
-      <KeyboardAvoidingView style={styles.kbAvoid} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <TouchableWithoutFeedback onPress={handleClose} accessible={false}>
-        <View style={styles.overlay}>
-          <TouchableWithoutFeedback accessible={false}>
-            <View style={styles.card} {...a11yModal(t.changePasswordTitle)}>
-              <Text style={styles.title} accessibilityRole="header">{t.changePasswordTitle}</Text>
-
-              <ScrollView style={styles.formScrollArea} contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
-                <FormField
-                  label={t.currentPasswordLabel}
-                  value={currentPassword}
-                  onChangeText={(v) => { setCurrentPassword(v); setError(''); }}
-                  secureTextEntry
-                  textContentType="password"
-                  autoComplete="current-password"
-                />
-                <FormField
-                  label={t.newPasswordLabel}
-                  value={newPassword}
-                  onChangeText={(v) => { setNewPassword(v); setError(''); }}
-                  secureTextEntry
-                  textContentType="newPassword"
-                  autoComplete="new-password"
-                />
-                <FormField
-                  label={t.confirmNewPasswordLabel}
-                  value={confirmPassword}
-                  onChangeText={(v) => { setConfirmPassword(v); setError(''); }}
-                  secureTextEntry
-                  textContentType="newPassword"
-                  autoComplete="new-password"
-                />
-              </ScrollView>
-
-              {!!error && (
-                <Text style={styles.errorText} accessibilityRole="alert">{error}</Text>
-              )}
-
-              <View style={styles.actions}>
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={handleClose}
-                  activeOpacity={0.8}
-                  disabled={submitting}
-                  {...a11yButton(t.cancel, { disabled: submitting })}
-                >
-                  <Text style={styles.cancelBtnText}>{t.cancel}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
-                  onPress={handleSubmit}
-                  activeOpacity={0.85}
-                  disabled={submitting}
-                  {...a11yButton(t.changePasswordSubmit, { disabled: submitting, busy: submitting })}
-                >
-                  {submitting
-                    ? <ActivityIndicator size="small" color={theme.onPrimarySolid} />
-                    : <Text style={styles.submitBtnText}>{t.changePasswordSubmit}</Text>}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
-
-const modalStyles = (t) =>
-  StyleSheet.create({
-    kbAvoid: { flex: 1 },
-    overlay: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: 24,
-      backgroundColor: t.overlay,
-    },
-    card: {
-      borderRadius: 16,
-      padding: 20,
-      width: '100%',
-      maxWidth: 380,
-      maxHeight: '90%',
-      gap: 12,
-      backgroundColor: t.card,
-      borderWidth: 1,
-      borderColor: t.border,
-    },
-    formScrollArea: { flexShrink: 1 },
-    formScroll: { gap: 12, paddingBottom: 2 },
-    title: { fontSize: 17, fontWeight: '700', color: t.textPrimary, marginBottom: 4 },
-    errorText: { fontSize: 13, color: t.status.danger.fg },
-    actions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-    cancelBtn: {
-      flex: 1,
-      minHeight: 44,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: 10,
-      borderWidth: 1.5,
-      borderColor: t.borderStrong,
-    },
-    cancelBtnText: { fontSize: 14, fontWeight: '600', color: t.textSecondary },
-    submitBtn: {
-      flex: 1,
-      minHeight: 44,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: 10,
-      backgroundColor: t.primarySolid,
-    },
-    submitBtnDisabled: { opacity: 0.7 },
-    submitBtnText: { fontSize: 14, fontWeight: '700', color: t.onPrimarySolid },
-  });
 
 const styles = StyleSheet.create({
   root: {
@@ -692,14 +352,6 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 20,
     fontWeight: '700',
-  },
-
-  row: {
-    flexDirection: 'row',
-    gap: 14,
-  },
-  rowCompact: {
-    flexDirection: 'column',
   },
 
   gridRow: {
@@ -764,29 +416,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  outlineBtn: {
-    borderWidth: 1.5,
-    borderRadius: 8,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-  },
-  outlineBtnText: {
-    fontSize: 13,
-  },
-
-  saveBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderRadius: 8,
-    paddingVertical: 11,
-    marginTop: 4,
-  },
-  saveBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
