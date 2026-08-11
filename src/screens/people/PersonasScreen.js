@@ -45,10 +45,19 @@ export default function PersonasScreen() {
 
   const isFireChief = roles.includes(ROLES.FIRE_CHIEF);
   const isAdmin     = roles.includes(ROLES.ADMIN);
+  const isMedical   = !isFireChief && roles.includes(ROLES.MEDICAL);
   // Bomberos los administra quien tiene manageFirefighters; personal médico requiere
   // manageHealthPersonnel — son permisos distintos porque dar de alta/baja a un colega
   // médico es una acción de RR.HH. que ni Capacitador ni el propio Médico deberían tener.
   const canManage = isFireChief ? can('manageFirefighters') : can('manageHealthPersonnel');
+
+  // Médico no administra aspirantes (esa ficha completa sigue siendo del Jefe de
+  // Bomberos — canManage ya da false arriba en ambos casos), pero sí necesita poder
+  // consultarlos para dar continuidad a su seguimiento entre sesiones, no solo verlos
+  // de a uno cuando ya están inscritos en una capacitación concreta. El backend ya lo
+  // permite (GET /trainee-firefighters no tiene restricción de rol); solo faltaba
+  // exponerlo aquí.
+  const [medicalTab, setMedicalTab] = useState('medical');
 
   const [notice, setNotice] = useState(null);
   // El tono del toast venía fijo en "warning" para cualquier mensaje — un aviso de
@@ -67,8 +76,12 @@ export default function PersonasScreen() {
   const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [deactivating, setDeactivating] = useState(false);
 
-  const primaryRole = isFireChief ? ROLES.FIRE_CHIEF : roles[0];
-  const { personas, filters, loading, error, refresh } = usePersonas(primaryRole);
+  // usePersonas decide qué trae según si el rol efectivo "es" FIRE_CHIEF — reutilizarlo
+  // como señal es lo que le permite a Médico ver la lista de aspirantes en su pestaña,
+  // sin que eso le dé ningún permiso de gestión (canManage ya evaluó aparte y da false).
+  const viewingTrainees = isFireChief || (isMedical && medicalTab === 'trainees');
+  const effectiveRole = viewingTrainees ? ROLES.FIRE_CHIEF : roles[0];
+  const { personas, filters, loading, error, refresh } = usePersonas(effectiveRole);
 
   // Necesario para crear un User nuevo (POST /users exige institutionId) — se asume la
   // misma institución de quien está dando de alta al personal.
@@ -177,7 +190,7 @@ export default function PersonasScreen() {
       {/* Título */}
       <View style={styles.titleRow}>
         <Text style={styles.pageTitle}>
-          {isAdmin ? 'Todo el Personal' : isFireChief ? 'Personal' : 'Personal Médico'}
+          {isAdmin ? 'Todo el Personal' : isFireChief ? 'Personal' : viewingTrainees ? 'Aspirantes' : 'Personal Médico'}
         </Text>
         {canManage && (
           <Pressable
@@ -190,6 +203,25 @@ export default function PersonasScreen() {
           </Pressable>
         )}
       </View>
+
+      {isMedical && (
+        <View style={styles.medicalTabRow}>
+          <TouchableOpacity
+            style={[styles.medicalTabChip, medicalTab === 'medical' && styles.medicalTabChipActive]}
+            onPress={() => { setMedicalTab('medical'); setSelectedFilter('Todos'); setPage(0); }}
+            {...a11yTab('Personal médico', medicalTab === 'medical')}
+          >
+            <Text style={[styles.medicalTabText, medicalTab === 'medical' && styles.medicalTabTextActive]}>Personal médico</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.medicalTabChip, medicalTab === 'trainees' && styles.medicalTabChipActive]}
+            onPress={() => { setMedicalTab('trainees'); setSelectedFilter('Todos'); setPage(0); }}
+            {...a11yTab('Aspirantes', medicalTab === 'trainees')}
+          >
+            <Text style={[styles.medicalTabText, medicalTab === 'trainees' && styles.medicalTabTextActive]}>Aspirantes</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {!!notice && (
         <View style={styles.noticeWrap}>
@@ -965,6 +997,23 @@ const makeStyles = (t) => StyleSheet.create({
     fontWeight: '800',
     color: t.textPrimary,
   },
+  medicalTabRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingBottom: 10,
+  },
+  medicalTabChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: t.border,
+    backgroundColor: t.card,
+  },
+  medicalTabChipActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
+  medicalTabText: { fontSize: 13, fontWeight: '700', color: t.textPrimary },
+  medicalTabTextActive: { color: t.onPrimarySolid },
   addButton: {
     minWidth: 174,
     height: 40,
