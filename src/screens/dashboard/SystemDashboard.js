@@ -26,6 +26,7 @@ import { auditService, invitationService, sessionService, userService } from '..
 import api from '../../services/api';
 
 const ALL_ROLE_CODES = Object.values(ROLES);
+const AUDIT_PAGE_SIZE = 8;
 
 const HERO_IMAGE = require('../../assets/bomberosEjercitando.jpg');
 
@@ -146,6 +147,11 @@ export default function SystemDashboard({ navigation }) {
   const [auditItems,   setAuditItems]   = useState([]);
   const [auditLoading, setAuditLoading] = useState(true);
   const [auditError,   setAuditError]   = useState(null);
+  // La lista crecía tanto como eventos hubiera (llegó a estirar la página entera). Se
+  // corta en tandas y se revela más bajo demanda, en vez de un scroll interno que en
+  // pantallas angostas ni siquiera queda acotado (el panel deja de tener `flex:1` en
+  // modo compacto — ver `mainGrid`/`auditPanel` — así que un ScrollView ahí no acota nada).
+  const [auditVisibleCount, setAuditVisibleCount] = useState(AUDIT_PAGE_SIZE);
 
   // `users` ya se carga para la tabla de personal — se reutiliza acá para mostrar
   // quién generó cada evento en vez de un userId críptico.
@@ -587,7 +593,7 @@ export default function SystemDashboard({ navigation }) {
               </View>
             ) : (
               <ScrollView style={styles.auditList} showsVerticalScrollIndicator={false}>
-                {auditItems.slice(0, 30).map((ev) => (
+                {auditItems.slice(0, auditVisibleCount).map((ev) => (
                   <View key={ev.id} style={styles.auditRow}>
                     <View style={[styles.auditIconWrap, !ev.success && styles.auditIconWrapDanger]}>
                       <Ionicons
@@ -619,6 +625,20 @@ export default function SystemDashboard({ navigation }) {
                   </View>
                 ))}
               </ScrollView>
+            )}
+
+            {!auditLoading && !auditError && auditItems.length > auditVisibleCount && (
+              <TouchableOpacity
+                style={styles.auditMoreBtn}
+                onPress={() => setAuditVisibleCount((c) => c + AUDIT_PAGE_SIZE)}
+                activeOpacity={0.8}
+                {...a11yButton(`Ver más eventos, quedan ${auditItems.length - auditVisibleCount}`)}
+              >
+                <Text style={styles.auditMoreBtnText}>
+                  Ver más ({auditItems.length - auditVisibleCount})
+                </Text>
+                <Ionicons name="chevron-down" size={14} color={theme.primaryText} {...a11yDecorative} />
+              </TouchableOpacity>
             )}
           </View>
         </View>
@@ -835,13 +855,11 @@ export default function SystemDashboard({ navigation }) {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* Backdrop invisible: solo para cerrar el desplegable de rol al tocar fuera —
-          el panel en sí vive dentro de `filterGroup` (ver arriba), no acá. */}
-      {roleFilterVisible && (
-        <TouchableWithoutFeedback onPress={() => setRoleFilterVisible(false)}>
-          <View style={styles.dropdownBackdrop} />
-        </TouchableWithoutFeedback>
-      )}
+      {/* Antes había acá un backdrop invisible a pantalla completa para cerrar el
+          desplegable de rol al tocar fuera — pero al cubrir toda la pantalla (incluido
+          el propio desplegable, por delante en el árbol de render) se comía los clics
+          de las opciones: se abría pero ninguna opción respondía. El desplegable ahora
+          solo se cierra al elegir una opción o al volver a tocar el botón. */}
     </SafeAreaView>
   );
 }
@@ -941,7 +959,6 @@ const makeStyles = (t, isCompact) =>
       shadowRadius: 12,
     },
     roleDropdownContent: { padding: 6, gap: 4 },
-    dropdownBackdrop: { ...StyleSheet.absoluteFillObject, zIndex: 10 },
     filterLabel: { color: t.textMuted, ...TEXT_STYLES.label },
     filterButton: {
       minWidth: 160,
@@ -1001,6 +1018,12 @@ const makeStyles = (t, isCompact) =>
     auditTime: { fontSize: FONT_SIZE.sm, color: t.textMuted, flexShrink: 0 },
     auditAction: { fontSize: FONT_SIZE.md, color: t.textSecondary, lineHeight: 18 },
     auditFailed: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold, color: t.status.danger.fg },
+    auditMoreBtn: {
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+      marginTop: 10, paddingVertical: 9, borderRadius: 8,
+      borderWidth: 1, borderColor: t.border, backgroundColor: t.cardAlt,
+    },
+    auditMoreBtnText: { color: t.primaryText, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold },
 
     // ── Modales (editar permisos / invitaciones pendientes) ──
     modalOverlay: {
