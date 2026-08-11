@@ -50,6 +50,36 @@ const ROLE_TONE = {
   INVESTIGADOR: 'neutral',
 };
 
+// Traduce los códigos crudos del backend (event/resourceType) a texto legible. Si
+// aparece un código nuevo que no está mapeado, se "humaniza" (guiones bajos → espacios,
+// minúsculas) en vez de mostrar la constante técnica tal cual.
+const AUDIT_EVENT_LABELS = {
+  READ: 'Consultó',
+  WRITE: 'Modificó',
+  CREATE: 'Creó',
+  UPDATE: 'Actualizó',
+  DELETE: 'Eliminó',
+};
+
+const AUDIT_EVENT_ICONS = {
+  READ: 'eye-outline',
+  WRITE: 'create-outline',
+  CREATE: 'add-circle-outline',
+  UPDATE: 'create-outline',
+  DELETE: 'trash-outline',
+};
+
+const AUDIT_RESOURCE_LABELS = {
+  MEDICAL_VALIDATION_QUEUE: 'la cola de validaciones médicas',
+  MEDICAL_RECORD: 'un expediente médico',
+  MEDICAL_HISTORY: 'un historial médico',
+};
+
+function humanize(code) {
+  if (!code) return '';
+  return code.toLowerCase().replace(/_/g, ' ');
+}
+
 function getUserRole(user) {
   const rawRole = user.roles?.[0] ?? user.role ?? user.primaryRole ?? null;
   if (!rawRole) return '—';
@@ -115,6 +145,12 @@ export default function SystemDashboard({ navigation }) {
   const [auditLoading, setAuditLoading] = useState(true);
   const [auditError,   setAuditError]   = useState(null);
 
+  // `users` ya se carga para la tabla de personal — se reutiliza acá para mostrar
+  // quién generó cada evento en vez de un userId críptico.
+  const userNameById = useMemo(() => Object.fromEntries(
+    users.map((u) => [u.userId, `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.email]),
+  ), [users]);
+
   useEffect(() => {
     let alive = true;
     setAuditLoading(true);
@@ -140,19 +176,30 @@ export default function SystemDashboard({ navigation }) {
       api.get('/users'),
       sessionService.getAll(),
       loadInvites(),
-    ]).then(([usersR, sessionsR, invitesR]) => {
+    ]).then(async ([usersR, sessionsR, invitesR]) => {
       if (!alive) return;
       const failed = [];
 
-      if (usersR.status === 'fulfilled') setUsers(usersR.value.data?.data ?? []);
-      else failed.push('usuarios');
+      if (usersR.status === 'fulfilled') {
+        const rawUsers = usersR.value.data?.data ?? [];
+        // GET /users no trae los roles de cada usuario (viven en /users/:id/roles) — sin
+        // esto la columna "Rol" y el filtro por rol quedan siempre vacíos.
+        const rolesResults = await Promise.allSettled(
+          rawUsers.map((u) => userService.getRoles(u.userId)),
+        );
+        const usersWithRoles = rawUsers.map((u, i) => ({
+          ...u,
+          roles: rolesResults[i].status === 'fulfilled' ? rolesResults[i].value : [],
+        }));
+        if (alive) setUsers(usersWithRoles);
+      } else failed.push('usuarios');
 
       if (sessionsR.status === 'fulfilled') setSessions(sessionsR.value);
       else failed.push('sesiones');
 
       if (invitesR.status === 'rejected') failed.push('invitaciones');
 
-      setFailedSources(failed);
+      if (alive) setFailedSources(failed);
     }).finally(() => { if (alive) setLoading(false); });
 
     return () => { alive = false; };
@@ -210,7 +257,7 @@ export default function SystemDashboard({ navigation }) {
     () => users.map((item, index) => ({
       ...item,
       code: item.code ?? getUserCode(item, index),
-      roleLabel: item.roleLabel ?? getUserRole(item),
+      roleLabel: getUserRole(item),
     })),
     [users],
   );
@@ -285,14 +332,14 @@ export default function SystemDashboard({ navigation }) {
     try {
       await userService.updateRoles(permTarget.userId, permSelected);
       setUsers((prev) => prev.map((u) => (
-        u.userId === permTarget.userId ? { ...u, roleLabel: getUserRole({ roles: permSelected }) } : u
+        u.userId === permTarget.userId ? { ...u, roles: permSelected } : u
       )));
       setPermTarget(null);
       setToast({ message: `Permisos de ${permTarget.code} actualizados.`, tone: 'success' });
     } catch (e) {
       if (!e.response) {
         setUsers((prev) => prev.map((u) => (
-          u.userId === permTarget.userId ? { ...u, roleLabel: getUserRole({ roles: permSelected }) } : u
+          u.userId === permTarget.userId ? { ...u, roles: permSelected } : u
         )));
         setPermTarget(null);
         setToast({ message: 'Sin conexión: los permisos quedaron guardados localmente y se aplicarán cuando vuelva la señal.', tone: 'warning' });
@@ -512,19 +559,33 @@ export default function SystemDashboard({ navigation }) {
               <ScrollView style={styles.auditList} showsVerticalScrollIndicator={false}>
                 {auditItems.slice(0, 30).map((ev) => (
                   <View key={ev.id} style={styles.auditRow}>
-                    <View style={styles.auditRowTop}>
-                      <Text style={styles.auditEvent}>{ev.event}</Text>
-                      <Text style={styles.auditTime}>
-                        {new Date(ev.occurredAt).toLocaleString('es-ES', {
-                          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-                        })}
+                    <View style={[styles.auditIconWrap, !ev.success && styles.auditIconWrapDanger]}>
+                      <Ionicons
+                        name={AUDIT_EVENT_ICONS[ev.event] ?? 'flash-outline'}
+                        size={15}
+                        color={ev.success ? theme.primaryText : theme.status.danger.fg}
+                        {...a11yDecorative}
+                      />
+                    </View>
+                    <View style={styles.auditRowBody}>
+                      <View style={styles.auditRowTop}>
+                        <Text style={styles.auditActor} numberOfLines={1}>
+                          {userNameById[ev.userId] ?? 'Usuario'}
+                        </Text>
+                        <Text style={styles.auditTime}>
+                          {new Date(ev.occurredAt).toLocaleString('es-ES', {
+                            day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                          })}
+                        </Text>
+                      </View>
+                      <Text style={styles.auditAction} numberOfLines={2}>
+                        {AUDIT_EVENT_LABELS[ev.event] ?? humanize(ev.event)}{' '}
+                        {ev.resourceType
+                          ? (AUDIT_RESOURCE_LABELS[ev.resourceType] ?? `el recurso ${humanize(ev.resourceType)}`)
+                          : 'un recurso'}
+                        {!ev.success && <Text style={styles.auditFailed}> · Falló</Text>}
                       </Text>
                     </View>
-                    {!!ev.resourceType && (
-                      <Text style={styles.auditResource}>
-                        {ev.resourceType}{ev.resourceId ? ` · ${String(ev.resourceId).slice(0, 8)}…` : ''}
-                      </Text>
-                    )}
                   </View>
                 ))}
               </ScrollView>
@@ -864,11 +925,22 @@ const makeStyles = (t, isCompact) =>
     auditEmptyText: { color: t.textSecondary, fontSize: 13, lineHeight: 19, textAlign: 'center' },
 
     auditList: { flex: 1 },
-    auditRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: t.divider, gap: 3 },
-    auditRowTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-    auditEvent: { fontSize: 13, fontWeight: '700', color: t.textPrimary },
-    auditTime: { fontSize: 11, color: t.textMuted },
-    auditResource: { fontSize: 12, color: t.textSecondary },
+    auditRow: {
+      flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+      paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: t.divider,
+    },
+    auditIconWrap: {
+      width: 30, height: 30, borderRadius: 15, marginTop: 1,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: t.cardAlt, borderWidth: 1, borderColor: t.border,
+    },
+    auditIconWrapDanger: { backgroundColor: t.status.danger.bg, borderColor: t.status.danger.border },
+    auditRowBody: { flex: 1, gap: 3, minWidth: 0 },
+    auditRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
+    auditActor: { flex: 1, fontSize: 14, fontWeight: '800', color: t.textPrimary },
+    auditTime: { fontSize: 11, color: t.textMuted, flexShrink: 0 },
+    auditAction: { fontSize: 13, color: t.textSecondary, lineHeight: 18 },
+    auditFailed: { fontSize: 13, fontWeight: '800', color: t.status.danger.fg },
 
     // ── Modales (editar permisos / invitaciones pendientes) ──
     modalOverlay: {
