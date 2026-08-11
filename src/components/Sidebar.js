@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { ROLES } from '../constants/roles';
 import { ROUTES } from '../constants/routes';
 import { a11yButton, a11yDecorative } from '../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../constants/typography';
 import useAuthStore from '../store/authStore';
 import { canAccessRoute } from '../navigation/guards';
 import useTheme from '../hooks/useTheme';
@@ -164,7 +165,12 @@ export default function Sidebar({ navigation, activeRoute, isOpen, onOpen, onClo
 
         <View style={styles.divider} {...a11yDecorative} />
 
-        <View style={styles.menu} accessibilityRole="menu">
+        <ScrollView
+          style={styles.menu}
+          contentContainerStyle={styles.menuContent}
+          showsVerticalScrollIndicator={false}
+          accessibilityRole="menu"
+        >
           {menuItems.map((item) => {
             const isActive = activeRoute === item.route;
             const label = t[item.key] ?? item.key;
@@ -210,7 +216,7 @@ export default function Sidebar({ navigation, activeRoute, isOpen, onOpen, onClo
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
 
         <View style={styles.footer}>
           <View style={styles.divider} {...a11yDecorative} />
@@ -311,12 +317,11 @@ const makeStyles = (t) =>
       overflow: 'hidden',
     },
     appTitle: {
-      fontSize: 18,
-      fontWeight: '700',
+      ...TEXT_STYLES.sectionTitle,
       color: t.sidebarText,
     },
     appSubtitle: {
-      fontSize: 11,
+      fontSize: FONT_SIZE.sm,
       color: t.sidebarTextMuted,
       marginTop: 2,
     },
@@ -330,7 +335,10 @@ const makeStyles = (t) =>
     },
 
     menu: {
-      flex: 1,
+      flexGrow: 0,
+      flexShrink: 1,
+    },
+    menuContent: {
       paddingTop: 4,
     },
 
@@ -366,17 +374,18 @@ const makeStyles = (t) =>
     },
 
     menuText: {
-      fontSize: 16,
+      fontSize: FONT_SIZE.xl,
       color: t.sidebarText,
-      fontWeight: '500',
+      fontWeight: FONT_WEIGHT.medium,
       flex: 1,
     },
     menuTextActive: {
-      fontWeight: '700',
+      fontWeight: FONT_WEIGHT.bold,
       color: t.sidebarIconActive,
     },
 
     footer: {
+      flexShrink: 0,
       paddingBottom: 22,
     },
     logoutButton: {

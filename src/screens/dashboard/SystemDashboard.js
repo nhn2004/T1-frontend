@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ROLES, ROLE_LABELS } from '../../constants';
 import { ROUTES } from '../../constants/routes';
 import { a11yButton, a11yDecorative, a11yGroup, a11yModal, MIN_TOUCH_SIZE } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import Toast from '../../components/Toast';
@@ -119,6 +120,7 @@ export default function SystemDashboard({ navigation }) {
   const [sessions,         setSessions]         = useState([]);
   const [pendingInvitesList, setPendingInvitesList] = useState([]);
   const [roleFilter,       setRoleFilter]       = useState(ROLE_OPTIONS[0]);
+  const [roleFilterVisible, setRoleFilterVisible] = useState(false);
   const [failedSources,    setFailedSources]    = useState([]);
   const [toast,            setToast]            = useState(null);
 
@@ -292,13 +294,6 @@ export default function SystemDashboard({ navigation }) {
     ];
   }, [loading, users, sessions, pendingInvitesList, failedSources]);
 
-  const cycleRoleFilter = useCallback(() => {
-    setRoleFilter((current) => {
-      const nextIndex = (ROLE_OPTIONS.indexOf(current) + 1) % ROLE_OPTIONS.length;
-      return ROLE_OPTIONS[nextIndex];
-    });
-  }, []);
-
   const handleOpenPermissions = useCallback(async (item) => {
     setPermTarget(item);
     setPermError('');
@@ -459,10 +454,11 @@ export default function SystemDashboard({ navigation }) {
                 <Text style={styles.filterLabel} nativeID="roleFilterLabel">FILTRAR POR ROL:</Text>
                 <TouchableOpacity
                   style={styles.filterButton}
-                  onPress={cycleRoleFilter}
+                  onPress={() => setRoleFilterVisible(true)}
                   activeOpacity={0.8}
                   {...a11yButton(`Filtrar por rol: ${roleFilter}`, {
-                    hint: 'Cambia al siguiente rol de la lista',
+                    hint: 'Abre la lista de roles',
+                    expanded: roleFilterVisible,
                   })}
                 >
                   <Text style={styles.filterText}>{roleFilter}</Text>
@@ -804,6 +800,47 @@ export default function SystemDashboard({ navigation }) {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* ── Modal: filtrar por rol ── */}
+      <Modal
+        visible={roleFilterVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRoleFilterVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setRoleFilterVisible(false)} accessible={false}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback accessible={false}>
+              <View style={styles.modalCard} {...a11yModal('Filtrar por rol')}>
+                <Text style={styles.modalTitle} accessibilityRole="header">Filtrar por Rol</Text>
+
+                <ScrollView contentContainerStyle={styles.roleListContent} showsVerticalScrollIndicator={false}>
+                  {ROLE_OPTIONS.map((opt) => {
+                    const selected = opt === roleFilter;
+                    return (
+                      <TouchableOpacity
+                        key={opt}
+                        style={[styles.roleRow, styles.roleFilterRow, selected && styles.roleRowActive]}
+                        onPress={() => { setRoleFilter(opt); setRoleFilterVisible(false); }}
+                        activeOpacity={0.8}
+                        accessible
+                        accessibilityRole="radio"
+                        accessibilityLabel={opt}
+                        accessibilityState={{ checked: selected }}
+                      >
+                        <Text style={styles.roleRowText}>{opt}</Text>
+                        {selected && (
+                          <Ionicons name="checkmark" size={16} color={theme.primaryText} {...a11yDecorative} />
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -818,15 +855,15 @@ const makeStyles = (t, isCompact) =>
     // Velo fijo para asegurar contraste del texto blanco sobre la foto.
     heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.58)' },
     heroContent: { paddingHorizontal: isCompact ? 20 : 32, paddingVertical: 28, gap: 12 },
-    heroTitle: { color: '#FFFFFF', fontSize: isCompact ? 24 : 34, fontWeight: '900' },
-    heroSubtitle: { color: '#EAEAEA', fontSize: isCompact ? 14 : 17, fontWeight: '800' },
+    heroTitle: { color: '#FFFFFF', fontSize: isCompact ? FONT_SIZE.display : 34, fontWeight: FONT_WEIGHT.black },
+    heroSubtitle: { color: '#EAEAEA', fontSize: isCompact ? FONT_SIZE.lg : FONT_SIZE.xxl, fontWeight: FONT_WEIGHT.heavy },
     heroActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 },
     primaryButton: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
       backgroundColor: '#C94E1B', borderRadius: 7,
       paddingHorizontal: 18, minHeight: MIN_TOUCH_SIZE, justifyContent: 'center',
     },
-    primaryButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+    primaryButtonText: { color: '#FFFFFF', ...TEXT_STYLES.button },
     secondaryButton: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
       borderRadius: 7, borderWidth: 1.5,
@@ -834,7 +871,7 @@ const makeStyles = (t, isCompact) =>
       backgroundColor: 'rgba(0,0,0,0.35)',
       paddingHorizontal: 18, minHeight: MIN_TOUCH_SIZE, justifyContent: 'center',
     },
-    secondaryButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
+    secondaryButtonText: { color: '#FFFFFF', ...TEXT_STYLES.button },
 
     warningBanner: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -855,13 +892,13 @@ const makeStyles = (t, isCompact) =>
     statIcon: { width: 44, height: 44, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
     statTextBox: { flex: 1 },
     statLabelRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
-    statLabel: { color: t.textMuted, fontSize: 11, fontWeight: '900', lineHeight: 14 },
+    statLabel: { color: t.textMuted, ...TEXT_STYLES.label, lineHeight: 14 },
     liveBadge: {
       backgroundColor: t.status.danger.solid, borderRadius: 10,
       paddingHorizontal: 5, paddingVertical: 2,
     },
-    liveText: { color: t.status.danger.onSolid, fontSize: 9, fontWeight: '900' },
-    statValue: { color: t.textPrimary, fontSize: 27, fontWeight: '900', lineHeight: 32 },
+    liveText: { color: t.status.danger.onSolid, fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.black },
+    statValue: { color: t.textPrimary, ...TEXT_STYLES.statValue, lineHeight: 32 },
 
     mainGrid: { flexDirection: isCompact ? 'column' : 'row', gap: 18, alignItems: 'stretch' },
     usersPanel: {
@@ -880,9 +917,9 @@ const makeStyles = (t, isCompact) =>
       flexDirection: 'row', alignItems: 'center',
       justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 20,
     },
-    panelTitle: { color: t.textPrimary, fontSize: 19, fontWeight: '900' },
+    panelTitle: { color: t.textPrimary, ...TEXT_STYLES.sectionTitle },
     filterGroup: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-    filterLabel: { color: t.textMuted, fontSize: 11, fontWeight: '900' },
+    filterLabel: { color: t.textMuted, ...TEXT_STYLES.label },
     filterButton: {
       minWidth: 160,
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
@@ -890,13 +927,13 @@ const makeStyles = (t, isCompact) =>
       backgroundColor: t.cardAlt,
       paddingHorizontal: 12, minHeight: MIN_TOUCH_SIZE,
     },
-    filterText: { color: t.textPrimary, fontSize: 13, fontWeight: '700' },
+    filterText: { color: t.textPrimary, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold },
 
     tableHeader: {
       flexDirection: 'row', borderBottomWidth: 1,
       borderBottomColor: t.border, paddingBottom: 12,
     },
-    tableHeadText: { color: t.textMuted, fontSize: 11, fontWeight: '900' },
+    tableHeadText: { color: t.textMuted, ...TEXT_STYLES.label },
     tableRow: {
       minHeight: 58, flexDirection: 'row', alignItems: 'center',
       borderBottomWidth: 1, borderBottomColor: t.divider,
@@ -909,19 +946,19 @@ const makeStyles = (t, isCompact) =>
     statusColumn: isCompact ? { width: 100 } : { flex: 1.15 },
     actionColumn: isCompact ? { width: 170 } : { flex: 1.25 },
     tableScrollContent: { minWidth: isCompact ? 480 : undefined },
-    codeText: { color: t.textPrimary, fontSize: 13, fontWeight: '900' },
+    codeText: { color: t.textPrimary, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.black },
     roleBadge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
-    roleBadgeText: { fontSize: 11, fontWeight: '900' },
+    roleBadgeText: { ...TEXT_STYLES.label },
     statusCell: { flexDirection: 'row', alignItems: 'center', gap: 7 },
     statusDot: { width: 8, height: 8, borderRadius: 4 },
-    statusText: { color: t.textSecondary, fontSize: 13, fontWeight: '700' },
+    statusText: { color: t.textSecondary, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold },
     editButton: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: MIN_TOUCH_SIZE },
-    editText: { color: t.primaryText, fontSize: 13, fontWeight: '800' },
+    editText: { color: t.primaryText, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.heavy },
     loading: { paddingVertical: 32 },
     emptyText: { color: t.textMuted, fontSize: 14, textAlign: 'center', paddingVertical: 32 },
 
     auditEmpty: { alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 32, flex: 1 },
-    auditEmptyTitle: { color: t.textPrimary, fontSize: 15, fontWeight: '800' },
+    auditEmptyTitle: { color: t.textPrimary, fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.heavy },
     auditEmptyText: { color: t.textSecondary, fontSize: 13, lineHeight: 19, textAlign: 'center' },
 
     auditList: { flex: 1 },
@@ -937,10 +974,10 @@ const makeStyles = (t, isCompact) =>
     auditIconWrapDanger: { backgroundColor: t.status.danger.bg, borderColor: t.status.danger.border },
     auditRowBody: { flex: 1, gap: 3, minWidth: 0 },
     auditRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
-    auditActor: { flex: 1, fontSize: 14, fontWeight: '800', color: t.textPrimary },
-    auditTime: { fontSize: 11, color: t.textMuted, flexShrink: 0 },
-    auditAction: { fontSize: 13, color: t.textSecondary, lineHeight: 18 },
-    auditFailed: { fontSize: 13, fontWeight: '800', color: t.status.danger.fg },
+    auditActor: { flex: 1, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.heavy, color: t.textPrimary },
+    auditTime: { fontSize: FONT_SIZE.sm, color: t.textMuted, flexShrink: 0 },
+    auditAction: { fontSize: FONT_SIZE.md, color: t.textSecondary, lineHeight: 18 },
+    auditFailed: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.heavy, color: t.status.danger.fg },
 
     // ── Modales (editar permisos / invitaciones pendientes) ──
     modalOverlay: {
@@ -951,12 +988,12 @@ const makeStyles = (t, isCompact) =>
       width: '100%', maxWidth: 420, backgroundColor: t.card, borderRadius: 16,
       padding: 20, gap: 12, borderWidth: 1, borderColor: t.border,
     },
-    modalTitle: { fontSize: 17, fontWeight: '800', color: t.textPrimary },
-    modalSub: { fontSize: 13, color: t.textSecondary, lineHeight: 18, marginTop: -6 },
-    fieldLabel: { fontSize: 13, color: t.textSecondary, fontWeight: '600' },
+    modalTitle: { ...TEXT_STYLES.modalTitle, color: t.textPrimary },
+    modalSub: { fontSize: FONT_SIZE.md, color: t.textSecondary, lineHeight: 18, marginTop: -6 },
+    fieldLabel: { fontSize: FONT_SIZE.md, color: t.textSecondary, fontWeight: FONT_WEIGHT.semibold },
     fieldInput: {
       borderWidth: 1.5, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
-      fontSize: 14, backgroundColor: t.cardAlt, borderColor: t.borderStrong, color: t.textPrimary,
+      fontSize: FONT_SIZE.lg, backgroundColor: t.cardAlt, borderColor: t.borderStrong, color: t.textPrimary,
     },
     roleChipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     roleChip: {
@@ -964,21 +1001,21 @@ const makeStyles = (t, isCompact) =>
       borderWidth: 1.5, borderColor: t.border, backgroundColor: t.cardAlt,
     },
     roleChipActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
-    roleChipText: { fontSize: 12, color: t.textPrimary, fontWeight: '600' },
+    roleChipText: { fontSize: FONT_SIZE.base, color: t.textPrimary, fontWeight: FONT_WEIGHT.semibold },
     roleChipTextActive: { color: t.onPrimarySolid },
-    modalError: { fontSize: 12, color: t.status.danger.fg },
+    modalError: { fontSize: FONT_SIZE.base, color: t.status.danger.fg },
     modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
     modalCancelBtn: {
       flex: 1, minHeight: 44, justifyContent: 'center', alignItems: 'center',
       borderRadius: 10, borderWidth: 1.5, borderColor: t.borderStrong,
     },
-    modalCancelText: { fontSize: 14, fontWeight: '600', color: t.textSecondary },
+    modalCancelText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.semibold, color: t.textSecondary },
     modalSubmitBtn: {
       flex: 1, minHeight: 44, justifyContent: 'center', alignItems: 'center',
       borderRadius: 10, backgroundColor: t.primarySolid,
     },
     modalSubmitBtnDisabled: { opacity: 0.7 },
-    modalSubmitText: { fontSize: 14, fontWeight: '700', color: t.onPrimarySolid },
+    modalSubmitText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.heavy, color: t.onPrimarySolid },
 
     roleList: { maxHeight: 260 },
     roleListContent: { gap: 8, paddingBottom: 2 },
@@ -988,14 +1025,15 @@ const makeStyles = (t, isCompact) =>
       borderWidth: 1, borderColor: t.border, backgroundColor: t.card,
     },
     roleRowActive: { borderColor: t.primarySolid, backgroundColor: t.primarySoft },
+    roleFilterRow: { justifyContent: 'space-between' },
     checkbox: {
       width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: t.borderStrong,
       alignItems: 'center', justifyContent: 'center', backgroundColor: t.cardAlt,
     },
     checkboxActive: { backgroundColor: t.primarySolid, borderColor: t.primarySolid },
-    roleRowText: { fontSize: 13, fontWeight: '600', color: t.textPrimary },
+    roleRowText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textPrimary },
 
-    emptyListText: { fontSize: 13, color: t.textSecondary, textAlign: 'center', paddingVertical: 12 },
+    emptyListText: { fontSize: FONT_SIZE.md, color: t.textSecondary, textAlign: 'center', paddingVertical: 12 },
     inviteList: { maxHeight: 320 },
     inviteRow: {
       flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -1003,11 +1041,11 @@ const makeStyles = (t, isCompact) =>
       borderWidth: 1, borderColor: t.border, backgroundColor: t.card,
     },
     inviteRowText: { flex: 1, minWidth: 0, gap: 2 },
-    inviteEmailText: { fontSize: 13, fontWeight: '700', color: t.textPrimary },
-    inviteAgoText: { fontSize: 11, color: t.textSecondary },
+    inviteEmailText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
+    inviteAgoText: { fontSize: FONT_SIZE.sm, color: t.textSecondary },
     inviteRevokeBtn: {
       minHeight: 36, paddingHorizontal: 12, justifyContent: 'center', alignItems: 'center',
       borderRadius: 8, borderWidth: 1.5, borderColor: t.status.danger.fg,
     },
-    inviteRevokeText: { fontSize: 12, fontWeight: '700', color: t.status.danger.fg },
+    inviteRevokeText: { fontSize: FONT_SIZE.base, fontWeight: FONT_WEIGHT.bold, color: t.status.danger.fg },
   });

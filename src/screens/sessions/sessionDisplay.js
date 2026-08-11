@@ -15,10 +15,7 @@ export const STATUS_DISPLAY = {
     btnDisabled: false,
   },
   ACTIVE: {
-    badges: [
-      { labelKey: 'pending',    tone: 'warning' },
-      { labelKey: 'inProgress', tone: 'info' },
-    ],
+    badges:      [{ labelKey: 'inProgress', tone: 'info' }],
     btnLabelKey: 'continue',
     btnTone:     'primary',
     btnDisabled: false,

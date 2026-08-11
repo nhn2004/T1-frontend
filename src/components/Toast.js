@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../hooks/useTheme';
 import { a11yDecorative, a11yLiveRegion } from '../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT } from '../constants/typography';
 
 // Banner de feedback embebido. Alert.alert() es un no-op en web (react-native-web
 // entrega un stub vacío), así que cualquier mensaje que deba verse en todas las
@@ -60,8 +61,8 @@ const makeStyles = () =>
       paddingVertical: 10,
     },
     text: {
-      fontSize: 14,
-      fontWeight: '600',
+      fontSize: FONT_SIZE.lg,
+      fontWeight: FONT_WEIGHT.semibold,
       flex: 1,
     },
   });

@@ -117,7 +117,10 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
   // Editar/Cancelar solo tiene sentido para quien puede crear sesiones (mismos roles
   // que CrearSesionScreen) y solo mientras el backend acepta la operación: una vez
   // iniciada/finalizada/cancelada, PUT y PATCH .../status responden 422.
-  const canManageSession = can('createSession') && session.status === 'PLANNED';
+  // `!!session.id` evita mostrarlo de más durante la carga: EMPTY_SESSION arranca con
+  // status:'PLANNED' como placeholder, así que sin este chequeo el botón aparecía un
+  // instante con datos falsos y desaparecía en cuanto llegaba el estado real.
+  const canManageSession = can('createSession') && session.status === 'PLANNED' && !!session.id;
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [editTitle, setEditTitle] = useState('');

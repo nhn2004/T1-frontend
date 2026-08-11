@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import useTheme from '../hooks/useTheme';
 import { a11yButton, a11yDecorative, a11yModal, MIN_TOUCH_SIZE } from '../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../constants/typography';
 
 // Modal genérico de confirmación Sí/No — Alert.alert es un no-op en web
 // (react-native-web entrega un stub vacío), así que cualquier confirmación que deba
@@ -113,14 +114,13 @@ const makeStyles = (t) =>
       marginBottom: 10,
     },
     title: {
-      fontSize: 17,
-      fontWeight: '700',
+      ...TEXT_STYLES.modalTitle,
       marginBottom: 8,
       color: t.textPrimary,
       textAlign: 'center',
     },
     message: {
-      fontSize: 14,
+      ...TEXT_STYLES.body,
       textAlign: 'center',
       lineHeight: 20,
       marginBottom: 18,
@@ -141,8 +141,8 @@ const makeStyles = (t) =>
       borderColor: t.borderStrong,
     },
     cancelBtnText: {
-      fontSize: 15,
-      fontWeight: '600',
+      fontSize: FONT_SIZE.lg,
+      fontWeight: FONT_WEIGHT.semibold,
       color: t.textSecondary,
     },
     confirmBtn: {
@@ -153,7 +153,7 @@ const makeStyles = (t) =>
       alignItems: 'center',
     },
     confirmBtnText: {
-      fontSize: 15,
-      fontWeight: '700',
+      fontSize: FONT_SIZE.lg,
+      fontWeight: FONT_WEIGHT.heavy,
     },
   });
