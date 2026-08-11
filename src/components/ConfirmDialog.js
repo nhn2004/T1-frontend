@@ -154,6 +154,6 @@ const makeStyles = (t) =>
     },
     confirmBtnText: {
       fontSize: FONT_SIZE.lg,
-      fontWeight: FONT_WEIGHT.heavy,
+      fontWeight: FONT_WEIGHT.bold,
     },
   });

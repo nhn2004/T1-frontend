@@ -856,8 +856,8 @@ const makeStyles = (t, isCompact) =>
     // Velo fijo para asegurar contraste del texto blanco sobre la foto.
     heroOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.58)' },
     heroContent: { paddingHorizontal: isCompact ? 20 : 32, paddingVertical: 28, gap: 12 },
-    heroTitle: { color: '#FFFFFF', fontSize: isCompact ? FONT_SIZE.display : 34, fontWeight: FONT_WEIGHT.black },
-    heroSubtitle: { color: '#EAEAEA', fontSize: isCompact ? FONT_SIZE.lg : FONT_SIZE.xxl, fontWeight: FONT_WEIGHT.heavy },
+    heroTitle: { color: '#FFFFFF', fontSize: isCompact ? FONT_SIZE.display : 34, fontWeight: FONT_WEIGHT.bold },
+    heroSubtitle: { color: '#EAEAEA', fontSize: isCompact ? FONT_SIZE.lg : FONT_SIZE.xxl, fontWeight: FONT_WEIGHT.bold },
     heroActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 },
     primaryButton: {
       flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -898,7 +898,7 @@ const makeStyles = (t, isCompact) =>
       backgroundColor: t.status.danger.solid, borderRadius: 10,
       paddingHorizontal: 5, paddingVertical: 2,
     },
-    liveText: { color: t.status.danger.onSolid, fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.black },
+    liveText: { color: t.status.danger.onSolid, fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.bold },
     statValue: { color: t.textPrimary, ...TEXT_STYLES.statValue, lineHeight: 32 },
 
     mainGrid: { flexDirection: isCompact ? 'column' : 'row', gap: 18, alignItems: 'stretch' },
@@ -969,19 +969,19 @@ const makeStyles = (t, isCompact) =>
     statusColumn: isCompact ? { width: 100 } : { flex: 1.15 },
     actionColumn: isCompact ? { width: 170 } : { flex: 1.25 },
     tableScrollContent: { minWidth: isCompact ? 480 : undefined },
-    codeText: { color: t.textPrimary, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.black },
+    codeText: { color: t.textPrimary, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold },
     roleBadge: { alignSelf: 'flex-start', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
     roleBadgeText: { ...TEXT_STYLES.label },
     statusCell: { flexDirection: 'row', alignItems: 'center', gap: 7 },
     statusDot: { width: 8, height: 8, borderRadius: 4 },
     statusText: { color: t.textSecondary, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold },
     editButton: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: MIN_TOUCH_SIZE },
-    editText: { color: t.primaryText, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.heavy },
+    editText: { color: t.primaryText, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold },
     loading: { paddingVertical: 32 },
     emptyText: { color: t.textMuted, fontSize: 14, textAlign: 'center', paddingVertical: 32 },
 
     auditEmpty: { alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 32, flex: 1 },
-    auditEmptyTitle: { color: t.textPrimary, fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.heavy },
+    auditEmptyTitle: { color: t.textPrimary, fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold },
     auditEmptyText: { color: t.textSecondary, fontSize: 13, lineHeight: 19, textAlign: 'center' },
 
     auditList: { flex: 1 },
@@ -997,10 +997,10 @@ const makeStyles = (t, isCompact) =>
     auditIconWrapDanger: { backgroundColor: t.status.danger.bg, borderColor: t.status.danger.border },
     auditRowBody: { flex: 1, gap: 3, minWidth: 0 },
     auditRowTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 },
-    auditActor: { flex: 1, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.heavy, color: t.textPrimary },
+    auditActor: { flex: 1, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.textPrimary },
     auditTime: { fontSize: FONT_SIZE.sm, color: t.textMuted, flexShrink: 0 },
     auditAction: { fontSize: FONT_SIZE.md, color: t.textSecondary, lineHeight: 18 },
-    auditFailed: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.heavy, color: t.status.danger.fg },
+    auditFailed: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold, color: t.status.danger.fg },
 
     // ── Modales (editar permisos / invitaciones pendientes) ──
     modalOverlay: {
@@ -1038,7 +1038,7 @@ const makeStyles = (t, isCompact) =>
       borderRadius: 10, backgroundColor: t.primarySolid,
     },
     modalSubmitBtnDisabled: { opacity: 0.7 },
-    modalSubmitText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.heavy, color: t.onPrimarySolid },
+    modalSubmitText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: t.onPrimarySolid },
 
     roleList: { maxHeight: 260 },
     roleListContent: { gap: 8, paddingBottom: 2 },

@@ -17,27 +17,29 @@ export const FONT_SIZE = {
   hero: 32,        // hero secundario
 };
 
+// Antes llegaba hasta 900 (black) para etiquetas chicas y títulos de panel — se leía
+// desproporcionadamente grueso frente al resto de la app, que nunca pasaba de 700.
+// Tope real ahora: 700 (bold), reservado para títulos y botones; todo lo demás usa
+// semibold o menos.
 export const FONT_WEIGHT = {
   regular: '400',
   medium: '500',
-  semibold: '600',  // labels de formulario, texto de menú inactivo
-  bold: '700',      // cuerpo destacado, subtítulos, texto de menú activo
-  heavy: '800',     // títulos de panel/modal, botones primarios
-  black: '900',     // títulos hero, valores de estadísticas, etiquetas en mayúsculas
+  semibold: '600',  // labels de formulario, texto de menú inactivo, etiquetas en mayúsculas
+  bold: '700',      // títulos de panel/modal/sección, botones primarios, cuerpo destacado
 };
 
 // Combinaciones de uso frecuente: úsalas con spread — `{ ...TEXT_STYLES.sectionTitle, color: t.textPrimary }`.
 export const TEXT_STYLES = {
-  heroTitle:    { fontSize: FONT_SIZE.display,    fontWeight: FONT_WEIGHT.black },
-  heroSubtitle: { fontSize: FONT_SIZE.xl,         fontWeight: FONT_WEIGHT.heavy },
-  screenTitle:  { fontSize: FONT_SIZE.xxxl,       fontWeight: FONT_WEIGHT.black },
-  sectionTitle: { fontSize: FONT_SIZE.xxl,        fontWeight: FONT_WEIGHT.heavy },
-  modalTitle:   { fontSize: FONT_SIZE.xxl,        fontWeight: FONT_WEIGHT.heavy },
-  cardTitle:    { fontSize: FONT_SIZE.xl,         fontWeight: FONT_WEIGHT.bold },
+  heroTitle:    { fontSize: FONT_SIZE.display,    fontWeight: FONT_WEIGHT.bold },
+  heroSubtitle: { fontSize: FONT_SIZE.xl,         fontWeight: FONT_WEIGHT.semibold },
+  screenTitle:  { fontSize: FONT_SIZE.xxxl,       fontWeight: FONT_WEIGHT.bold },
+  sectionTitle: { fontSize: FONT_SIZE.xxl,        fontWeight: FONT_WEIGHT.bold },
+  modalTitle:   { fontSize: FONT_SIZE.xxl,        fontWeight: FONT_WEIGHT.bold },
+  cardTitle:    { fontSize: FONT_SIZE.xl,         fontWeight: FONT_WEIGHT.semibold },
   body:         { fontSize: FONT_SIZE.lg,         fontWeight: FONT_WEIGHT.regular },
-  bodyBold:     { fontSize: FONT_SIZE.lg,         fontWeight: FONT_WEIGHT.bold },
-  label:        { fontSize: FONT_SIZE.sm,         fontWeight: FONT_WEIGHT.black },
+  bodyBold:     { fontSize: FONT_SIZE.lg,         fontWeight: FONT_WEIGHT.semibold },
+  label:        { fontSize: FONT_SIZE.sm,         fontWeight: FONT_WEIGHT.semibold },
   caption:      { fontSize: FONT_SIZE.base,       fontWeight: FONT_WEIGHT.regular },
-  button:       { fontSize: FONT_SIZE.lg,         fontWeight: FONT_WEIGHT.heavy },
-  statValue:    { fontSize: FONT_SIZE.statValue,  fontWeight: FONT_WEIGHT.black },
+  button:       { fontSize: FONT_SIZE.lg,         fontWeight: FONT_WEIGHT.semibold },
+  statValue:    { fontSize: FONT_SIZE.statValue,  fontWeight: FONT_WEIGHT.bold },
 };
