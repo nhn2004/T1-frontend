@@ -475,42 +475,53 @@ export default function SystemDashboard({ navigation }) {
                     {...a11yDecorative}
                   />
                 </TouchableOpacity>
-
-                {/* Desplegable anclado al propio botón — antes era un modal a pantalla
-                    completa para elegir una de 7 opciones simples, más disruptivo de lo
-                    que hacía falta. `filterGroup` es `position:relative`, así este panel
-                    se posiciona respecto a él sin importar el scroll de la página. */}
-                {roleFilterVisible && (
-                  <ScrollView
-                    style={styles.roleDropdown}
-                    contentContainerStyle={styles.roleDropdownContent}
-                    showsVerticalScrollIndicator={false}
-                    {...a11yGroup('Filtrar por rol')}
-                  >
-                    {ROLE_OPTIONS.map((opt) => {
-                      const selected = opt === roleFilter;
-                      return (
-                        <TouchableOpacity
-                          key={opt}
-                          style={[styles.roleRow, styles.roleFilterRow, selected && styles.roleRowActive]}
-                          onPress={() => { setRoleFilter(opt); setRoleFilterVisible(false); }}
-                          activeOpacity={0.8}
-                          accessible
-                          accessibilityRole="radio"
-                          accessibilityLabel={opt}
-                          accessibilityState={{ checked: selected }}
-                        >
-                          <Text style={styles.roleRowText}>{opt}</Text>
-                          {selected && (
-                            <Ionicons name="checkmark" size={16} color={theme.primaryText} {...a11yDecorative} />
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                )}
               </View>
             </View>
+
+            {/* Antes se intentó anclar esto como un panel `position:absolute` dentro de
+                `filterGroup` (dos veces), confiando en que su z-index lo dejara por
+                encima de la tabla — en este layout tan anidado el navegador no lo
+                apilaba de forma confiable y los clics caían en la tabla de abajo, no en
+                las opciones. `Modal` sí lo garantiza (en RNW se renderiza en un portal
+                aparte, fuera de este árbol) — se mantiene chico y sin velo oscuro de
+                pantalla completa para que igual se sienta como un desplegable. */}
+            <Modal
+              visible={roleFilterVisible}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setRoleFilterVisible(false)}
+            >
+              <TouchableWithoutFeedback onPress={() => setRoleFilterVisible(false)}>
+                <View style={styles.roleDropdownOverlay}>
+                  <TouchableWithoutFeedback accessible={false}>
+                    <View style={styles.roleDropdown} {...a11yGroup('Filtrar por rol')}>
+                      <ScrollView contentContainerStyle={styles.roleDropdownContent} showsVerticalScrollIndicator={false}>
+                        {ROLE_OPTIONS.map((opt) => {
+                          const selected = opt === roleFilter;
+                          return (
+                            <TouchableOpacity
+                              key={opt}
+                              style={[styles.roleRow, styles.roleFilterRow, selected && styles.roleRowActive]}
+                              onPress={() => { setRoleFilter(opt); setRoleFilterVisible(false); }}
+                              activeOpacity={0.8}
+                              accessible
+                              accessibilityRole="radio"
+                              accessibilityLabel={opt}
+                              accessibilityState={{ checked: selected }}
+                            >
+                              <Text style={styles.roleRowText}>{opt}</Text>
+                              {selected && (
+                                <Ionicons name="checkmark" size={16} color={theme.primaryText} {...a11yDecorative} />
+                              )}
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                  </TouchableWithoutFeedback>
+                </View>
+              </TouchableWithoutFeedback>
+            </Modal>
 
             <TableScrollWrap isCompact={isCompact} contentStyle={styles.tableScrollContent}>
             <View style={styles.tableHeader}>
@@ -937,24 +948,26 @@ const makeStyles = (t, isCompact) =>
       justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 20,
     },
     panelTitle: { color: t.textPrimary, ...TEXT_STYLES.sectionTitle },
-    filterGroup: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap', position: 'relative' },
-    // Ancla el desplegable de rol al propio botón (`position:relative` en filterGroup),
-    // en vez de un modal a pantalla completa para elegir entre 7 opciones simples.
+    filterGroup: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+    // Sin velo oscuro (a diferencia de modalOverlay, que sí lo usa para diálogos de
+    // verdad): alinea la tarjeta arriba a la derecha, cerca de donde está el botón,
+    // para que se sienta como un desplegable y no como un diálogo modal completo.
+    roleDropdownOverlay: {
+      flex: 1,
+      alignItems: 'flex-end',
+      paddingTop: 90,
+      paddingRight: 20,
+    },
     roleDropdown: {
-      position: 'absolute',
-      top: '100%',
-      right: 0,
-      marginTop: 6,
-      minWidth: 200,
+      width: 220,
       maxHeight: 280,
       backgroundColor: t.card,
       borderRadius: 10,
       borderWidth: 1,
       borderColor: t.border,
-      zIndex: 20,
       elevation: 6,
       shadowColor: t.shadowColor,
-      shadowOpacity: 0.18,
+      shadowOpacity: 0.25,
       shadowOffset: { width: 0, height: 6 },
       shadowRadius: 12,
     },
