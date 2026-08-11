@@ -93,7 +93,11 @@ export async function getPendingDetailed() {
   }]));
 
   return invitations
-    .filter((i) => i.status === 'Pending')
+    // Solo invitaciones de alguien que ya tiene cuenta (p. ej. invitado a una sesión):
+    // las invitaciones por correo a gente sin cuenta se resuelven solas cuando esa
+    // persona completa su registro, no desde aquí — aprobarlas aquí primero rompería
+    // su enlace de registro (ver EnsureHasRecipientAccount en el backend).
+    .filter((i) => i.status === 'Pending' && i.targetUserId)
     .map((raw) => toValidationItem(raw, {
       person:  personByUserId[raw.targetUserId] ?? userById[raw.targetUserId],
       session: sessionById[raw.trainingSessionId],
