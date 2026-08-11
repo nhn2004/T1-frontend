@@ -178,9 +178,24 @@ export default function SessionDetailScreen({ navigation, route, sessionId, onBa
     return () => clearTimeout(timer);
   }, [notice]);
 
-  const display = isTrainee
-    ? (TRAINEE_STATUS_DISPLAY[session.status] ?? TRAINEE_STATUS_DISPLAY.PLANNED)
-    : (STATUS_DISPLAY[session.status] ?? STATUS_DISPLAY.PLANNED);
+  // Iniciar una sesión es un acto de organizador (mismo permiso que crearla, mismos
+  // roles que exige el backend en PATCH .../start): antes cualquier rol no-aspirante
+  // (Médico, Investigador incluidos) veía el botón "Iniciar" habilitado en una sesión
+  // Pendiente. Para Investigador el POST a /environmental-data ya devolvía 403 de
+  // entrada; para Médico ese POST sí lo aceptaba pero el START posterior devolvía 403,
+  // dejando una condición ambiental guardada huérfana en una sesión que seguía
+  // "Pendiente" — un guardado a medias con un mensaje de error que ni siquiera
+  // explicaba bien qué había fallado. Se reutiliza el mismo mensaje "el instructor
+  // iniciará la sesión" que ya usa el aspirante, aquí para cualquier rol sin permiso
+  // de organizador.
+  const canStartSession = can('createSession');
+  const display = useMemo(() => (
+    isTrainee
+      ? (TRAINEE_STATUS_DISPLAY[session.status] ?? TRAINEE_STATUS_DISPLAY.PLANNED)
+      : session.status === 'PLANNED' && !canStartSession
+        ? { ...STATUS_DISPLAY.PLANNED, btnLabelKey: 'instructorWillStart', btnTone: 'disabled', btnDisabled: true }
+        : (STATUS_DISPLAY[session.status] ?? STATUS_DISPLAY.PLANNED)
+  ), [isTrainee, session.status, canStartSession]);
 
   const updateAmb = useCallback(
     (field, val) => setAmbiental((prev) => ({ ...prev, [field]: val })),
