@@ -454,21 +454,55 @@ export default function SystemDashboard({ navigation }) {
                 <Text style={styles.filterLabel} nativeID="roleFilterLabel">FILTRAR POR ROL:</Text>
                 <TouchableOpacity
                   style={styles.filterButton}
-                  onPress={() => setRoleFilterVisible(true)}
+                  onPress={() => setRoleFilterVisible((v) => !v)}
                   activeOpacity={0.8}
                   {...a11yButton(`Filtrar por rol: ${roleFilter}`, {
-                    hint: 'Abre la lista de roles',
+                    hint: 'Despliega la lista de roles',
                     expanded: roleFilterVisible,
                   })}
                 >
                   <Text style={styles.filterText}>{roleFilter}</Text>
                   <Ionicons
-                    name="chevron-down"
+                    name={roleFilterVisible ? 'chevron-up' : 'chevron-down'}
                     size={14}
                     color={theme.icon}
                     {...a11yDecorative}
                   />
                 </TouchableOpacity>
+
+                {/* Desplegable anclado al propio botón — antes era un modal a pantalla
+                    completa para elegir una de 7 opciones simples, más disruptivo de lo
+                    que hacía falta. `filterGroup` es `position:relative`, así este panel
+                    se posiciona respecto a él sin importar el scroll de la página. */}
+                {roleFilterVisible && (
+                  <ScrollView
+                    style={styles.roleDropdown}
+                    contentContainerStyle={styles.roleDropdownContent}
+                    showsVerticalScrollIndicator={false}
+                    {...a11yGroup('Filtrar por rol')}
+                  >
+                    {ROLE_OPTIONS.map((opt) => {
+                      const selected = opt === roleFilter;
+                      return (
+                        <TouchableOpacity
+                          key={opt}
+                          style={[styles.roleRow, styles.roleFilterRow, selected && styles.roleRowActive]}
+                          onPress={() => { setRoleFilter(opt); setRoleFilterVisible(false); }}
+                          activeOpacity={0.8}
+                          accessible
+                          accessibilityRole="radio"
+                          accessibilityLabel={opt}
+                          accessibilityState={{ checked: selected }}
+                        >
+                          <Text style={styles.roleRowText}>{opt}</Text>
+                          {selected && (
+                            <Ionicons name="checkmark" size={16} color={theme.primaryText} {...a11yDecorative} />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                )}
               </View>
             </View>
 
@@ -801,46 +835,13 @@ export default function SystemDashboard({ navigation }) {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* ── Modal: filtrar por rol ── */}
-      <Modal
-        visible={roleFilterVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setRoleFilterVisible(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setRoleFilterVisible(false)} accessible={false}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback accessible={false}>
-              <View style={styles.modalCard} {...a11yModal('Filtrar por rol')}>
-                <Text style={styles.modalTitle} accessibilityRole="header">Filtrar por Rol</Text>
-
-                <ScrollView contentContainerStyle={styles.roleListContent} showsVerticalScrollIndicator={false}>
-                  {ROLE_OPTIONS.map((opt) => {
-                    const selected = opt === roleFilter;
-                    return (
-                      <TouchableOpacity
-                        key={opt}
-                        style={[styles.roleRow, styles.roleFilterRow, selected && styles.roleRowActive]}
-                        onPress={() => { setRoleFilter(opt); setRoleFilterVisible(false); }}
-                        activeOpacity={0.8}
-                        accessible
-                        accessibilityRole="radio"
-                        accessibilityLabel={opt}
-                        accessibilityState={{ checked: selected }}
-                      >
-                        <Text style={styles.roleRowText}>{opt}</Text>
-                        {selected && (
-                          <Ionicons name="checkmark" size={16} color={theme.primaryText} {...a11yDecorative} />
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
+      {/* Backdrop invisible: solo para cerrar el desplegable de rol al tocar fuera —
+          el panel en sí vive dentro de `filterGroup` (ver arriba), no acá. */}
+      {roleFilterVisible && (
+        <TouchableWithoutFeedback onPress={() => setRoleFilterVisible(false)}>
+          <View style={styles.dropdownBackdrop} />
         </TouchableWithoutFeedback>
-      </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -918,7 +919,29 @@ const makeStyles = (t, isCompact) =>
       justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 20,
     },
     panelTitle: { color: t.textPrimary, ...TEXT_STYLES.sectionTitle },
-    filterGroup: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+    filterGroup: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap', position: 'relative' },
+    // Ancla el desplegable de rol al propio botón (`position:relative` en filterGroup),
+    // en vez de un modal a pantalla completa para elegir entre 7 opciones simples.
+    roleDropdown: {
+      position: 'absolute',
+      top: '100%',
+      right: 0,
+      marginTop: 6,
+      minWidth: 200,
+      maxHeight: 280,
+      backgroundColor: t.card,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: t.border,
+      zIndex: 20,
+      elevation: 6,
+      shadowColor: t.shadowColor,
+      shadowOpacity: 0.18,
+      shadowOffset: { width: 0, height: 6 },
+      shadowRadius: 12,
+    },
+    roleDropdownContent: { padding: 6, gap: 4 },
+    dropdownBackdrop: { ...StyleSheet.absoluteFillObject, zIndex: 10 },
     filterLabel: { color: t.textMuted, ...TEXT_STYLES.label },
     filterButton: {
       minWidth: 160,
