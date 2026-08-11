@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { a11yButton, a11yDecorative } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
@@ -349,10 +350,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  pageTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
+  pageTitle: TEXT_STYLES.screenTitle,
 
   gridRow: {
     gap: 14,
@@ -384,19 +382,16 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   secondaryBtnDisabled: { opacity: 0.7 },
-  secondaryBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  secondaryBtnText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold },
   syncHint: {
-    fontSize: 11,
+    fontSize: FONT_SIZE.sm,
     textAlign: 'center',
   },
   pendingList: {
     gap: 2,
   },
   pendingItemText: {
-    fontSize: 11,
+    fontSize: FONT_SIZE.sm,
   },
 
   langRow: {
@@ -410,10 +405,10 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   langBtnText: {
-    fontSize: 13,
+    fontSize: FONT_SIZE.md,
   },
   langBtnTextActive: {
-    fontWeight: '700',
+    fontWeight: FONT_WEIGHT.bold,
   },
 
   logoutBtn: {
@@ -427,8 +422,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     marginBottom: 24,
   },
-  logoutBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  logoutBtnText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.semibold },
 });

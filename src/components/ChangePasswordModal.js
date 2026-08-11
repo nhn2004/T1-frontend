@@ -4,6 +4,7 @@ import {
   StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { a11yButton, a11yModal } from '../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../constants/typography';
 import { authService } from '../services';
 import FormField from '../screens/settings/components/FormField';
 
@@ -153,8 +154,8 @@ const modalStyles = (t) =>
     },
     formScrollArea: { flexShrink: 1 },
     formScroll: { gap: 12, paddingBottom: 2 },
-    title: { fontSize: 17, fontWeight: '700', color: t.textPrimary, marginBottom: 4 },
-    errorText: { fontSize: 13, color: t.status.danger.fg },
+    title: { ...TEXT_STYLES.modalTitle, color: t.textPrimary, marginBottom: 4 },
+    errorText: { fontSize: FONT_SIZE.md, color: t.status.danger.fg },
     actions: { flexDirection: 'row', gap: 10, marginTop: 4 },
     cancelBtn: {
       flex: 1,
@@ -165,7 +166,7 @@ const modalStyles = (t) =>
       borderWidth: 1.5,
       borderColor: t.borderStrong,
     },
-    cancelBtnText: { fontSize: 14, fontWeight: '600', color: t.textSecondary },
+    cancelBtnText: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.semibold, color: t.textSecondary },
     submitBtn: {
       flex: 1,
       minHeight: 44,
@@ -175,5 +176,5 @@ const modalStyles = (t) =>
       backgroundColor: t.primarySolid,
     },
     submitBtnDisabled: { opacity: 0.7 },
-    submitBtnText: { fontSize: 14, fontWeight: '700', color: t.onPrimarySolid },
+    submitBtnText: { ...TEXT_STYLES.button, color: t.onPrimarySolid },
   });

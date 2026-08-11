@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { ROLE_LABELS, ROLES } from '../../constants';
 import { a11yButton, a11yDecorative, a11yHeader } from '../../constants/a11y';
+import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
 import { useAuth } from '../../hooks';
 import useTheme from '../../hooks/useTheme';
 import useTranslation from '../../hooks/useTranslation';
@@ -263,7 +264,7 @@ const makeStyles = (t) =>
       alignSelf: 'center',
     },
     header: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    pageTitle: { fontSize: 20, fontWeight: '700', color: t.textPrimary },
+    pageTitle: { ...TEXT_STYLES.screenTitle, color: t.textPrimary },
 
     identityCard: {
       alignItems: 'center',
@@ -283,9 +284,9 @@ const makeStyles = (t) =>
       justifyContent: 'center',
       marginBottom: 6,
     },
-    avatarText: { fontSize: 26, fontWeight: '800', color: t.onPrimarySolid },
-    name: { fontSize: 18, fontWeight: '700', color: t.textPrimary },
-    role: { fontSize: 13, color: t.textSecondary },
+    avatarText: { fontSize: FONT_SIZE.display, fontWeight: FONT_WEIGHT.bold, color: t.onPrimarySolid },
+    name: { ...TEXT_STYLES.cardTitle, color: t.textPrimary },
+    role: { ...TEXT_STYLES.caption, color: t.textSecondary },
 
     formRow: { flexDirection: 'row', gap: 14, marginBottom: 12 },
 
@@ -302,9 +303,9 @@ const makeStyles = (t) =>
       justifyContent: 'space-between',
       gap: 12,
     },
-    rowLabel: { fontSize: 13, color: t.textSecondary },
-    rowValue: { fontSize: 13, fontWeight: '600', color: t.textPrimary, flexShrink: 1, textAlign: 'right' },
-    errorText: { fontSize: 13, color: t.status.danger.fg, textAlign: 'center' },
+    rowLabel: { ...TEXT_STYLES.caption, color: t.textSecondary },
+    rowValue: { ...TEXT_STYLES.caption, fontWeight: FONT_WEIGHT.semibold, color: t.textPrimary, flexShrink: 1, textAlign: 'right' },
+    errorText: { fontSize: FONT_SIZE.md, color: t.status.danger.fg, textAlign: 'center' },
 
     saveBtn: {
       flexDirection: 'row',
@@ -315,7 +316,7 @@ const makeStyles = (t) =>
       paddingVertical: 11,
       marginTop: 4,
     },
-    saveBtnText: { fontSize: 14, fontWeight: '700' },
+    saveBtnText: { ...TEXT_STYLES.button },
 
     outlineBtn: {
       borderWidth: 1.5,
@@ -323,5 +324,5 @@ const makeStyles = (t) =>
       paddingVertical: 9,
       paddingHorizontal: 14,
     },
-    outlineBtnText: { fontSize: 13 },
+    outlineBtnText: { fontSize: FONT_SIZE.md },
   });
