@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ImageBackground,
@@ -122,6 +122,22 @@ export default function SystemDashboard({ navigation }) {
   const [pendingInvitesList, setPendingInvitesList] = useState([]);
   const [roleFilter,       setRoleFilter]       = useState(ROLE_OPTIONS[0]);
   const [roleFilterVisible, setRoleFilterVisible] = useState(false);
+  // Posición real del botón (medida en pantalla), para que el Modal —que no sabe
+  // dónde vive el botón que lo abrió, al renderizarse en un portal aparte— pueda
+  // dibujar el desplegable justo debajo en vez de en una posición fija arbitraria.
+  const [roleDropdownPos, setRoleDropdownPos] = useState(null);
+  const filterButtonRef = useRef(null);
+
+  const openRoleFilter = useCallback(() => {
+    filterButtonRef.current?.measureInWindow((x, y, buttonWidth, buttonHeight) => {
+      const dropdownWidth = 220;
+      setRoleDropdownPos({
+        top: y + buttonHeight + 6,
+        left: Math.max(12, Math.min(x, width - dropdownWidth - 12)),
+      });
+      setRoleFilterVisible(true);
+    });
+  }, [width]);
   const [failedSources,    setFailedSources]    = useState([]);
   const [toast,            setToast]            = useState(null);
 
@@ -459,8 +475,9 @@ export default function SystemDashboard({ navigation }) {
               <View style={styles.filterGroup}>
                 <Text style={styles.filterLabel} nativeID="roleFilterLabel">FILTRAR POR ROL:</Text>
                 <TouchableOpacity
+                  ref={filterButtonRef}
                   style={styles.filterButton}
-                  onPress={() => setRoleFilterVisible((v) => !v)}
+                  onPress={() => (roleFilterVisible ? setRoleFilterVisible(false) : openRoleFilter())}
                   activeOpacity={0.8}
                   {...a11yButton(`Filtrar por rol: ${roleFilter}`, {
                     hint: 'Despliega la lista de roles',
@@ -483,8 +500,11 @@ export default function SystemDashboard({ navigation }) {
                 encima de la tabla — en este layout tan anidado el navegador no lo
                 apilaba de forma confiable y los clics caían en la tabla de abajo, no en
                 las opciones. `Modal` sí lo garantiza (en RNW se renderiza en un portal
-                aparte, fuera de este árbol) — se mantiene chico y sin velo oscuro de
-                pantalla completa para que igual se sienta como un desplegable. */}
+                aparte, fuera de este árbol), pero no sabe dónde está el botón que lo
+                abrió — por eso se mide su posición real (`openRoleFilter`,
+                `measureInWindow`) para dibujar el panel justo debajo, en vez de en una
+                posición fija arbitraria. Sin velo oscuro de pantalla completa, para que
+                igual se sienta como un desplegable y no como un diálogo. */}
             <Modal
               visible={roleFilterVisible}
               transparent
@@ -494,7 +514,10 @@ export default function SystemDashboard({ navigation }) {
               <TouchableWithoutFeedback onPress={() => setRoleFilterVisible(false)}>
                 <View style={styles.roleDropdownOverlay}>
                   <TouchableWithoutFeedback accessible={false}>
-                    <View style={styles.roleDropdown} {...a11yGroup('Filtrar por rol')}>
+                    <View
+                      style={[styles.roleDropdown, roleDropdownPos && { position: 'absolute', top: roleDropdownPos.top, left: roleDropdownPos.left }]}
+                      {...a11yGroup('Filtrar por rol')}
+                    >
                       <ScrollView contentContainerStyle={styles.roleDropdownContent} showsVerticalScrollIndicator={false}>
                         {ROLE_OPTIONS.map((opt) => {
                           const selected = opt === roleFilter;
@@ -954,10 +977,9 @@ const makeStyles = (t, isCompact) =>
     // para que se sienta como un desplegable y no como un diálogo modal completo.
     roleDropdownOverlay: {
       flex: 1,
-      alignItems: 'flex-end',
-      paddingTop: 90,
-      paddingRight: 20,
     },
+    // La posición real (top/left) se calcula en tiempo de ejecución a partir del
+    // botón medido (`roleDropdownPos`) y se aplica inline — acá solo el tamaño/aspecto.
     roleDropdown: {
       width: 220,
       maxHeight: 280,
