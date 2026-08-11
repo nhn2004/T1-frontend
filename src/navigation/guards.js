@@ -18,6 +18,14 @@ export const PERMISSIONS = {
   readMedicalRecord:    [ROLES.MEDICAL, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
   readOwnMedicalRecord: [ROLES.FIREFIGHTER_TRAINEE],
 
+  // Registrar signos vitales (pantalla de evaluación): es un acto médico de principio a
+  // fin, no una vista de solo lectura — a diferencia de la ficha médica, no tiene ningún
+  // caso de uso válido para Admin/System Admin, así que no comparte permiso con
+  // readMedicalRecord. Antes Admin/System Admin veían el botón "Reporte" y la pantalla
+  // completa, pero el guardado siempre fallaba (exige una ficha de personal de salud que
+  // ellos nunca tienen) — un callejón sin salida disfrazado de función real.
+  recordVitalSigns:     [ROLES.MEDICAL],
+
   // Validación de invitaciones (cola del personal médico)
   validateInvitations:  [ROLES.MEDICAL, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
 
@@ -60,7 +68,7 @@ export const ROUTE_PERMISSIONS = {
   [ROUTES.PEOPLE_SESSIONS]:    'viewPeople',
   [ROUTES.VALIDATION_QUEUE]:   'validateInvitations',
   [ROUTES.SESSION_CREATE]:     'createSession',
-  [ROUTES.EVALUATION]:         'readMedicalRecord',
+  [ROUTES.EVALUATION]:         'recordVitalSigns',
   [ROUTES.MEDICAL_HISTORY]:    'readMedicalRecord',
   [ROUTES.INSTITUTIONS]:       'manageInstitutions',
 };

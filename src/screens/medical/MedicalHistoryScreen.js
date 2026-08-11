@@ -23,7 +23,14 @@ export default function MedicalHistoryScreen({ navigation, route }) {
   const traineeId = route?.params?.traineeId ?? null;
   const traineeName = route?.params?.traineeName ?? '';
 
-  const { user } = useAuth();
+  const { user, can } = useAuth();
+  // Ver el historial tiene sentido para Admin/System Admin (readMedicalRecord), pero
+  // crearlo/editarlo es un acto médico — antes Admin podía "guardar" cambios sobre un
+  // historial ya existente sin tener ficha de personal de salud (quedaban sin atribuir
+  // a ningún profesional), y al intentar crear uno nuevo el guardado simplemente fallaba
+  // con un error. Ahora el formulario se muestra de solo lectura para quien no puede
+  // editar, en vez de dejar una acción a medias.
+  const canEdit = can('createMedicalRecord');
   const theme = useTheme();
   const { t: tAll } = useTranslation();
   const t = tAll.medicalHistory;
@@ -152,15 +159,24 @@ export default function MedicalHistoryScreen({ navigation, route }) {
                 <Ionicons name="information-circle-outline" size={18} color={theme.status.info.fg} {...a11yDecorative} />
                 <View style={styles.noRecordTextWrap}>
                   <Text style={styles.noRecordTitle}>{t.noRecordTitle}</Text>
-                  <Text style={styles.noRecordBody}>{t.noRecordBody}</Text>
+                  <Text style={styles.noRecordBody}>
+                    {canEdit ? t.noRecordBody : t.noRecordBodyReadOnly}
+                  </Text>
                 </View>
               </View>
             )}
 
-            <Field label={t.allergiesLabel} value={form.allergies} onChangeText={setField('allergies')} styles={styles} />
-            <Field label={t.preexistingLabel} value={form.preexistingConditions} onChangeText={setField('preexistingConditions')} styles={styles} />
-            <Field label={t.medicationLabel} value={form.currentMedication} onChangeText={setField('currentMedication')} styles={styles} />
-            <Field label={t.observationsLabel} value={form.generalObservations} onChangeText={setField('generalObservations')} styles={styles} multiline />
+            {/* Sin permiso de edición y sin historial todavía: no hay nada que leer ni
+                que se pueda guardar — mostrar el formulario vacío solo invitaría a
+                llenarlo para nada. */}
+            {(canEdit || record) && (
+              <>
+                <Field label={t.allergiesLabel} value={form.allergies} onChangeText={setField('allergies')} styles={styles} editable={canEdit} />
+                <Field label={t.preexistingLabel} value={form.preexistingConditions} onChangeText={setField('preexistingConditions')} styles={styles} editable={canEdit} />
+                <Field label={t.medicationLabel} value={form.currentMedication} onChangeText={setField('currentMedication')} styles={styles} editable={canEdit} />
+                <Field label={t.observationsLabel} value={form.generalObservations} onChangeText={setField('generalObservations')} styles={styles} multiline editable={canEdit} />
+              </>
+            )}
 
             {!!record?.updatedAt && (
               <Text style={styles.updatedText}>
@@ -168,18 +184,20 @@ export default function MedicalHistoryScreen({ navigation, route }) {
               </Text>
             )}
 
-            <TouchableOpacity
-              style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-              onPress={handleSave}
-              activeOpacity={0.85}
-              disabled={saving}
-              {...a11yButton(record ? t.saveButton : t.createButton, { disabled: saving, busy: saving })}
-            >
-              {saving
-                ? <ActivityIndicator size="small" color={theme.onPrimarySolid} />
-                : <Ionicons name="save-outline" size={16} color={theme.onPrimarySolid} {...a11yDecorative} />}
-              <Text style={styles.saveBtnText}>{record ? t.saveButton : t.createButton}</Text>
-            </TouchableOpacity>
+            {canEdit && (
+              <TouchableOpacity
+                style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+                onPress={handleSave}
+                activeOpacity={0.85}
+                disabled={saving}
+                {...a11yButton(record ? t.saveButton : t.createButton, { disabled: saving, busy: saving })}
+              >
+                {saving
+                  ? <ActivityIndicator size="small" color={theme.onPrimarySolid} />
+                  : <Ionicons name="save-outline" size={16} color={theme.onPrimarySolid} {...a11yDecorative} />}
+                <Text style={styles.saveBtnText}>{record ? t.saveButton : t.createButton}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </ScrollView>
@@ -187,17 +205,19 @@ export default function MedicalHistoryScreen({ navigation, route }) {
   );
 }
 
-function Field({ label, value, onChangeText, styles, multiline }) {
+function Field({ label, value, onChangeText, styles, multiline, editable = true }) {
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel} nativeID={`mh-${label}`}>{label}</Text>
       <TextInput
-        style={[styles.input, multiline && styles.inputMultiline]}
+        style={[styles.input, multiline && styles.inputMultiline, !editable && styles.inputDisabled]}
         value={value}
         onChangeText={onChangeText}
         multiline={multiline}
+        editable={editable}
         accessibilityLabel={label}
         accessibilityLabelledBy={`mh-${label}`}
+        accessibilityState={{ disabled: !editable }}
       />
     </View>
   );
@@ -238,6 +258,7 @@ const makeStyles = (t) =>
       fontSize: 14, backgroundColor: t.cardAlt, borderColor: t.borderStrong, color: t.textPrimary,
     },
     inputMultiline: { minHeight: 90, textAlignVertical: 'top' },
+    inputDisabled: { opacity: 0.6 },
     updatedText: { fontSize: 12, color: t.textMuted },
 
     saveBtn: {

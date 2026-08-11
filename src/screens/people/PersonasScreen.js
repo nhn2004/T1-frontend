@@ -1263,10 +1263,14 @@ const makeStyles = (t) => StyleSheet.create({
   sessionMetric: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 8,
     marginBottom: 3,
   },
+  // Ancho fijo (no `space-between` estirado a los bordes de la tarjeta): así "Pendientes"
+  // y "Completadas" quedan agrupadas con su badge en vez de separadas a los extremos, y
+  // los dos badges quedan alineados en columna entre sí sin importar el largo del texto.
   sessionLabel: {
+    width: 76,
     color: t.textSecondary,
     fontSize: 11,
   },

@@ -205,6 +205,7 @@ viewOwnSessions        → FIREFIGHTER_TRAINEE
 createMedicalRecord    → MEDICAL
 readMedicalRecord      → MEDICAL, ADMIN, SYSTEM_ADMIN
 readOwnMedicalRecord   → FIREFIGHTER_TRAINEE
+recordVitalSigns       → MEDICAL
 manageUsers            → SYSTEM_ADMIN
 manageAuditLog         → SYSTEM_ADMIN
 exportAnonymizedData   → RESEARCHER, SYSTEM_ADMIN
