@@ -115,6 +115,10 @@ export function toPendingInvitation(raw, session) {
   const start = session?.scheduledStart ? new Date(session.scheduledStart) : null;
   return {
     id:              raw.invitationId,
+    // El id de la invitación NO es el id de la sesión — "Detalles" navega a
+    // SessionDetailScreen, que necesita el trainingSessionId. Antes se le pasaba
+    // `id` (el de la invitación) y la pantalla siempre fallaba al cargar.
+    sessionId:       raw.trainingSessionId ?? null,
     title:           session?.title ?? 'Capacitación',
     description:     session?.description ?? 'Sesión de entrenamiento. Presentarse hidratado y con equipo completo.',
     date:            session?.date ?? '—',

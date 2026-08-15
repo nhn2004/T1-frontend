@@ -64,14 +64,16 @@ export default function InvitationCard({ invitation, onConfirm, onDetails, compa
               <Text style={styles.confirmBtnText}>{t.dashboard.confirmAttendance}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => onDetails(invitation.id)}
-              activeOpacity={0.7}
-              style={styles.detailsBtn}
-              {...a11yButton(`${t.dashboard.details} — ${invitation.title}`)}
-            >
-              <Text style={styles.detailsText}>{t.dashboard.details}</Text>
-            </TouchableOpacity>
+            {!!invitation.sessionId && (
+              <TouchableOpacity
+                onPress={() => onDetails(invitation.sessionId)}
+                activeOpacity={0.7}
+                style={styles.detailsBtn}
+                {...a11yButton(`${t.dashboard.details} — ${invitation.title}`)}
+              >
+                <Text style={styles.detailsText}>{t.dashboard.details}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
