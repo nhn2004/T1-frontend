@@ -8,7 +8,7 @@ import { ROUTES } from '../constants/routes';
 
 export const PERMISSIONS = {
   // Gestión de sesiones
-  createSession:        [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.FIRE_CHIEF],
+  createSession:        [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.FIRE_CHIEF],
   manageInvitations:    [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.FIRE_CHIEF],
   viewAllSessions:      [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.MEDICAL, ROLES.RESEARCHER, ROLES.FIRE_CHIEF],
   viewOwnSessions:      [ROLES.FIREFIGHTER_TRAINEE],
@@ -28,6 +28,12 @@ export const PERMISSIONS = {
 
   // Validación de invitaciones (cola del personal médico)
   validateInvitations:  [ROLES.MEDICAL, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
+
+  // Marcar asistencia (check-in) de un bombero en una sesión: mismo set de roles que
+  // exige el backend en POST /session-participants/{id}/check-in. Deliberadamente
+  // separado de `createSession` — Capacitador puede pasar lista aunque no cree
+  // sesiones, y ambos permisos ya no coinciden desde que createSession se acotó.
+  manageAttendance:     [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.FIRE_CHIEF],
 
   // Gestión de usuarios
   manageUsers:          [ROLES.SYSTEM_ADMIN],

@@ -21,6 +21,7 @@ import { useAuth } from '../../hooks';
 import { useAuditOnMount } from '../../hooks/useAuditTrail';
 import { safeGoBack } from '../../utils/safeGoBack';
 import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../constants/typography';
+import Toast from '../../components/Toast';
 
 const STATUS_STYLES = {
   COMPLETADO: { label: 'Completado', icon: 'checkmark',    tone: 'success' },
@@ -61,6 +62,9 @@ export default function PersonasSesionesScreen({ navigation, route }) {
   const { canAccessRoute, can } = useAuth();
   const canEvaluate = canAccessRoute(ROUTES.EVALUATION);
   const canViewMedicalHistory = can('readMedicalRecord');
+  // Médico no entra acá: su acción sobre un pendiente es "Reporte" (canEvaluate), no
+  // marcar presencia.
+  const canManageAttendance = can('manageAttendance');
 
   // Esta pantalla incluye la pestaña de resultados (ResultadosGeneralesView), que
   // muestra signos vitales agregados de todos los participantes de la sesión — es
@@ -78,15 +82,27 @@ export default function PersonasSesionesScreen({ navigation, route }) {
   const [box,            setBox]            = React.useState({ w: 0, h: 0 });
   const fadeAnim                            = React.useRef(new Animated.Value(1)).current;
 
+  const [notice,         setNotice]         = React.useState(null); // { message, tone }
+  const [checkingInId,   setCheckingInId]   = React.useState(null); // id de la tarjeta en curso
+  const [bulkChecking,   setBulkChecking]   = React.useState(false);
+
   // ── Carga participantes ────────────────────────────────────────────────────
 
-  React.useEffect(() => {
-    if (!sessionId) { setLoading(false); return; }
-    participantService.getBySession(sessionId)
+  const loadPeople = React.useCallback(() => {
+    if (!sessionId) { setLoading(false); return Promise.resolve(); }
+    return participantService.getBySession(sessionId)
       .then(setPeople)
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [sessionId]);
+
+  React.useEffect(() => { loadPeople(); }, [loadPeople]);
+
+  React.useEffect(() => {
+    if (!notice) return undefined;
+    const timer = setTimeout(() => setNotice(null), 3500);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   // ── Datos filtrados ────────────────────────────────────────────────────────
 
@@ -159,6 +175,41 @@ export default function PersonasSesionesScreen({ navigation, route }) {
     setBox({ w, h });
   }, []);
 
+  const handleCheckIn = React.useCallback(async (participantId, personName) => {
+    setCheckingInId(participantId);
+    try {
+      await participantService.checkIn(participantId);
+      await loadPeople();
+      setNotice({ message: `${personName} marcado presente.`, tone: 'success' });
+    } catch (error) {
+      const detail = error?.response?.data?.message ?? 'Revisa tu conexión e inténtalo de nuevo.';
+      setNotice({ message: `No se pudo marcar presente. ${detail}`, tone: 'error' });
+    } finally {
+      setCheckingInId(null);
+    }
+  }, [loadPeople]);
+
+  const pendingCount = statusCounts['PENDIENTE'] || 0;
+
+  const handleBulkCheckIn = React.useCallback(async () => {
+    const pendingIds = people.filter(p => p.status === 'PENDIENTE').map(p => p.id);
+    if (pendingIds.length === 0) return;
+
+    setBulkChecking(true);
+    try {
+      const results = await Promise.allSettled(pendingIds.map(id => participantService.checkIn(id)));
+      const failed = results.filter(r => r.status === 'rejected').length;
+      await loadPeople();
+      if (failed === 0) {
+        setNotice({ message: `${pendingIds.length} bomberos marcados presentes.`, tone: 'success' });
+      } else {
+        setNotice({ message: `${pendingIds.length - failed} marcados presentes, ${failed} fallaron.`, tone: 'warning' });
+      }
+    } finally {
+      setBulkChecking(false);
+    }
+  }, [people, loadPeople]);
+
   return (
     <SafeAreaView style={styles.screen}>
 
@@ -183,11 +234,36 @@ export default function PersonasSesionesScreen({ navigation, route }) {
           </Pressable>
         </View>
 
+        {/* Marca presentes de un tirón a todos los bomberos Pendientes de la sesión —
+            evita tener que entrar tarjeta por tarjeta cuando arranca la capacitación. */}
+        {canManageAttendance && activeTab === 'bomberos' && pendingCount > 0 && (
+          <TouchableOpacity
+            style={[styles.startAllBtn, bulkChecking && styles.startAllBtnDisabled]}
+            onPress={handleBulkCheckIn}
+            disabled={bulkChecking}
+            activeOpacity={0.85}
+            {...a11yButton(`Iniciar capacitación, marcar presentes a ${pendingCount} bomberos`, { busy: bulkChecking })}
+          >
+            {bulkChecking
+              ? <ActivityIndicator size="small" color={theme.onPrimarySolid} />
+              : <Ionicons name="play-circle-outline" size={16} color={theme.onPrimarySolid} {...a11yDecorative} />}
+            <Text style={styles.startAllBtnText} numberOfLines={1}>
+              {bulkChecking ? 'Marcando…' : `Iniciar Capacitación (${pendingCount})`}
+            </Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity style={styles.backBtn} onPress={() => safeGoBack(navigation)} activeOpacity={0.8}>
           <Ionicons name="arrow-back" size={16} color={theme.textPrimary} />
           <Text style={styles.backBtnText}>Volver</Text>
         </TouchableOpacity>
       </View>
+
+      {!!notice && (
+        <View style={styles.noticeWrap}>
+          <Toast message={notice.message} tone={notice.tone} />
+        </View>
+      )}
 
       {/* ── Filter bar — solo tab bomberos ── */}
       {activeTab === 'bomberos' && (
@@ -271,6 +347,9 @@ export default function PersonasSesionesScreen({ navigation, route }) {
                         numQuemas={numQuemas}
                         canEvaluate={canEvaluate}
                         canViewMedicalHistory={canViewMedicalHistory}
+                        canManageAttendance={canManageAttendance}
+                        checkingIn={checkingInId === person.id}
+                        onCheckIn={handleCheckIn}
                       />
                     ))}
                     {rowCards.length < COLS &&
@@ -318,7 +397,10 @@ export default function PersonasSesionesScreen({ navigation, route }) {
 
 const FALLBACK_PHOTO = require('../../assets/people/bombero.png');
 
-function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuemas, canEvaluate, canViewMedicalHistory }) {
+function BomberoCard({
+  person, cardW, cardH, navigation, styles, theme, numQuemas,
+  canEvaluate, canViewMedicalHistory, canManageAttendance, checkingIn, onCheckIn,
+}) {
   const statusStyle = STATUS_STYLES[person.status] ?? STATUS_STYLES.PENDIENTE;
   const tone = theme.status[statusStyle.tone];
 
@@ -331,9 +413,33 @@ function BomberoCard({ person, cardW, cardH, navigation, styles, theme, numQuema
         // que el usuario sea personal de salud. Para el resto (capacitador, jefe) el
         // botón no se muestra en vez de fallar al navegar.
         if (!canEvaluate) {
+          // Antes esto era un botón deshabilitado sin ninguna acción real, para
+          // cualquier rol que no fuera Médico — un callejón sin salida: Capacitador/
+          // Jefe/Admin sí pueden marcar asistencia (mismo permiso que el backend exige
+          // en /check-in), así que un Pendiente les muestra esa acción en su lugar.
+          if (person.status === 'PENDIENTE' && canManageAttendance) {
+            return (
+              <Pressable
+                style={[styles.cardBtn, styles.cardBtnSolid]}
+                hitSlop={CARD_BTN_HIT_SLOP}
+                disabled={checkingIn}
+                onPress={() => onCheckIn(person.id, person.name)}
+                {...a11yButton(`Marcar presente a ${person.name}`, { busy: checkingIn })}
+              >
+                {checkingIn ? (
+                  <ActivityIndicator size="small" color={theme.onPrimarySolid} />
+                ) : (
+                  <Ionicons name="checkmark-circle-outline" size={13} color={theme.onPrimarySolid} {...a11yDecorative} />
+                )}
+                <Text style={styles.cardBtnSolidText} numberOfLines={1} ellipsizeMode="tail">
+                  {checkingIn ? 'Marcando…' : 'Presente'}
+                </Text>
+              </Pressable>
+            );
+          }
           return (
             <View style={[styles.cardBtn, styles.cardBtnDisabled]}>
-              <Text style={styles.cardBtnDisabledText} numberOfLines={1} ellipsizeMode="tail">Pendiente</Text>
+              <Text style={styles.cardBtnDisabledText} numberOfLines={1} ellipsizeMode="tail">{statusStyle.label}</Text>
             </View>
           );
         }
@@ -500,6 +606,18 @@ const makeStyles = (t) => StyleSheet.create({
     borderColor: t.border,
   },
   backBtnText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.textPrimary },
+  startAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: t.primarySolid,
+  },
+  startAllBtnDisabled: { opacity: 0.7 },
+  startAllBtnText: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: t.onPrimarySolid },
+  noticeWrap: { paddingHorizontal: 24, paddingBottom: 4 },
 
   // Filter bar
   filterBar: {
