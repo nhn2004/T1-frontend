@@ -54,10 +54,11 @@ export default function TraineeDashboard({ navigation }) {
 
     (async () => {
       try {
-        const [invs, sessions, locations] = await Promise.all([
+        const [invs, sessions, locations, mySessionIds] = await Promise.all([
           invitationService.getAll(),
           sessionService.getAll(),
           trainingLocationService.getAll().catch(() => []),
+          sessionService.getMySessionIds(user.userId).catch(() => new Set()),
         ]);
         if (!alive) return;
 
@@ -77,8 +78,10 @@ export default function TraineeDashboard({ navigation }) {
           ));
         }
 
+        // GET /training-sessions no filtra por rol — sin `mySessionIds` esto mostraba
+        // las próximas sesiones de TODA la institución, no solo las del aspirante.
         const upcoming = sessions
-          .filter((s) => s.status === 'PLANNED' || s.status === 'ACTIVE')
+          .filter((s) => (s.status === 'PLANNED' || s.status === 'ACTIVE') && mySessionIds.has(s.id))
           .slice(0, 3)
           .map((s) => {
             const start = s.scheduledStart ? new Date(s.scheduledStart) : null;

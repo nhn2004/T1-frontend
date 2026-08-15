@@ -82,6 +82,26 @@ export const sessionService = {
     return (wrapper.data ?? []).map(toSession);
   },
 
+  /**
+   * IDs de sesión en las que el aspirante logueado es participante. GET /training-sessions
+   * no filtra por rol (devuelve el calendario completo de la institución a cualquiera), y
+   * el permiso `viewOwnSessions` ya declarado en guards.js nunca estaba conectado a ningún
+   * código — el Horario y el dashboard del aspirante mostraban sesiones ajenas.
+   */
+  async getMySessionIds(userId) {
+    const [{ data: traineesW }, { data: partsW }] = await Promise.all([
+      api.get('/trainee-firefighters'),
+      api.get('/session-participants'),
+    ]);
+    const me = (traineesW.data ?? []).find((t) => t.userId === userId);
+    if (!me) return new Set();
+    return new Set(
+      (partsW.data ?? [])
+        .filter((p) => p.traineeFirefighterId === me.traineeFirefighterId)
+        .map((p) => p.trainingSessionId)
+    );
+  },
+
   async getById(id) {
     const { data: wrapper } = await api.get(`/training-sessions/${id}`);
     const raw = wrapper.data;
