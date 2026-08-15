@@ -465,17 +465,26 @@ function Step1({
     ? { style: [s.row, { flexDirection: 'row' }] }
     : { style: s.row, contentContainerStyle: { gap: 12 }, showsVerticalScrollIndicator: false };
 
+  // Un ScrollView anidado dentro de otro (esta tarjeta ya vivía dentro de RowContainer,
+  // que en pantallas angostas TAMBIÉN es un ScrollView) es una causa conocida de que el
+  // sistema de gestos de Android/iOS "confunda" qué scroll reclama el toque, dejando
+  // botones y chips de esta tarjeta sin responder al tacto — un mouse en web nunca lo
+  // sufre, porque un clic no tiene la misma ambigüedad "¿es un scroll o es un tap?" que
+  // un dedo. Solo hace falta el scroll propio de la tarjeta en el layout ancho (donde sí
+  // queda con una altura acotada, lado a lado con la otra tarjeta); en el layout angosto
+  // el RowContainer ya scrollea todo apilado, así que acá es un View normal.
+  const LeftCardScroll = isWide ? ScrollView : View;
+  const leftCardScrollProps = isWide
+    ? { style: s.leftCardScroll, contentContainerStyle: s.leftCardScrollContent, showsVerticalScrollIndicator: false }
+    : { style: s.leftCardScrollContent };
+
   return (
     <View style={s.body}>
       <RowContainer {...rowContainerProps}>
 
         {/* ── Izquierda: Info + Punto de quema + N Quemas ── */}
         <View style={[s.card, isWide && { flex: 0.9 }]}>
-          <ScrollView
-            style={s.leftCardScroll}
-            contentContainerStyle={s.leftCardScrollContent}
-            showsVerticalScrollIndicator={false}
-          >
+          <LeftCardScroll {...leftCardScrollProps}>
           <SectionHeader icon="calendar-outline" title="Información de la Sesión" />
 
           <View style={s.infoFields}>
@@ -598,7 +607,7 @@ function Step1({
               </TouchableOpacity>
             ))}
           </View>
-          </ScrollView>
+          </LeftCardScroll>
         </View>
 
         {/* ── Derecha: Médicos a Cargo ── */}
@@ -669,6 +678,12 @@ function Step2({
   const rowContainerProps = isWide
     ? { style: [s.row, { flex: 1, flexDirection: 'row' }] }
     : { style: s.row, contentContainerStyle: { gap: 12 }, showsVerticalScrollIndicator: false };
+  // Mismo motivo que LeftCardScroll en Step1: en layout angosto RowContainer ya es un
+  // ScrollView, así que la lista de bomberos no necesita el suyo propio — anidados,
+  // los toques sobre los campos/botones de esta lista se vuelven poco confiables en
+  // pantallas táctiles.
+  const BomberosScroll = isWide ? ScrollView : View;
+  const bomberosScrollProps = isWide ? { showsVerticalScrollIndicator: false } : {};
 
   return (
     <View style={s.body}>
@@ -740,7 +755,7 @@ function Step2({
             </TouchableOpacity>
           </View>
           <Text style={s.emailHint}>Invitación directa por correo electrónico.</Text>
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <BomberosScroll {...bomberosScrollProps}>
             <View style={s.emailList}>
               {bomberoEmails.map((email, idx) => (
                 <View key={idx} style={s.emailRow}>
@@ -763,7 +778,7 @@ function Step2({
                 </View>
               ))}
             </View>
-          </ScrollView>
+          </BomberosScroll>
         </View>
 
       </RowContainer>
