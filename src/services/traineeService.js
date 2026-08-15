@@ -1,4 +1,5 @@
 import api from './api';
+import { defaultTraineePhoto } from '../utils/defaultImages';
 
 function toPersona(raw) {
   return {
@@ -11,12 +12,15 @@ function toPersona(raw) {
     applicantCode:     raw.applicantCode,
     trainingStatus:    raw.trainingStatus,
     bloodType:         raw.bloodType,
+    sex:               raw.sex ?? null,
     // El backend no expone todavía el conteo de sesiones por persona. `null` significa
     // "no disponible" y la UI lo muestra como «—»; usar [] haría que se renderizara un
     // "0" que el usuario leería como un dato real.
     pendingSessions:   null,
     completedSessions: null,
-    photoSource:       null,
+    // Sin foto real que cargar (no hay función de subida) — un avatar por defecto
+    // según el sexo, en vez de un ícono genérico sin relación con la persona.
+    photoSource:       defaultTraineePhoto(raw.sex),
   };
 }
 

@@ -1,4 +1,5 @@
 import api from './api';
+import { defaultLocationImageUri } from '../utils/defaultImages';
 
 const STATUS_MAP = {
   Scheduled:  'PLANNED',
@@ -62,7 +63,9 @@ function toTrainingCenter(loc) {
     address:          loc.address ?? '—',
     specificLocation: loc.locationType ?? 'Sede principal',
     maxCapacity:      loc.maxCapacity ?? null,
-    imageUri:         null,
+    // El backend no expone (todavía) una foto real del centro — se elige una imagen
+    // genérica estable por id en vez de dejar el marcador vacío en la barra lateral.
+    imageUri:         defaultLocationImageUri(loc.trainingLocationId),
   };
 }
 

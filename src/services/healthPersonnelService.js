@@ -1,4 +1,5 @@
 import api from './api';
+import { defaultHealthPersonnelPhoto } from '../utils/defaultImages';
 
 function toPersona(raw) {
   return {
@@ -17,7 +18,9 @@ function toPersona(raw) {
     // "0" que el usuario leería como un dato real.
     pendingSessions:   null,
     completedSessions: null,
-    photoSource:       null,
+    // Sin foto real que cargar (no hay función de subida) — un avatar por defecto
+    // según la profesión, en vez de un ícono genérico sin relación con la persona.
+    photoSource:       defaultHealthPersonnelPhoto(raw.profession),
   };
 }
 

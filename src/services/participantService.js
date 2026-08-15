@@ -1,4 +1,5 @@
 import api from './api';
+import { defaultTraineePhoto } from '../utils/defaultImages';
 
 const STATUS_ORDER = { 'EN CURSO': 0, PENDIENTE: 1, COMPLETADO: 2, CANCELADO: 3 };
 
@@ -22,6 +23,7 @@ function toCard(participant, traineeMap) {
     age:       t.birthDate ? String(new Date().getFullYear() - new Date(t.birthDate).getFullYear()) : '—',
     weight:    '—',
     status,
+    photoSource: defaultTraineePhoto(t.sex),
   };
 }
 
