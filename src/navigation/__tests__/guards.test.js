@@ -36,8 +36,12 @@ describe('can', () => {
   });
 
   test('a user with multiple roles gets the union of their permissions', () => {
-    // MEDICAL alone can't manageInstitutions, ADMIN alone can — combined, either grants it.
-    expect(can([ROLES.MEDICAL, ROLES.ADMIN], 'manageInstitutions')).toBe(true);
+    // CAPACITATOR alone can't manageHealthPersonnel, ADMIN alone can — combined, either grants it.
+    expect(can([ROLES.CAPACITATOR, ROLES.ADMIN], 'manageHealthPersonnel')).toBe(true);
+  });
+
+  test('ADMIN (jefatura médica) no longer manages institutions — that narrowed to SYSTEM_ADMIN', () => {
+    expect(can(ROLES.ADMIN, 'manageInstitutions')).toBe(false);
   });
 });
 
@@ -55,7 +59,7 @@ describe('canAccessRoute', () => {
   });
 
   test('a gated route allows a role with the required permission', () => {
-    expect(canAccessRoute(ROLES.ADMIN, ROUTES.INSTITUTIONS)).toBe(true);
+    expect(canAccessRoute(ROLES.SYSTEM_ADMIN, ROUTES.INSTITUTIONS)).toBe(true);
   });
 
   test('an unknown route is denied by default, never allowed', () => {

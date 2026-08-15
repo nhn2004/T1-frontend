@@ -6,9 +6,14 @@ import { ROUTES } from '../constants/routes';
 // lugares definieran sus propias reglas volverían a desincronizarse (un rol con permiso
 // pero sin ruta montada, o una entrada de menú que navega a una pantalla inexistente).
 
+// ADMIN dejó de ser un "admin general": ahora es la jefatura de personal médico (ver
+// ROLE_LABELS en constants/roles.js). SYSTEM_ADMIN absorbe todo lo operativo que
+// antes compartía con Admin (sesiones, bomberos, capacitadores, instituciones) — ya
+// tenía cada uno de esos permisos de antes, así que no hizo falta agregarle nada acá,
+// solo quitarle a ADMIN lo que no es de su alcance médico.
 export const PERMISSIONS = {
   // Gestión de sesiones
-  createSession:        [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.FIRE_CHIEF],
+  createSession:        [ROLES.SYSTEM_ADMIN, ROLES.FIRE_CHIEF],
   manageInvitations:    [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.FIRE_CHIEF],
   viewAllSessions:      [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.MEDICAL, ROLES.RESEARCHER, ROLES.FIRE_CHIEF],
   viewOwnSessions:      [ROLES.FIREFIGHTER_TRAINEE],
@@ -29,11 +34,10 @@ export const PERMISSIONS = {
   // Validación de invitaciones (cola del personal médico)
   validateInvitations:  [ROLES.MEDICAL, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
 
-  // Marcar asistencia (check-in) de un bombero en una sesión: mismo set de roles que
-  // exige el backend en POST /session-participants/{id}/check-in. Deliberadamente
-  // separado de `createSession` — Capacitador puede pasar lista aunque no cree
-  // sesiones, y ambos permisos ya no coinciden desde que createSession se acotó.
-  manageAttendance:     [ROLES.ADMIN, ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.FIRE_CHIEF],
+  // Marcar asistencia (check-in) de un bombero en una sesión: quien pasa lista en la
+  // sesión, no jefatura médica — mismo set de roles que exige el backend en
+  // POST /session-participants/{id}/check-in.
+  manageAttendance:     [ROLES.SYSTEM_ADMIN, ROLES.CAPACITATOR, ROLES.FIRE_CHIEF],
 
   // Gestión de usuarios
   manageUsers:          [ROLES.SYSTEM_ADMIN],
@@ -48,10 +52,10 @@ export const PERMISSIONS = {
 
   // Gestión de personal
   viewPeople:           [ROLES.MEDICAL, ROLES.CAPACITATOR, ROLES.FIRE_CHIEF, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
-  manageFirefighters:   [ROLES.FIRE_CHIEF, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
-  manageCapacitators:   [ROLES.FIRE_CHIEF, ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
+  manageFirefighters:   [ROLES.FIRE_CHIEF, ROLES.SYSTEM_ADMIN],
+  manageCapacitators:   [ROLES.FIRE_CHIEF, ROLES.SYSTEM_ADMIN],
   manageHealthPersonnel: [ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
-  manageInstitutions:   [ROLES.ADMIN, ROLES.SYSTEM_ADMIN],
+  manageInstitutions:   [ROLES.SYSTEM_ADMIN],
 
   // Progreso personal del aspirante
   viewOwnProgress:      [ROLES.FIREFIGHTER_TRAINEE],

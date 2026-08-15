@@ -187,8 +187,8 @@ Definidos en `src/constants/roles.js`:
 
 | Constante | Label | Descripción |
 |---|---|---|
-| `SYSTEM_ADMIN` | Administrador del Sistema | Gestión global de usuarios, permisos y auditoría |
-| `ADMIN` | Administrador | Crea y gestiona sesiones, invita participantes |
+| `SYSTEM_ADMIN` | Administrador del Sistema | Gestión global de usuarios, permisos, auditoría, sesiones, personal e instituciones |
+| `ADMIN` | Jefe de Médicos | Jefatura de personal médico: gestiona personal de salud, valida invitaciones, lee fichas médicas |
 | `FIREFIGHTER_TRAINEE` | Bombero Aspirante | Participa en sesiones, ve sus propios resultados y progreso |
 | `CAPACITATOR` | Capacitador | Imparte capacitaciones, gestiona agenda y asistencia |
 | `MEDICAL` | Médico | Registra signos vitales, historial médico, evaluaciones y certificados |
@@ -198,7 +198,7 @@ Definidos en `src/constants/roles.js`:
 ### Permisos (`src/navigation/guards.js`)
 
 ```
-createSession          → ADMIN, SYSTEM_ADMIN, CAPACITATOR, FIRE_CHIEF
+createSession          → SYSTEM_ADMIN, FIRE_CHIEF
 manageInvitations      → ADMIN, SYSTEM_ADMIN, CAPACITATOR, FIRE_CHIEF
 viewAllSessions        → ADMIN, SYSTEM_ADMIN, CAPACITATOR, MEDICAL, RESEARCHER, FIRE_CHIEF
 viewOwnSessions        → FIREFIGHTER_TRAINEE
@@ -206,12 +206,18 @@ createMedicalRecord    → MEDICAL
 readMedicalRecord      → MEDICAL, ADMIN, SYSTEM_ADMIN
 readOwnMedicalRecord   → FIREFIGHTER_TRAINEE
 recordVitalSigns       → MEDICAL
+validateInvitations    → MEDICAL, ADMIN, SYSTEM_ADMIN
+manageAttendance       → SYSTEM_ADMIN, CAPACITATOR, FIRE_CHIEF
 manageUsers            → SYSTEM_ADMIN
 manageAuditLog         → SYSTEM_ADMIN
 exportAnonymizedData   → RESEARCHER, SYSTEM_ADMIN
-generateReports        → RESEARCHER, ADMIN, SYSTEM_ADMIN, CAPACITATOR, FIRE_CHIEF
-manageFirefighters     → FIRE_CHIEF, ADMIN, SYSTEM_ADMIN
-manageCapacitators     → FIRE_CHIEF, ADMIN, SYSTEM_ADMIN
+generateReports        → RESEARCHER, SYSTEM_ADMIN
+viewPeople             → MEDICAL, CAPACITATOR, FIRE_CHIEF, ADMIN, SYSTEM_ADMIN
+manageFirefighters     → FIRE_CHIEF, SYSTEM_ADMIN
+manageCapacitators     → FIRE_CHIEF, SYSTEM_ADMIN
+manageHealthPersonnel  → ADMIN, SYSTEM_ADMIN
+manageInstitutions     → SYSTEM_ADMIN
+viewOwnProgress        → FIREFIGHTER_TRAINEE
 ```
 
 ```js

@@ -119,10 +119,10 @@ export default function AdminDashboard({ navigation }) {
         <View style={styles.header}>
           <View style={styles.headerText}>
             <Text style={styles.greeting} accessibilityRole="header">
-              Bienvenido, {user?.name ?? 'Administrador'}
+              Bienvenido, {user?.name ?? 'Jefe de Médicos'}
             </Text>
             <Text style={styles.subtitle}>
-              Panel de Administración · Vista General del Sistema
+              Jefatura Médica · Personal de Salud e Invitaciones
             </Text>
           </View>
           {loading && <ActivityIndicator size="small" color={theme.primary} />}

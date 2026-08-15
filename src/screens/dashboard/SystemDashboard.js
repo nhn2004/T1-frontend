@@ -30,11 +30,14 @@ const AUDIT_PAGE_SIZE = 8;
 
 const HERO_IMAGE = require('../../assets/bomberosEjercitando.jpg');
 
-const ROLE_OPTIONS = ['Todos los roles', 'ADMIN', 'MEDICO', 'CAPACITADOR', 'ASPIRANTE', 'JEFE', 'INVESTIGADOR'];
+const ROLE_OPTIONS = ['Todos los roles', 'ADMIN', 'JEFE MED', 'MEDICO', 'CAPACITADOR', 'ASPIRANTE', 'JEFE', 'INVESTIGADOR'];
 
+// ADMIN (código de rol) ya no es "admin general" — es la jefatura de personal médico
+// (ver ROLE_LABELS en constants/roles.js) — así que su badge corto ya no puede
+// compartir 'ADMIN' con SYSTEM_ADMIN, que sí sigue siendo el admin de la plataforma.
 const ROLE_LABEL = {
   SYSTEM_ADMIN: 'ADMIN',
-  ADMIN: 'ADMIN',
+  ADMIN: 'JEFE MED',
   MEDICAL: 'MEDICO',
   CAPACITATOR: 'CAPACITADOR',
   FIREFIGHTER_TRAINEE: 'ASPIRANTE',
@@ -45,6 +48,7 @@ const ROLE_LABEL = {
 // Tono semántico por rol; el color concreto sale del tema en ambos modos.
 const ROLE_TONE = {
   ADMIN: 'info',
+  'JEFE MED': 'success',
   MEDICO: 'success',
   CAPACITADOR: 'warning',
   ASPIRANTE: 'info',

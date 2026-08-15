@@ -45,7 +45,6 @@ export default function PersonasScreen() {
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
   const isFireChief = roles.includes(ROLES.FIRE_CHIEF);
-  const isAdmin     = roles.includes(ROLES.ADMIN);
   const isMedical   = !isFireChief && roles.includes(ROLES.MEDICAL);
   // Bomberos los administra quien tiene manageFirefighters; personal médico requiere
   // manageHealthPersonnel — son permisos distintos porque dar de alta/baja a un colega
@@ -191,7 +190,7 @@ export default function PersonasScreen() {
       {/* Título */}
       <View style={styles.titleRow}>
         <Text style={styles.pageTitle}>
-          {isAdmin ? 'Todo el Personal' : isFireChief ? 'Personal' : viewingTrainees ? 'Aspirantes' : 'Personal Médico'}
+          {isFireChief ? 'Personal' : viewingTrainees ? 'Aspirantes' : 'Personal Médico'}
         </Text>
         {canManage && (
           <Pressable

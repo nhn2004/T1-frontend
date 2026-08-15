@@ -23,7 +23,7 @@ const DEMO_USERS = [
   { role: ROLES.MEDICAL,             icon: 'medkit-outline',        email: 'medico@smab.app' },
   { role: ROLES.CAPACITATOR,         icon: 'school-outline',        email: 'capacitador@smab.app' },
   { role: ROLES.FIRE_CHIEF,          icon: 'star-outline',          email: 'jefe@smab.app' },
-  { role: ROLES.ADMIN,               icon: 'briefcase-outline',     email: 'admin@smab.app' },
+  { role: ROLES.ADMIN,               icon: 'medkit',                email: 'admin@smab.app' },
   { role: ROLES.SYSTEM_ADMIN,        icon: 'settings-outline',      email: 'sysadmin@smab.app' },
   { role: ROLES.RESEARCHER,          icon: 'analytics-outline',     email: 'investigador@smab.app' },
 ];
