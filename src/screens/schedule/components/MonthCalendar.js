@@ -6,7 +6,7 @@ import useTranslation from '../../../hooks/useTranslation';
 import { weekdayLabels, monthLabel, isSameDay } from '../utils/calendarUtils';
 import { FONT_SIZE, FONT_WEIGHT, TEXT_STYLES } from '../../../constants/typography';
 
-const MAX_VISIBLE_CHIPS = 3;
+const MAX_VISIBLE_CHIPS = 2;
 
 export default function MonthCalendar({ weeks, monthDate, eventsByDay, selectedDate, today, onSelectDay, onPrevMonth, onNextMonth, onToday, compact }) {
   const theme = useTheme();
@@ -214,8 +214,12 @@ const makeStyles = (t) =>
     borderWidth: 1,
     borderColor: t.divider,
     padding: 5,
-    minHeight: 64,
+    minHeight: 74,
     gap: 3,
+    // Resguardo: si el contenido de un día (número + chips + "+N más") llegara a
+    // superar el alto de la celda, se recorta en vez de desbordarse encima de la
+    // fila siguiente (era el bug reportado con varias capacitaciones el mismo día).
+    overflow: 'hidden',
   },
   dayCellSelected: {
     borderColor: t.primary,
