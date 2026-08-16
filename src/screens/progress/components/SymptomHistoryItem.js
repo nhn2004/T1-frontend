@@ -14,7 +14,10 @@ export default function SymptomHistoryItem({ entry, onViewSession, viewLabel, no
   const styles = useMemo(() => makeStyles(theme), [theme]);
   const { t } = useTranslation();
   const hasSymptoms = (entry.sintomas || []).length > 0;
-  const badge = hasSymptoms ? theme.badge[SEVERITY_BADGE_KEY[entry.severidad]] : theme.badge.success;
+  // Si `severidad` no viene o no mapea a un badge conocido, no debe tronar la
+  // pantalla — se usa "pending" (ámbar) como estado neutro de "hay síntomas, sin
+  // severidad clara" en vez de asumir "success".
+  const badge = hasSymptoms ? (theme.badge[SEVERITY_BADGE_KEY[entry.severidad]] ?? theme.badge.pending) : theme.badge.success;
 
   return (
     <View style={[styles.row, !hasSymptoms && styles.rowCompact]}>

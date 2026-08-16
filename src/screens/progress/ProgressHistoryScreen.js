@@ -28,6 +28,11 @@ const VIEW = { BIOMETRIC: 'biometric', SYMPTOMS: 'symptoms' };
 const RECENT_DAYS = 30;
 const RECENT_SESSION_FALLBACK = 5;
 
+// El backend guarda `severity` en inglés (enum SymptomSeverity); la UI trabaja en
+// español. Si un mismo participante tiene más de un reporte, se queda con el peor.
+const SEVERITY_FROM_API = { Mild: 'Leve', Moderate: 'Moderado', Severe: 'Severo' };
+const SEVERITY_RANK = { Leve: 1, Moderado: 2, Severo: 3 };
+
 export default function ProgressHistoryScreen({ navigation }) {
   const theme = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
@@ -71,10 +76,17 @@ export default function ProgressHistoryScreen({ navigation }) {
         // ambas ligadas al mismo sessionParticipantId que la medición de vitales — se cruzan
         // aquí en vez de en vitalSignsService, que solo conoce signos vitales.
         const symptomsByParticipant = {};
+        const severityByParticipant = {};
         symptomReports.forEach((r) => {
           const list = (r.symptoms ?? '').split(',').map((s) => s.trim()).filter(Boolean);
           if (!symptomsByParticipant[r.sessionParticipantId]) symptomsByParticipant[r.sessionParticipantId] = [];
           symptomsByParticipant[r.sessionParticipantId].push(...list);
+
+          const severidad = SEVERITY_FROM_API[r.severity] ?? null;
+          const current = severityByParticipant[r.sessionParticipantId];
+          if (severidad && SEVERITY_RANK[severidad] > (SEVERITY_RANK[current] ?? 0)) {
+            severityByParticipant[r.sessionParticipantId] = severidad;
+          }
         });
 
         const weightByParticipant = {};
@@ -86,6 +98,7 @@ export default function ProgressHistoryScreen({ navigation }) {
           ...entry,
           // `[]` aquí sí significa "no reportó síntomas" — la petición se hizo y no hubo error.
           sintomas: [...new Set(symptomsByParticipant[entry.sessionParticipantId] ?? [])],
+          severidad: severityByParticipant[entry.sessionParticipantId] ?? null,
           vitals: {
             ...entry.vitals,
             peso: weightByParticipant[entry.sessionParticipantId] ?? null,
