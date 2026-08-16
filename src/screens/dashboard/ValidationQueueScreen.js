@@ -99,11 +99,15 @@ export default function ValidationQueueScreen({ navigation }) {
     [runAction],
   );
 
+  // POST /invitations/{id}/staff-reject no acepta ningún campo de motivo
+  // (InvitationService.StaffRejectAsync solo recibe el id) — el motivo que el usuario
+  // escribe en el modal no se envía ni se guarda en ningún lado. El mensaje anterior
+  // decía "Motivo registrado", lo cual era falso; ahora solo confirma el rechazo.
   const handleRejectWithReason = useCallback(
-    (id, reason) => runAction(
+    (id, _reason) => runAction(
       id,
       invitationService.staffReject,
-      `Invitación rechazada. Motivo registrado: "${reason}"`,
+      'Invitación rechazada.',
     ),
     [runAction],
   );
