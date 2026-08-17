@@ -20,7 +20,7 @@ function toPersona(raw) {
     completedSessions: null,
     // Sin foto real que cargar (no hay función de subida) — un avatar por defecto
     // según la profesión, en vez de un ícono genérico sin relación con la persona.
-    photoSource:       defaultHealthPersonnelPhoto(raw.profession),
+    photoSource:       defaultHealthPersonnelPhoto(raw.profession, raw.healthPersonnelId),
   };
 }
 

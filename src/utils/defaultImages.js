@@ -30,23 +30,35 @@ export function defaultLocationImageUri(locationId) {
 }
 
 // Avatares por defecto — assets locales ya empaquetados (src/assets/people), elegidos
-// según el dato real que sí tenemos (sexo del aspirante, profesión del personal de
-// salud) en vez de un ícono genérico sin ninguna relación con quién es la persona.
-const BOMBERO_M       = require('../assets/people/bombero.png');
-const BOMBERO_F       = require('../assets/people/bomberoMujer.png');
-const MEDICO_PHOTO       = require('../assets/people/medico.jpeg');
-const ENFERMERO_PHOTO    = require('../assets/people/enfermero.jpeg');
-const NUTRICIONISTA_PHOTO = require('../assets/people/nutricionista.jpeg');
+// según el dato real que sí tenemos (sexo del aspirante) o, para personal de salud
+// (el backend no guarda su sexo), de forma determinística por id — misma persona
+// siempre ve la misma foto, en vez de un ícono genérico sin ninguna relación con
+// quién es la persona.
+const BOMBERO_M = require('../assets/people/bombero.png');
+const BOMBERO_F = require('../assets/people/bomberoMujer.png');
+
+const MEDICO_M       = require('../assets/people/medico.jpeg');
+const MEDICO_F       = require('../assets/people/medica.jpeg');
+const ENFERMERO_M    = require('../assets/people/enfermero.jpeg');
+const ENFERMERO_F    = require('../assets/people/enfermera.jpeg');
+const NUTRICIONISTA_M = require('../assets/people/nutricionistaHombre.jpeg');
+const NUTRICIONISTA_F = require('../assets/people/nutricionistaMujer.jpeg');
 
 /** Avatar por defecto de un aspirante a bombero, según su sexo ('M'/'F'). */
 export function defaultTraineePhoto(sex) {
   return sex === 'F' ? BOMBERO_F : BOMBERO_M;
 }
 
-/** Avatar por defecto de personal de salud, según su profesión. */
-export function defaultHealthPersonnelPhoto(profession) {
+/**
+ * Avatar por defecto de personal de salud, según su profesión. El backend no
+ * guarda el sexo de esta gente, así que entre la variante M/F se elige por un
+ * hash estable del id — consistente por persona, no una moneda al aire en
+ * cada render, pero sin fingir un dato que no existe.
+ */
+export function defaultHealthPersonnelPhoto(profession, id) {
   const p = (profession ?? '').toLowerCase();
-  if (p.includes('enferm')) return ENFERMERO_PHOTO;
-  if (p.includes('nutri')) return NUTRICIONISTA_PHOTO;
-  return MEDICO_PHOTO;
+  const isF = stableIndex(id ?? '', 2) === 1;
+  if (p.includes('enferm')) return isF ? ENFERMERO_F : ENFERMERO_M;
+  if (p.includes('nutri')) return isF ? NUTRICIONISTA_F : NUTRICIONISTA_M;
+  return isF ? MEDICO_F : MEDICO_M;
 }
