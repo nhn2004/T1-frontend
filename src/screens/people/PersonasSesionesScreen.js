@@ -36,6 +36,8 @@ const STATUS_STYLES = {
 // Grid carousel — columnas según el ancho real medido (onLayout), no fijas: con 4
 // columnas fijas las tarjetas quedaban ilegibles en un teléfono.
 const ROWS = 2;
+// Tope de alto de tarjeta — ver comentario junto a `cardH` más abajo.
+const MAX_CARD_HEIGHT = 300;
 function getCols(w) {
   if (w < 380) return 1;
   if (w < 620) return 2;
@@ -144,7 +146,12 @@ export default function PersonasSesionesScreen({ navigation, route }) {
   const arrowSize = box.h > 0 ? Math.max(32, box.h * 0.06) : 0;
   const arrowRoom = needArrows ? arrowSize + colGap * 2 : 0;
   const cardW     = box.w > 0 ? (box.w - arrowRoom * 2 - colGap * (COLS - 1)) / COLS : 0;
-  const cardH     = box.h > 0 ? (box.h - rowGap * (ROWS - 1)) / ROWS : 0;
+  // A diferencia de COLS (que sí se adapta al ancho vía getCols), ROWS queda fijo en
+  // 2 sin importar el alto disponible. En una ventana de navegador grande box.h puede
+  // ser mucho mayor que en un teléfono, así que sin tope la tarjeta (y con ella la
+  // foto, que ocupa el espacio restante) crecía sin control y se veía pixelada al
+  // estirar una imagen de baja resolución sobre un área enorme.
+  const cardH     = box.h > 0 ? Math.min((box.h - rowGap * (ROWS - 1)) / ROWS, MAX_CARD_HEIGHT) : 0;
 
   const pageCards = filteredPeople.slice(currentPage * PER_PAGE, (currentPage + 1) * PER_PAGE);
   const gridRows  = [];
@@ -695,6 +702,7 @@ const makeStyles = (t) => StyleSheet.create({
   carouselGrid: {
     flex: 1,
     alignSelf: 'stretch',
+    justifyContent: 'center',
   },
   gridRow: {
     flex: 1,
