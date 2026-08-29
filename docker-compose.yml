@@ -49,7 +49,11 @@ services:
       # Sin dominio en esta ruta de emergencia: se permite el origin de la IP directa
       # en el puerto real donde queda publicado el frontend (8081, no 80 — ver
       # docker-compose.yml del servicio "frontend") y localhost para poder probar
-      # desde el propio servidor.
+      # desde el propio servidor. El navegador llama a la API por el mismo origin
+      # (nginx la reenvía en /api/, ver nginx.conf), así que esto en la práctica ya
+      # casi no aplica al tráfico del frontend web — sigue haciendo falta para el
+      # APK de tablets, que no está sujeto a CORS pero sí valida el origin en
+      # algunas librerías HTTP, y como red de seguridad si algo llama directo.
       Cors__AllowedOrigins__0: "http://${SERVER_IP}:8081"
       Cors__AllowedOrigins__1: "http://localhost:8081"
       # Correo real (invitaciones, activación de cuenta, reseteo de contraseña) vía
@@ -69,7 +73,11 @@ services:
       # cuenta, restablecer contraseña) — debe ser donde quede publicado el frontend.
       App__WebBaseUrl: "http://${SERVER_IP}:8081"
     ports:
-      - "5054:8080"
+      # Solo loopback: ya no se publica directo a internet (antes "5054:8080",
+      # 0.0.0.0). El frontend (nginx) lo reenvía por la red interna de Docker en
+      # /api/ — ver nginx.conf. Este binding queda solo para poder probar/depurar
+      # desde el propio servidor con curl a localhost:5054.
+      - "127.0.0.1:5054:8080"
     restart: unless-stopped
 
   # Aplica las migraciones de EF Core contra el contenedor `db`. No corre con
@@ -107,7 +115,10 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        EXPO_PUBLIC_API_URL: "http://${SERVER_IP}:5054/api"
+        # Mismo origin que el frontend (8081), no el 5054 directo — nginx reenvía
+        # /api/ al backend por la red interna de Docker (ver nginx.conf). El APK de
+        # tablets también debe recompilarse apuntando a esta misma URL.
+        EXPO_PUBLIC_API_URL: "http://${SERVER_IP}:8081/api"
     depends_on:
       - backend
     ports:

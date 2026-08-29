@@ -11,12 +11,17 @@ para una demo corta, no para producción real con datos de pacientes.
 ## Prerrequisitos en el servidor
 
 - Docker + Docker Compose v2 instalados (`docker compose version` debe responder).
-- Puertos abiertos en el firewall: `8081` (frontend web) y `5054` (API, para que el
-  APK de las tablets pueda llegar a ella):
+- Puerto abierto en el firewall: solo `8081`. nginx (dentro del contenedor
+  `frontend`) sirve la web Y reenvía `/api/` al backend por la red interna de Docker
+  (ver `nginx.conf`) — es el único punto de entrada público de todo el stack, tanto
+  para el navegador como para el APK de tablets:
   ```bash
   sudo ufw allow 8081/tcp
-  sudo ufw allow 5054/tcp
   ```
+  El backend (puerto `5054`) **ya no se publica a internet** — solo queda accesible
+  desde el propio servidor (`127.0.0.1:5054`, para depurar con `curl` localmente).
+  Si antes tenías `5054` abierto en el firewall, ciérralo: `sudo ufw delete allow 5054/tcp`.
+
   El frontend se publica en `8081` (no `80`) porque en un servidor compartido con otros
   proyectos `80`/`8080`/`8000` suelen estar ocupados — revisa con `sudo ss -tlnp` antes
   de asumir que un puerto está libre, y ajusta el mapeo en `docker-compose.yml`
@@ -84,17 +89,24 @@ para una demo corta, no para producción real con datos de pacientes.
    Password para las 7 cuentas sembradas: `Smab2026!`.
 
 6. **Verificar**:
-   - Backend: `curl http://<SERVER_IP>:5054/api/institutions` (debe dar 401, no un
-     error de conexión — 401 confirma que el servidor está vivo y protegiendo la ruta).
+   - Backend (a través del proxy, es la ruta real que usan navegador y APK):
+     `curl http://<SERVER_IP>:8081/api/institutions` (debe dar 401, no un error de
+     conexión — 401 confirma que el servidor está vivo y protegiendo la ruta).
+   - Backend directo, solo para depurar desde el propio servidor:
+     `curl http://127.0.0.1:5054/api/institutions` (ya no responde desde afuera).
    - Frontend web: abre `http://<SERVER_IP>:8081` en el navegador.
 
 ## APK para tablets
 
-Al compilar el APK, `EXPO_PUBLIC_API_URL` debe apuntar a esta IP:
+Al compilar el APK, `EXPO_PUBLIC_API_URL` debe apuntar al mismo puerto público que el
+frontend (`8081`, no `5054` — ese puerto ya no está expuesto a internet):
 ```bash
-EXPO_PUBLIC_API_URL=http://<SERVER_IP>:5054/api npx expo run:android
+EXPO_PUBLIC_API_URL=http://<SERVER_IP>:8081/api npx expo run:android
 # o con EAS Build, pasando la misma variable en el perfil de build
 ```
+
+> Si ya tienes un APK repartido en tablets con la URL vieja (`:5054/api`), esas tablets
+> quedan sin poder conectarse hasta que instales el APK recompilado con la URL nueva.
 
 `app.json` ya tiene `"usesCleartextTraffic": true` agregado para este despliegue de
 emergencia — permite que el APK hable HTTP plano con esa IP. **Recordar revertir esto

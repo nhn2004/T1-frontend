@@ -14,13 +14,13 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://94.130.182.254:5054/api"
+        "EXPO_PUBLIC_API_URL": "http://94.130.182.254:8081/api"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://94.130.182.254:5054/api"
+        "EXPO_PUBLIC_API_URL": "http://94.130.182.254:8081/api"
       }
     }
   },
